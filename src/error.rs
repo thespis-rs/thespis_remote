@@ -1,7 +1,6 @@
 use crate::{ import::* };
 
-
-/// The main error type for thespis_impl. Use [`ThesError::kind()`] to know which kind of
+/// The main error type for thespis_impl. Use [`ThesRemoteError::kind()`] to know which kind of
 /// error happened. This implements Eq, so you can use:
 ///
 /// ```ignore
@@ -11,11 +10,11 @@ use crate::{ import::* };
 ///    {
 ///       match e.kind()
 ///       {
-///          ThesErrKind::MailboxFull{..} => println!( "{}", e ),
+///          ThesRemoteErrKind::MailboxFull{..} => println!( "{}", e ),
 ///          _ => {},
 ///       }
 ///
-///       if let ThesErrKind::MailboxFull{..} = e.kind()
+///       if let ThesRemoteErrKind::MailboxFull{..} = e.kind()
 ///       {
 ///          println!( "{}", e );
 ///       }
@@ -27,9 +26,9 @@ use crate::{ import::* };
 //
 #[ derive( Debug ) ]
 //
-pub struct ThesErr
+pub struct ThesRemoteErr
 {
-	inner: FailContext<ThesErrKind>,
+	inner: FailContext<ThesRemoteErrKind>,
 }
 
 
@@ -38,32 +37,28 @@ pub struct ThesErr
 //
 #[ derive( Clone, Eq, Debug, Fail ) ]
 //
-pub enum ThesErrKind
+pub enum ThesRemoteErrKind
 {
+	#[ fail( display = "Cannot use peer after the connection is closed, operation: {}", operation ) ]
+	//
+	ConnectionClosed { operation: String },
+
+	#[ fail( display = "Failed to deserialize: {}", what ) ]
+	//
+	Deserialize { what: String },
+
+	#[ fail( display = "Tokio IO Error" ) ]
+	//
+	TokioIoError,
+
 	#[ fail( display = "Failed to spawn a future in: {}", context ) ]
 	//
 	Spawn { context: String },
-
-	#[ fail( display = "Mailbox Full for: {}", actor ) ]
-	//
-	MailboxFull { actor: String },
-
-	#[ fail( display = "Mailbox crashed before we could send the message, actor: {}", actor ) ]
-	//
-	MailboxClosed { actor: String },
-
-	#[ fail( display = "Mailbox crashed after the message was sent, actor: {}", actor ) ]
-	//
-	MailboxClosedBeforeResponse { actor: String },
-
-	#[ fail( display = "Cannot initialize global executor twice" ) ]
-	//
-	DoubleExecutorInit,
 }
 
 
 
-impl Fail for ThesErr
+impl Fail for ThesRemoteErr
 {
 	fn cause( &self ) -> Option< &Fail >
 	{
@@ -76,7 +71,7 @@ impl Fail for ThesErr
 	}
 }
 
-impl fmt::Display for ThesErr
+impl fmt::Display for ThesRemoteErr
 {
 	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result
 	{
@@ -85,34 +80,34 @@ impl fmt::Display for ThesErr
 }
 
 
-impl ThesErr
+impl ThesRemoteErr
 {
 	/// Allows matching on the error kind
 	//
-	pub fn kind( &self ) -> ThesErrKind
+	pub fn kind( &self ) -> ThesRemoteErrKind
 	{
 		*self.inner.get_context()
 	}
 }
 
-impl From<ThesErrKind> for ThesErr
+impl From<ThesRemoteErrKind> for ThesRemoteErr
 {
-	fn from( kind: ThesErrKind ) -> ThesErr
+	fn from( kind: ThesRemoteErrKind ) -> ThesRemoteErr
 	{
-		ThesErr { inner: FailContext::new( kind ) }
+		ThesRemoteErr { inner: FailContext::new( kind ) }
 	}
 }
 
-impl From< FailContext<ThesErrKind> > for ThesErr
+impl From< FailContext<ThesRemoteErrKind> > for ThesRemoteErr
 {
-	fn from( inner: FailContext<ThesErrKind> ) -> ThesErr
+	fn from( inner: FailContext<ThesRemoteErrKind> ) -> ThesRemoteErr
 	{
-		ThesErr { inner: inner }
+		ThesRemoteErr { inner: inner }
 	}
 }
 
 
-impl PartialEq for ThesErrKind
+impl PartialEq for ThesRemoteErrKind
 {
 	fn eq( &self, other: &Self ) -> bool
 	{
@@ -120,6 +115,8 @@ impl PartialEq for ThesErrKind
 	}
 }
 
-impl std::error::Error for ThesErr {}
+
+impl std::error::Error for ThesRemoteErr {}
+
 
 
