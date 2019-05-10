@@ -1,17 +1,13 @@
 use super::import::*;
 
-#[ cfg( feature = "remote" ) ]
-use
-{
-	serde:: { Serialize, Deserialize },
-};
+use serde:: { Serialize, Deserialize };
 
 
 
 #[ derive( Actor ) ] pub struct Sum( pub u64 );
 
-#[cfg_attr(feature = "remote", derive(Serialize, Deserialize))] #[ derive( Debug ) ] pub struct Add( pub u64 );
-#[cfg_attr(feature = "remote", derive(Serialize, Deserialize))] #[ derive( Debug ) ] pub struct Show;
+#[ derive( Serialize, Deserialize, Debug ) ] pub struct Add( pub u64 );
+#[ derive( Serialize, Deserialize, Debug ) ] pub struct Show;
 
 impl Message for Add  { type Return = ();  }
 impl Message for Show { type Return = u64; }

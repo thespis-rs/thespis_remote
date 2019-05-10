@@ -1,4 +1,4 @@
-use crate::{ import::*, remote::error::* };
+use crate::{ import::* };
 
 
 /// A connection identifier. This allows to match incoming packets to requests sent earlier.

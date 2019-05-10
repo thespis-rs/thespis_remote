@@ -1,13 +1,4 @@
-use crate::{ import::*, remote::error::* };
-
-
-impl From<tokio::io::Error> for ThesRemoteErr
-{
-	fn from( e: tokio::io::Error ) -> Self
-	{
-		ThesRemoteErrKind::TokioIoError.into()
-	}
-}
+use crate::{ import::* };
 
 
 
@@ -110,23 +101,23 @@ mod tests
 	// 2. Send like 2 and a half full objects, test that 2 correctly come out, and there is the
 	//    exact amount of bytes left in the buffer for the other half.
 	//
-	use crate::{ *, remote::* };
+	use crate::{ * };
 	use super::{ *, assert_eq };
 
 
 	type MulServ = MultiServiceImpl<ServiceID, ConnID, Codecs>;
 
-	fn ashex( buf: &[u8] ) -> String
-	{
-		let mut f = String::new();
+	// fn ashex( buf: &[u8] ) -> String
+	// {
+	// 	let mut f = String::new();
 
-		for byte in buf
-		{
-			std::fmt::write( &mut f, format_args!( "{:02x}", byte ) ).expect( "Create hex string from slice" )
-		}
+	// 	for byte in buf
+	// 	{
+	// 		std::fmt::write( &mut f, format_args!( "{:02x}", byte ) ).expect( "Create hex string from slice" )
+	// 	}
 
-		f
-	}
+	// 	f
+	// }
 
 
 	fn empty_data() -> MulServ

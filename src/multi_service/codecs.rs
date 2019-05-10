@@ -1,4 +1,4 @@
-use crate::{ import::*, remote::error::* };
+use crate::{ import::* };
 
 
 /// The supported encodings for this implementation. Values come from the
@@ -13,7 +13,7 @@ pub enum Codecs
 	UTF8 = 0x4000, // not in multicodecs for now
 }
 
-impl CodecAlg for Codecs { type Error = ThesRemoteErr; }
+impl CodecAlg for Codecs {}
 
 
 impl fmt::Display for Codecs
@@ -63,7 +63,7 @@ impl TryFrom< Bytes > for Codecs
 
 		let num = rdr.read_u32::<LittleEndian>().expect( "Read Codec from Bytes" );
 
-		Codecs::from_u32( num ).ok_or( ThesRemoteErrKind::Deserialization{ what: "Codec".to_string() }.into() )
+		Codecs::from_u32( num ).ok_or( ThesRemoteErrKind::Deserialize{ what: "Codec".to_string() }.into() )
 	}
 }
 
@@ -78,7 +78,6 @@ mod tests
 	// 1. to bytes and back
 	// 2. content of binary form is correct
 	//
-	use crate::{ *, remote::* };
 	use super::{ *, assert_eq };
 
 

@@ -1,4 +1,12 @@
-use crate::*;
+#![ feature( await_macro, async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, optin_builtin_traits ) ]
+
+
+mod common;
+
+use common::*        ;
+use common::import::*;
+
+
 
 // Test basic remote funcionality. Test intertwined sends and calls.
 //
@@ -28,8 +36,8 @@ fn remote()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		peer.register_service::<Add , remotes::Services>( addr_handler.recipient() );
-		peer.register_service::<Show, remotes::Services>( addr_handler.recipient() );
+		peer.register_service::<Add , remotes::Services>( Receiver::new( addr_handler.recipient() ) );
+		peer.register_service::<Show, remotes::Services>( Receiver::new( addr_handler.recipient() ) );
 
 		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
 	};
@@ -130,7 +138,7 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		peer.register_service::<Show, parallel::Services>( addr_handler.recipient() );
+		peer.register_service::<Show, parallel::Services>( Receiver::new( addr_handler.recipient() ) );
 
 		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
 	};
@@ -156,7 +164,7 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		peer.register_service::<Show, remotes::Services>( addr_handler.recipient() );
+		peer.register_service::<Show, remotes::Services>( Receiver::new( addr_handler.recipient() ) );
 
 		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
 
@@ -212,10 +220,10 @@ fn call_after_close_connection()
 			Ok (_) => unreachable!(),
 			Err(e) =>
 			{
-				match e.downcast::<ThesError>()
+				match e.kind()
 				{
-					Ok (e    ) => assert_eq!( ThesError::PeerSendAfterCloseConnection, e ),
-					Err(wrong) => panic!( wrong ),
+					ThesErrKind::MailboxClosed{..} => assert!( true ),
+					_                              => panic!( "wrong" ),
 				}
 			}
 		}

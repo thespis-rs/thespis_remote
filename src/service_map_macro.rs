@@ -112,17 +112,19 @@ use
 	// parenthesis, it will not output a trailing comma, which will be needed to separate from the next item.
 	//
 	super :: { $( $services, )+ $peer_type, $ms_type } ,
-	$crate:: { *, remote::*, runtime::rt             } ,
+	$crate:: { *                                     } ,
 	std   :: { pin::Pin                              } ,
 
 	$crate::external_deps::
 	{
-		once_cell    :: { sync::OnceCell                               } ,
-		futures      :: { future::FutureExt, task::{ Context, Poll }   } ,
-		thespis      :: { *                                            } ,
-		serde_cbor   :: { self, from_slice as des                      } ,
-		serde        :: { Serialize, Deserialize, de::DeserializeOwned } ,
-		failure      :: { Error                                        } ,
+		once_cell       :: { sync::OnceCell                               } ,
+		futures         :: { future::FutureExt, task::{ Context, Poll }   } ,
+		thespis         :: { *                                            } ,
+		thespis_remote  :: { *                                            } ,
+		thespis_impl    :: { runtime::rt, Addr, Receiver                  } ,
+		serde_cbor      :: { self, from_slice as des                      } ,
+		serde           :: { Serialize, Deserialize, de::DeserializeOwned } ,
+		failure         :: { ResultExt                                    } ,
 	},
 };
 
@@ -203,6 +205,7 @@ impl Services
 
 
 	// Helper function for call_service below
+	// TODO: get rid of expect!
 	//
 	fn call_service_gen<S>
 	(
@@ -279,7 +282,6 @@ impl ServiceMap<$ms_type> for Services
 		 msg        :  $ms_type               ,
 		 receiver   : &BoxAny                 ,
 		 return_addr:  BoxRecipient<$ms_type> ,
-
 	)
 	{
 		let x = msg.service().expect( "get service" );
@@ -326,7 +328,12 @@ impl ServicesRecipient
 	{
 		let sid        = <S as Service<self::Services>>::sid().clone();
 		let cid        = ConnID::null();
-		let serialized = serde_cbor::to_vec( &msg )?;
+
+
+		let serialized: Vec<u8> = serde_cbor::to_vec( &msg )
+
+			.context( ThesErrKind::Serialize{ what: format!( "Service: {:?}", sid ) } )?.into();
+
 
 		Ok( <$ms_type>::create( sid, cid, Codecs::CBOR, serialized.into() ) )
 	}
@@ -350,14 +357,30 @@ impl ServicesRecipient
 	{
 		let sid        = <S as Service<self::Services>>::sid().clone();
 		let cid        = ConnID::default();
-		let serialized = serde_cbor::to_vec( &msg )?.into();
+
+
+		let serialized = serde_cbor::to_vec( &msg )
+
+			.context( ThesErrKind::Serialize{ what: format!( "Service: {:?}", sid ) } )?.into();
+
 
 		let mul        = <$ms_type>::create( sid, cid, Codecs::CBOR, serialized );
 
 		let call = Call::new( mul );
-		let re   = await!( await!( self.peer.call( call ) )?? )?;
 
-		Ok( des( &re.mesg() )? )
+		let re = match await!( self.peer.call( call ) )?
+		{
+			Ok (rx) => await!( rx ).context( ThesErrKind::MailboxClosedBeforeResponse{ actor: "Peer".into() } )?,
+
+			Err(e ) => match e.kind()
+			{
+				ThesRemoteErrKind::ConnectionClosed{ operation } => Err( ThesErrKind::MailboxClosed{ actor: operation.to_owned() } )?,
+				ThesRemoteErrKind::Deserialize     { ..        } => Err( ThesErrKind::Deserialize  { what : "Connection ID".into() } )?,
+				_ => unreachable!(),
+			}
+		};
+
+		Ok( des( &re.mesg() ).context( ThesErrKind::Deserialize{ what: "response from remote actor".to_string() } )? )
 	}
 }
 
@@ -371,8 +394,6 @@ impl<S> Recipient<S> for ServicesRecipient
 
 {
 	/// Call a remote actor.
-	/// TODO: does this return type have must use or should we specify that ourselves. Maybe on the
-	///       type alias...
 	//
 	fn call( &mut self, msg: S ) -> Return< ThesRes<<S as Message>::Return> >
 	{
@@ -406,7 +427,7 @@ impl<S> Sink<S> for ServicesRecipient
 
 
 {
-	type SinkError = Error;
+	type SinkError = ThesErr;
 
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::SinkError>>

@@ -1,4 +1,4 @@
-use { crate :: { import::*, runtime::rt, remote::{ *, error::* }, Addr, Receiver } };
+use crate::{ import::*, * };
 
 
 /// Type representing the outgoing call. Used by a recipient to a remote service to communicate

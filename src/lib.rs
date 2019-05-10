@@ -4,7 +4,6 @@
 //!
 //! - tokio: makes the tokio executor available. enabled by default.
 //!
-#![ allow( unused_imports, dead_code ) ]
 
 #![ feature
 (
@@ -27,38 +26,33 @@
 	unboxed_closures       ,
 )]
 
-    mod address  ;
-    mod envelope ;
-    mod mailbox  ;
-    mod error    ;
-    mod receiver ;
-
-pub mod runtime  ;
-pub mod remote   ;
-
+mod peer              ;
+mod multi_service     ;
+mod service_map_macro ;
 
 pub use
 {
-	error    :: * ,
-	address  :: * ,
-	mailbox  :: * ,
-	receiver :: * ,
+	peer              :: * ,
+	multi_service     :: * ,
+	service_map_macro :: * ,
 };
+
 
 // needed for macro
 //
 pub mod external_deps
 {
-	pub use once_cell  ;
-	pub use futures    ;
-	pub use thespis    ;
-	pub use serde_cbor ;
-	pub use serde      ;
-	pub use failure    ;
+	pub use once_cell      ;
+	pub use futures        ;
+	pub use thespis        ;
+	pub use thespis_remote ;
+	pub use thespis_impl   ;
+	pub use serde_cbor     ;
+	pub use serde          ;
+	pub use failure        ;
 }
 
 
-pub type ThesRes<T> = Result< T, ThesErr >;
 
 // Import module. Avoid * imports here. These are all the foreign names that exist throughout
 // the crate. The must all be unique.
@@ -68,11 +62,22 @@ mod import
 {
 	pub use
 	{
-		failure   :: { Fail, bail, err_msg, AsFail, Context as FailContext, Backtrace, ResultExt } ,
-		thespis   :: { *                                           } ,
-		log       :: { *                                           } ,
-		once_cell :: { unsync::OnceCell, unsync::Lazy, unsync_lazy } ,
-
+		failure        :: { Fail, bail, err_msg, AsFail, Context as FailContext, Backtrace, ResultExt } ,
+		thespis        :: { *                                           } ,
+		thespis_remote :: { *                                           } ,
+		thespis_impl   :: { Addr, Receiver, runtime::rt                 } ,
+		log            :: { *                                           } ,
+		once_cell      :: { unsync::OnceCell, unsync::Lazy, unsync_lazy } ,
+		byteorder   :: { LittleEndian, ReadBytesExt, WriteBytesExt           } ,
+		bytes       :: { Bytes, BytesMut, Buf, BufMut, IntoBuf               } ,
+		num_traits  :: { FromPrimitive, ToPrimitive                          } ,
+		num_derive  :: { FromPrimitive, ToPrimitive                          } ,
+		rand        :: { Rng                                                 } ,
+		std         :: { hash::{ BuildHasher, Hasher }, io::Cursor, any::Any } ,
+		twox_hash   :: { RandomXxHashBuilder, XxHash                         } ,
+		futures     :: { future::RemoteHandle                                } ,
+		pharos      :: { Pharos, Observable                                  } ,
+		serde       :: { Serialize, Deserialize, de::DeserializeOwned        } ,
 
 		std ::
 		{
@@ -104,24 +109,6 @@ mod import
 				ThreadPool   as ThreadPool03   ,
 			},
 		},
-	};
-
-
-	#[ cfg( feature = "remote" ) ]
-	//
-	pub use
-	{
-		byteorder   :: { LittleEndian, ReadBytesExt, WriteBytesExt           } ,
-		bytes       :: { Bytes, BytesMut, Buf, BufMut, IntoBuf               } ,
-		num_traits  :: { FromPrimitive, ToPrimitive                          } ,
-		num_derive  :: { FromPrimitive, ToPrimitive                          } ,
-		rand        :: { Rng                                                 } ,
-		std         :: { hash::{ BuildHasher, Hasher }, io::Cursor, any::Any } ,
-		twox_hash   :: { RandomXxHashBuilder, XxHash                         } ,
-		futures     :: { future::RemoteHandle                                } ,
-		pharos      :: { Pharos, Observable                                  } ,
-		serde       :: { Serialize, Deserialize, de::DeserializeOwned        } ,
-
 	};
 
 

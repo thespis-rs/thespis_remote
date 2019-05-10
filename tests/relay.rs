@@ -1,4 +1,11 @@
-use crate::*;
+#![ feature( await_macro, async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, optin_builtin_traits ) ]
+
+
+mod common;
+
+use common::*        ;
+use common::import::*;
+
 
 
 // Test relaying messages
@@ -31,8 +38,8 @@ fn relay()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		peer.register_service::<Add , remotes::Services>( addr_handler.recipient() );
-		peer.register_service::<Show, remotes::Services>( addr_handler.recipient() );
+		peer.register_service::<Add , remotes::Services>( Receiver::new( addr_handler.recipient() ) );
+		peer.register_service::<Show, remotes::Services>( Receiver::new( addr_handler.recipient() ) );
 
 
 		mb_peer   .start( peer ).expect( "Failed to start mailbox of Peer" );

@@ -1,4 +1,4 @@
-use crate::{ import::*, remote::error::* };
+use crate::{ import::* };
 
 
 /// A unique identifier for a service that is exposed to other processes. This will allow

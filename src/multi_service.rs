@@ -14,7 +14,7 @@ pub use
 #[ cfg( feature = "tokio" ) ] pub mod tokio_codec   ;
 #[ cfg( feature = "tokio" ) ] pub use tokio_codec::*;
 
-use { crate :: { import::*, remote::error::* } };
+use crate::{ import::* };
 
 const HEADER_LEN: usize = 36;
 
@@ -83,9 +83,9 @@ const HEADER_LEN: usize = 36;
 //
 pub struct MultiServiceImpl<SID, CID, Codec>
 
-	where Codec: CodecAlg + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      CID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      SID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
+	where Codec: CodecAlg + TryFrom<Bytes> + Send + Sync,
+	      CID  : UniqueID + TryFrom<Bytes> + Send + Sync,
+	      SID  : UniqueID + TryFrom<Bytes> + Send + Sync,
          Self : From< Bytes >                                                 ,
 {
 	bytes: Bytes,
@@ -98,9 +98,9 @@ pub struct MultiServiceImpl<SID, CID, Codec>
 
 impl<SID: 'static, CID: 'static, Codec: 'static> Message for MultiServiceImpl<SID, CID, Codec>
 
-	where Codec: CodecAlg + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      CID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      SID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
+	where Codec: CodecAlg + TryFrom<Bytes> + Send + Sync,
+	      CID  : UniqueID + TryFrom<Bytes> + Send + Sync,
+	      SID  : UniqueID + TryFrom<Bytes> + Send + Sync,
          Self : From< Bytes >                                                 ,
 
 {
@@ -111,9 +111,9 @@ impl<SID: 'static, CID: 'static, Codec: 'static> Message for MultiServiceImpl<SI
 
 impl<SID, CID, Codec> MultiServiceImpl<SID, CID, Codec>
 
-	where Codec: CodecAlg + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      CID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      SID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
+	where Codec: CodecAlg + TryFrom<Bytes> + Send + Sync,
+	      CID  : UniqueID + TryFrom<Bytes> + Send + Sync,
+	      SID  : UniqueID + TryFrom<Bytes> + Send + Sync,
          Self : From< Bytes >                                                 ,
 
 {
@@ -123,15 +123,14 @@ impl<SID, CID, Codec> MultiServiceImpl<SID, CID, Codec>
 
 impl<SID, CID, Codec> MultiService for MultiServiceImpl<SID, CID, Codec>
 
-	where Codec: CodecAlg + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      CID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      SID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-         Self : From< Bytes >                                                 ,
+	where Codec: CodecAlg + TryFrom<Bytes, Error=ThesRemoteErr>,
+	      CID  : UniqueID + TryFrom<Bytes, Error=ThesRemoteErr>,
+	      SID  : UniqueID + TryFrom<Bytes, Error=ThesRemoteErr>,
+         Self : From< Bytes > ,
 {
 	type ServiceID = SID           ;
 	type ConnID    = CID           ;
 	type CodecAlg  = Codec         ;
-	type Error     = ThesRemoteErr ;
 
 
 	/// Beware: This can panic because of Buf.put
@@ -182,10 +181,9 @@ impl<SID, CID, Codec> MultiService for MultiServiceImpl<SID, CID, Codec>
 
 impl<SID, CID, Codec> Into< Bytes > for MultiServiceImpl<SID, CID, Codec>
 
-	where Codec: CodecAlg + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      CID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      SID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-         Self : From< Bytes >                                                 ,
+	where Codec: CodecAlg,
+	      CID  : UniqueID,
+	      SID  : UniqueID,
 
 {
 	fn into( self ) -> Bytes
@@ -198,10 +196,9 @@ impl<SID, CID, Codec> Into< Bytes > for MultiServiceImpl<SID, CID, Codec>
 
 impl<SID, CID, Codec> From< Bytes > for MultiServiceImpl<SID, CID, Codec>
 
-	where Codec: CodecAlg + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      CID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-	      SID  : UniqueID + TryFrom< Bytes, Error=ThesRemoteErr > + Send + Sync,
-         Self : From< Bytes >                                                 ,
+	where Codec: CodecAlg,
+	      CID  : UniqueID,
+	      SID  : UniqueID,
 
 {
 	fn from( bytes: Bytes ) -> Self

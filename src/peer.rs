@@ -1,4 +1,4 @@
-use crate :: { import::*, ThesErr, runtime::rt, remote::{ self, error::*, ServiceID, ConnID, Codecs }, Addr, Receiver };
+use crate :: { import::*, Codecs };
 
 
 mod close_connection  ;
@@ -18,13 +18,13 @@ pub use register_relay    :: RegisterRelay    ;
 
 // Reduce trait bound boilerplate, since we have to repeat them all over
 //
-pub trait BoundsIn <MS: BoundsMS>: 'static + Stream< Item = Result<MS, <MS as MultiService>::Error> > + Unpin {}
+pub trait BoundsIn <MS: BoundsMS>: 'static + Stream< Item = Result<MS, ThesRemoteErr> > + Unpin {}
 pub trait BoundsOut<MS: BoundsMS>: 'static + Sink<MS, SinkError=ThesRemoteErr > + Unpin + Send {}
-pub trait BoundsMS               : 'static + Message<Return=()> + MultiService< Error=ThesRemoteErr > + Send + fmt::Debug {}
+pub trait BoundsMS               : 'static + Message<Return=()> + MultiService + Send + fmt::Debug {}
 
 impl<T, MS> BoundsIn<MS> for T
 
-	where T : 'static + Stream< Item = Result<MS, <MS as MultiService>::Error> > + Unpin,
+	where T : 'static + Stream< Item = Result<MS, ThesRemoteErr> > + Unpin,
    	   MS: BoundsMS
 {}
 
@@ -35,7 +35,7 @@ impl<T, MS> BoundsOut<MS> for T
 {}
 
 impl<T> BoundsMS for T
-where T: 'static + Message<Return=()> + MultiService< Error=ThesRemoteErr > + Send + fmt::Debug {}
+where T: 'static + Message<Return=()> + MultiService + Send + fmt::Debug {}
 
 
 /// Represents a connection to another process over which you can send actor messages.
@@ -91,7 +91,7 @@ pub struct Peer<Out, MS>
 	// to `Servicemap::call_service`. TODO: In principle we should be generic over recipient type, but for now
 	// I have put ThesErr, because it's getting to complex.
 	//
-	services      : HashMap<&'static <MS as MultiService>::ServiceID ,(BoxAny, BoxServiceMap<MS, ThesErr>)>,
+	services      : HashMap<&'static <MS as MultiService>::ServiceID ,(BoxAny, BoxServiceMap<MS>)>,
 
 	/// All services that we relay to another peer. It has to be of the same type for now since there is
 	/// no trait for peers.
@@ -207,7 +207,7 @@ impl<Out, MS> Peer<Out, MS>
 
 		where  S                    : Service<NS, UniqueID=<MS as MultiService>::ServiceID>,
 		      <S as Message>::Return: Serialize + DeserializeOwned                         ,
-		       NS                   : ServiceMap<MS, ThesErr> + Send + Sync + 'static    ,
+		       NS                   : ServiceMap<MS> + Send + Sync + 'static               ,
 
 	{
 		self.services.insert( <S as Service<NS>>::sid(), (box handler, NS::boxed()) );
@@ -303,7 +303,7 @@ impl<Out, MS> Peer<Out, MS>
 
 			None =>
 			{
-				Err( ThesRemoteErrKind::ConnectionClosed{ operation: "send MS".to_string() } )?
+				Err( ThesRemoteErrKind::ConnectionClosed{ operation: "send MultiService over network".to_string() } )?
 			}
 		}
 	}

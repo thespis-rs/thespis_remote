@@ -1,14 +1,4 @@
 # Auto-generated from "Cargo.yml"
-[[bench]]
-harness = false
-name = "single_thread_delivery"
-path = "benches/single_thread/delivery.rs"
-
-[[bench]]
-harness = false
-name = "multi_thread_delivery"
-path = "benches/multi_thread/delivery.rs"
-
 [dependencies]
 failure = "^0.1"
 log = "^0.4"
@@ -16,11 +6,9 @@ once_cell = "^0.1"
 simple_logger = "^1"
 
 [dependencies.byteorder]
-optional = true
 version = "^1.3"
 
 [dependencies.bytes]
-optional = true
 version = "^0.4"
 
 [dependencies.futures-preview]
@@ -29,11 +17,9 @@ features = ["std", "compat", "nightly"]
 version = "^0.3.0-alpha.15"
 
 [dependencies.num-derive]
-optional = true
 version = "^0.2"
 
 [dependencies.num-traits]
-optional = true
 version = "^0.2"
 
 [dependencies.pharos]
@@ -41,7 +27,6 @@ version = "^0.1"
 
 [dependencies.rand]
 default-features = false
-optional = true
 version = "^0.6"
 
 [dependencies.regex]
@@ -51,15 +36,19 @@ version = "^1"
 [dependencies.serde]
 default-features = false
 features = ["derive"]
-optional = true
 version = "^1"
 
 [dependencies.serde_cbor]
-optional = true
 version = "^0.9"
 
 [dependencies.thespis]
 path = "../thespis_iface"
+
+[dependencies.thespis_impl]
+path = "../thespis_impl"
+
+[dependencies.thespis_remote]
+path = "../thespis_iface_remote"
 
 [dependencies.tokio]
 default-features = false
@@ -68,7 +57,6 @@ optional = true
 version = "^0.1"
 
 [dependencies.twox-hash]
-optional = true
 version = "^1.1"
 
 [dev-dependencies]
@@ -92,10 +80,7 @@ features = ["async-await-preview", "rt-full", "tcp", "codec"]
 version = "^0.1"
 
 [features]
-default = ["tokio", "remote"]
-remote = ["serde", "serde_cbor", "thespis/remote", "bytes", "num-derive", "num-traits", "twox-hash", "byteorder", "rand"]
-tcp = ["remote"]
-ws = ["remote"]
+default = ["tokio"]
 
 [lib]
 bench = false
@@ -103,7 +88,7 @@ bench = false
 [package]
 authors = ["Naja Melan <najamelan@autistici.org>"]
 edition = "2018"
-name = "thespis_impl"
+name = "thespis_impl_remote"
 version = "0.1.0"
 
 [package.metadata]
