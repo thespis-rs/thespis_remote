@@ -86,7 +86,6 @@ pub struct MultiServiceImpl<SID, CID, Codec>
 	where Codec: CodecAlg + TryFrom<Bytes> + Send + Sync,
 	      CID  : UniqueID + TryFrom<Bytes> + Send + Sync,
 	      SID  : UniqueID + TryFrom<Bytes> + Send + Sync,
-         Self : From< Bytes >                                                 ,
 {
 	bytes: Bytes,
 
@@ -101,7 +100,6 @@ impl<SID: 'static, CID: 'static, Codec: 'static> Message for MultiServiceImpl<SI
 	where Codec: CodecAlg + TryFrom<Bytes> + Send + Sync,
 	      CID  : UniqueID + TryFrom<Bytes> + Send + Sync,
 	      SID  : UniqueID + TryFrom<Bytes> + Send + Sync,
-         Self : From< Bytes >                                                 ,
 
 {
 	type Return = ();
@@ -114,23 +112,25 @@ impl<SID, CID, Codec> MultiServiceImpl<SID, CID, Codec>
 	where Codec: CodecAlg + TryFrom<Bytes> + Send + Sync,
 	      CID  : UniqueID + TryFrom<Bytes> + Send + Sync,
 	      SID  : UniqueID + TryFrom<Bytes> + Send + Sync,
-         Self : From< Bytes >                                                 ,
 
 {
 
 }
 
 
+
+/// All the methods here can panic. We should make sure that bytes is always big enough,
+/// because bytes.slice panics if it's to small. Same for bytes.put.
+//
 impl<SID, CID, Codec> MultiService for MultiServiceImpl<SID, CID, Codec>
 
 	where Codec: CodecAlg + TryFrom<Bytes, Error=ThesRemoteErr>,
 	      CID  : UniqueID + TryFrom<Bytes, Error=ThesRemoteErr>,
 	      SID  : UniqueID + TryFrom<Bytes, Error=ThesRemoteErr>,
-         Self : From< Bytes > ,
 {
-	type ServiceID = SID           ;
-	type ConnID    = CID           ;
-	type CodecAlg  = Codec         ;
+	type ServiceID = SID   ;
+	type ConnID    = CID   ;
+	type CodecAlg  = Codec ;
 
 
 	/// Beware: This can panic because of Buf.put
@@ -194,19 +194,66 @@ impl<SID, CID, Codec> Into< Bytes > for MultiServiceImpl<SID, CID, Codec>
 
 
 
-impl<SID, CID, Codec> From< Bytes > for MultiServiceImpl<SID, CID, Codec>
+impl<SID, CID, Codec> TryFrom< Bytes > for MultiServiceImpl<SID, CID, Codec>
 
 	where Codec: CodecAlg,
 	      CID  : UniqueID,
 	      SID  : UniqueID,
 
 {
-	fn from( bytes: Bytes ) -> Self
+	type Error = ThesRemoteErr;
+
+	fn try_from( bytes: Bytes ) -> ThesRemoteRes<Self>
 	{
-		Self { bytes, p1: PhantomData, p2: PhantomData, p3: PhantomData }
+		// at least verify we have enough bytes
+		// minimum: header: 36 + 1 byte mesg = 37
+		//
+		if bytes.len() < HEADER_LEN + 1
+		{
+			Err( ThesRemoteErrKind::Deserialize( "MultiServiceImpl: not enough bytes".into() ) )?;
+		}
+
+		Ok( Self { bytes, p1: PhantomData, p2: PhantomData, p3: PhantomData } )
 	}
 }
 
 
 
 
+
+
+
+#[ cfg(test) ]
+//
+mod tests
+{
+	// Tests:
+	//
+	// 1. try_from bytes, try something to small
+	//
+
+	use super::{ *, assert_ne };
+	use crate::{ multi_service::{ Codecs, ConnID, ServiceID } };
+
+	type MS = MultiServiceImpl<ServiceID, ConnID, Codecs>;
+
+	#[test]
+	//
+	fn tryfrom_bytes_to_small()
+	{
+		// The minimum size of the header + 1 byte payload is 37
+		//
+		let buf = Bytes::from( vec![5;HEADER_LEN] );
+
+		match MS::try_from( buf )
+		{
+			Ok (_) => assert!( false, "MultiServiceImpl::try_from( Bytes ) should fail for data shorter than header" ),
+
+			Err(e) => match e.kind()
+			{
+				ThesRemoteErrKind::Deserialize(..) => assert!( true ),
+				_                                  => assert_ne!( e.kind(), e.kind() ),
+			}
+		}
+	}
+}

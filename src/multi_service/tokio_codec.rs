@@ -59,7 +59,7 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 
 		// Convert
 		//
-		Ok( Some( MS::from( Bytes::from( buf ) ) ) )
+		Ok( Some( MS::try_from( Bytes::from( buf ) )? ) )
 	}
 }
 
