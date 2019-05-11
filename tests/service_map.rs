@@ -3,8 +3,8 @@
 
 mod common;
 
-use common::*        ;
-use common::import::*;
+use common::*                                  ;
+use common::import::{ *, assert_eq, assert_ne };
 
 mod a
 {

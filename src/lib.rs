@@ -26,9 +26,9 @@
 	unboxed_closures       ,
 )]
 
-mod peer              ;
-mod multi_service     ;
-mod service_map_macro ;
+pub mod peer              ;
+pub mod multi_service     ;
+    mod service_map_macro ;
 
 pub use
 {
@@ -42,14 +42,30 @@ pub use
 //
 pub mod external_deps
 {
-	pub use once_cell      ;
+	pub use failure        ;
 	pub use futures        ;
+	pub use log            ;
+	pub use once_cell      ;
+	pub use serde_cbor     ;
+	pub use serde          ;
 	pub use thespis        ;
 	pub use thespis_remote ;
 	pub use thespis_impl   ;
-	pub use serde_cbor     ;
-	pub use serde          ;
-	pub use failure        ;
+}
+
+
+// Don't know exactly where to put this yet. It's useful for debugging.
+//
+pub fn ashex( buf: &[u8] ) -> String
+{
+	let mut f = String::new();
+
+	for byte in buf
+	{
+		std::fmt::write( &mut f, format_args!( "{:02x}", byte ) ).expect( "Create hex string from slice" )
+	}
+
+	f
 }
 
 

@@ -124,7 +124,8 @@ use
 		thespis_impl    :: { runtime::rt, Addr, Receiver                  } ,
 		serde_cbor      :: { self, from_slice as des                      } ,
 		serde           :: { Serialize, Deserialize, de::DeserializeOwned } ,
-		failure         :: { ResultExt                                    } ,
+		failure         :: { Fail, ResultExt                              } ,
+		log             :: { error                                        } ,
 	},
 };
 
@@ -182,7 +183,7 @@ impl Services
 
 	// Helper function for send_service below
 	//
-	fn send_service_gen<S>( msg: $ms_type, receiver: &BoxAny )
+	fn send_service_gen<S>( msg: $ms_type, receiver: &BoxAny ) -> ThesRemoteRes<()>
 
 		where  S:   MarkServices + Serialize + DeserializeOwned + Send
 		          + Service<self::Services, UniqueID=<$ms_type as MultiService>::ServiceID>,
@@ -190,22 +191,37 @@ impl Services
 			      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
+		/// TODO: for now leaving this expect, as this is obviously a programmer error.
+		///       This cannot be triggered by an external process, only exists if the user
+		///       Send the wrong Receiver to Peer::register_service, but normally it's type
+		///       checked. So waiting to see how this error can be triggered before deciding
+		///       how it should be handled.
+		///
 		let     backup: &Receiver<S> = receiver.downcast_ref().expect( "downcast_ref failed" );
 		let mut rec                  = backup.clone_box();
 
-		let message = des( &msg.mesg() ).expect( "deserialize serviceA" );
+		let message = des( &msg.mesg() )
+
+			.context( ThesRemoteErrKind::Deserialize( "Deserialize incoming remote message".into() ))?
+		;
 
 		rt::spawn( async move
 		{
-			await!( rec.send( message ) ).expect( "call actor" );
+			// TODO: we are only logging the potential error. Can we do better? Note that spawn requires
+			//       we return a tuple.
+			//
+			let res = await!( rec.send( message ) );
 
-		}).expect( "spawn call for service" );
+			error!( "Failed to deliver remote message to actor: {:?}", &rec );
+
+		}).context( ThesRemoteErrKind::ThesErr( "Spawn task for sending to the local Service".into() ))?;
+
+		Ok(())
 	}
 
 
 
 	// Helper function for call_service below
-	// TODO: get rid of expect!
 	//
 	fn call_service_gen<S>
 	(
@@ -213,34 +229,128 @@ impl Services
 		     receiver   : &BoxAny                 ,
 		 mut return_addr:  BoxRecipient<$ms_type> ,
 
-	)
+	) -> ThesRemoteRes<()>
 
 	where S:   MarkServices + Serialize + DeserializeOwned + Send
 	         + Service<self::Services, UniqueID=<$ms_type as MultiService>::ServiceID>,
 
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 	{
+		// for reasoning on the expect, see send_service_gen
+		//
 		let     backup: &Receiver<S> = receiver.downcast_ref().expect( "downcast_ref failed" );
 		let mut rec                  = backup.clone_box();
 
-		let message = des( &msg.mesg() ).expect( "deserialize serviceA" );
+
+		let message = des( &msg.mesg() )
+
+			.context( ThesRemoteErrKind::Deserialize( "Deserialize incoming remote message".into() ))?
+		;
+
 
 		rt::spawn( async move
 		{
-			let resp       = await!( rec.call( message ) ).expect( "call actor" );
+			let cid_null = <$ms_type as MultiService>::ConnID::null();
 
-			// it's important that the sid is null here, because a response with both cid and sid
-			// not null is interpreted as an error.
+			// Deserialize the cid
 			//
-			let sid        = <S as Service<self::Services>>::sid().clone();
-			let cid        = msg.conn_id().expect( "get conn_id" );
-			let serialized = serde_cbor::to_vec( &resp ).expect( "serialize response" );
+			let cid = match await!( Self::handle_err
+			(
+				&mut return_addr                                                                   ,
+				&cid_null                                                                          ,
+				msg.conn_id().map_err( |e| { error!( "{:?}", e ); ConnectionError::Deserialize } ) ,
+			))
+			{
+				Ok (cid) => cid    ,
+				Err(_  ) => return ,
+			};
 
-			let mul        = <$ms_type>::create( sid, cid, Codecs::CBOR, serialized.into() );
 
-			await!( return_addr.send( mul ) ).expect( "send response back to peer" );
+			// Call the service
+			//
+			let resp = match await!( Self::handle_err
+			(
+				&mut return_addr                                                                                           ,
+				&cid                                                                                                       ,
+				await!( rec.call( message ) ).map_err( |e| { error!( "{:?}", e ); ConnectionError::InternalServerError } ) ,
+			))
+			{
+				Ok (resp) => resp   ,
+				Err(_   ) => return ,
+			};
 
-		}).expect( "spawn call for service" );
+
+			// Serialize the response
+			//
+			let serialized = match await!( Self::handle_err
+			(
+				&mut return_addr                                                                               ,
+				&cid                                                                                           ,
+				serde_cbor::to_vec( &resp ).map_err( |e| { error!( "{:?}", e ); ConnectionError::Serialize } ) ,
+			))
+			{
+				Ok (ser) => ser    ,
+				Err(_  ) => return ,
+			};
+
+
+			// Create a MultiService
+			//
+			let     sid          = <S as Service<self::Services>>::sid().clone()                           ;
+			let     mul          = <$ms_type>::create( sid, cid.clone(), Codecs::CBOR, serialized.into() ) ;
+			let mut return_addr2 = return_addr.clone_box()                                                 ;
+
+			// Send the MultiService out over the network.
+			// We're returning anyway, so there's nothing to do with the result.
+			//
+			let _ = await!( Self::handle_err
+			(
+				&mut return_addr                                                                                                ,
+				&cid                                                                                                            ,
+				await!( return_addr2.send( mul ) ).map_err( |e| { error!( "{:?}", e ); ConnectionError::InternalServerError } ) ,
+			));
+
+		}).context( ThesRemoteErrKind::ThesErr( "Spawn task for calling the local Service".into() ))?;
+
+		Ok(())
+	}
+
+
+	// Helper function for error handling:
+	// - log the error
+	// - send it to the remote
+	// - close the connection
+	//
+	async fn handle_err<'a, T>
+	(
+		peer: &'a mut BoxRecipient<$ms_type>         ,
+		cid : &'a <$ms_type as MultiService>::ConnID ,
+		res : Result<T, ConnectionError>             ,
+
+	) -> Result<T, ConnectionError>
+	{
+		match res
+		{
+			Ok (t) => Ok(t),
+			Err(e) =>
+			{
+				let ms  = <$peer_type>::prep_error( cid.clone(), &e );
+				let res = await!( peer.send( ms ) );
+
+				if let Err( ref err ) = res { error!( "Failed to send error back to remote: {:?}", err ) };
+
+				// TODO: In any case, close the connection.
+				// we will need access to the peer other than the Recipient<MS>
+				//
+				// let res = await!( peer.send( CloseConnection{ remote: false } ) );
+
+				if let Err( ref err ) = res { error!( "Failed to close connection: {:?}", err ) };
+
+				// return the result
+				//
+				Err(e)
+			}
+		}
 	}
 }
 
@@ -254,9 +364,20 @@ impl ServiceMap<$ms_type> for Services
 	}
 
 
-	// Will match the type of the service id to deserialize the message and send it to the handling actor
+	/// Will match the type of the service id to deserialize the message and send it to the handling actor.
+	///
+	/// This can return the following errors:
+	/// - ThesRemoteErrKind::UnknownService
+	/// - ThesRemoteErrKind::Deserialize
+	/// - ThesRemoteErrKind::ThesErr -> Spawn error
+	///
+	/// # Panics
+	/// For the moment this can panic if the downcast to Receiver fails. It should never happen unless there
+	/// is a programmer error, but even then, it should be type checked, so for now I have decided to leave
+	/// the expect in there. See if anyone manages to trigger it, we can take it from there.
+	///
 	//
-	fn send_service( &self, msg: $ms_type, receiver: &BoxAny )
+	fn send_service( &self, msg: $ms_type, receiver: &BoxAny ) -> ThesRemoteRes<()>
 	{
 		let x = msg.service().expect( "get service" );
 
@@ -265,16 +386,29 @@ impl ServiceMap<$ms_type> for Services
 			$(
 				_ if x == *<$services as Service<self::Services>>::sid() =>
 
-					Self::send_service_gen::<$services>( msg, receiver ) ,
+					Self::send_service_gen::<$services>( msg, receiver )? ,
 			)+
 
-			_ => panic!( "got wrong service: {:?}", x ),
-		}
+			_ => Err( ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", x )) )?,
+		};
+
+		Ok(())
 	}
 
 
 
-	// Will match the type of the service id to deserialize the message and call the handling actor
+	/// Will match the type of the service id to deserialize the message and call the handling actor.
+	///
+	/// This can return the following errors:
+	/// - ThesRemoteErrKind::UnknownService
+	/// - ThesRemoteErrKind::Deserialize
+	/// - ThesRemoteErrKind::ThesErr -> Spawn error
+	///
+	/// # Panics
+	/// For the moment this can panic if the downcast to Receiver fails. It should never happen unless there
+	/// is a programmer error, but even then, it should be type checked, so for now I have decided to leave
+	/// the expect in there. See if anyone manages to trigger it, we can take it from there.
+	///
 	//
 	fn call_service
 	(
@@ -282,7 +416,9 @@ impl ServiceMap<$ms_type> for Services
 		 msg        :  $ms_type               ,
 		 receiver   : &BoxAny                 ,
 		 return_addr:  BoxRecipient<$ms_type> ,
-	)
+
+	) -> ThesRemoteRes<()>
+
 	{
 		let x = msg.service().expect( "get service" );
 
@@ -291,12 +427,14 @@ impl ServiceMap<$ms_type> for Services
 			$(
 				_ if x == *<$services as Service<self::Services>>::sid() =>
 
-					Self::call_service_gen::<$services>( msg, receiver, return_addr ) ,
+					Self::call_service_gen::<$services>( msg, receiver, return_addr )? ,
 			)+
 
 
-			_ => panic!( "got wrong service: {:?}", x ),
-		}
+			_ => Err( ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", x )) )?,
+		};
+
+		Ok(())
 	}
 }
 
@@ -355,8 +493,8 @@ impl ServicesRecipient
 				<S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
-		let sid        = <S as Service<self::Services>>::sid().clone();
-		let cid        = ConnID::default();
+		let sid = <S as Service<self::Services>>::sid().clone();
+		let cid = ConnID::default();
 
 
 		let serialized = serde_cbor::to_vec( &msg )
@@ -374,8 +512,22 @@ impl ServicesRecipient
 
 			Err(e ) => match e.kind()
 			{
-				ThesRemoteErrKind::ConnectionClosed{ operation } => Err( ThesErrKind::MailboxClosed{ actor: operation.to_owned() } )?,
-				ThesRemoteErrKind::Deserialize     { ..        } => Err( ThesErrKind::Deserialize  { what : "Connection ID".into() } )?,
+				ThesRemoteErrKind::ConnectionClosed{..} =>
+				{
+					Err( e.kind().clone().context
+					(
+						ThesErrKind::MailboxClosed{ actor: format!( "{:?}", self.peer ) }
+					))?
+				},
+
+				ThesRemoteErrKind::Deserialize{..} =>
+				{
+					Err( e.kind().clone().context
+					(
+						ThesErrKind::Deserialize{ what : format!( "{:?}", self.peer ) }
+					))?
+				},
+
 				_ => unreachable!(),
 			}
 		};

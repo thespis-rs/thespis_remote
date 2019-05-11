@@ -7,15 +7,16 @@ pub mod import
 {
 	pub use
 	{
-		thespis             :: { *                  } ,
-		log                 :: { *                  } ,
+		thespis             :: { *                    } ,
+		thespis_remote      :: { *                    } ,
+		thespis_impl        :: { *, runtime::{ rt }   } ,
+		thespis_impl_remote :: { *, service_map, peer } ,
+		log                 :: { *                    } ,
+		std                 :: { net::SocketAddr, convert::TryFrom } ,
 
-		thespis             :: { *                  } ,
-		thespis_remote      :: { *                  } ,
-		thespis_impl        :: { *, runtime::{ rt } } ,
-		thespis_impl_remote :: { *, service_map     } ,
-		std                 :: { net::SocketAddr    } ,
-		pharos              :: { Observable         } ,
+		bytes               :: { Bytes                } ,
+		failure             :: { Fail                 } ,
+		pharos              :: { Observable           } ,
 
 
 		futures      ::
@@ -33,6 +34,8 @@ pub mod import
 	 		net     :: { TcpStream, TcpListener                                                                    } ,
 			codec   :: { Decoder, Framed                                                                           } ,
 		},
+
+		pretty_assertions::{ assert_eq, assert_ne }
 	};
 }
 

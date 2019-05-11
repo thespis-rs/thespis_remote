@@ -63,7 +63,7 @@ impl TryFrom< Bytes > for Codecs
 
 		let num = rdr.read_u32::<LittleEndian>().expect( "Read Codec from Bytes" );
 
-		Codecs::from_u32( num ).ok_or( ThesRemoteErrKind::Deserialize{ what: "Codec".to_string() }.into() )
+		Codecs::from_u32( num ).ok_or( ThesRemoteErrKind::Deserialize( "Codecs".into() ).into() )
 	}
 }
 
@@ -78,21 +78,9 @@ mod tests
 	// 1. to bytes and back
 	// 2. content of binary form is correct
 	//
+	use crate::ashex;
 	use super::{ *, assert_eq };
 
-
-
-	fn ashex( buf: &[u8] ) -> String
-	{
-		let mut f = String::new();
-
-		for byte in buf
-		{
-			std::fmt::write( &mut f, format_args!( "{:02x}", byte ) ).expect( "Create hex string from slice" )
-		}
-
-		f
-	}
 
 
 	#[test]

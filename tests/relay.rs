@@ -1,10 +1,17 @@
 #![ feature( await_macro, async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, optin_builtin_traits ) ]
 
 
+// TODO:
+//
+// - ✔ Basic relaying
+// - Relay dissapeared event
+// - try to send after relay has dissapeared (should give mailboxclosed)
+
+
 mod common;
 
-use common::*        ;
-use common::import::*;
+use common::*                       ;
+use common::import::{ *, assert_eq };
 
 
 

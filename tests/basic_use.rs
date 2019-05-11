@@ -3,8 +3,15 @@
 
 mod common;
 
-use common::*        ;
-use common::import::*;
+use common::*                       ;
+use common::import::{ *, assert_eq };
+
+
+// Tests:
+//
+// - ✔ basic remote funcionality: intertwined sends and calls.
+// - ✔ correct async behavior: verify that a peer can continue to send/receive while waiting for the response to a call.
+// - ✔ call a remote service after the connection has closed: verify peer event and error kind.
 
 
 
@@ -191,7 +198,7 @@ fn parallel()
 
 
 
-// Test basic remote funcionality. Test intertwined sends and calls.
+// Test calling a remote service after the connection has closed.
 //
 #[test]
 //
@@ -199,7 +206,7 @@ fn call_after_close_connection()
 {
 	let nodea = async
 	{
-		// get a framed connection
+		// drop as soon as there is a connection
 		//
 		let _ = await!( listen_tcp( "127.0.0.1:20002" ) );
 	};
@@ -222,8 +229,8 @@ fn call_after_close_connection()
 			{
 				match e.kind()
 				{
-					ThesErrKind::MailboxClosed{..} => assert!( true ),
-					_                              => panic!( "wrong" ),
+					ThesErrKind::MailboxClosed{..} => assert!( true )                        ,
+					_                              => panic!( "wrong error: {:?}", e.kind() ),
 				}
 			}
 		}

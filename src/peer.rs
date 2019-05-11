@@ -160,7 +160,7 @@ impl<Out, MS> Peer<Out, MS>
 		// our address, and we won't be dropped as long as there are adresses around.
 		//
 		let (remote, handle) = listen.remote_handle();
-		rt::spawn( remote ).context( ThesRemoteErrKind::Spawn{ context: "Incoming stream for peer".into() } )?;
+		rt::spawn( remote ).context( ThesRemoteErrKind::ThesErr( "Incoming stream for peer".into() ))?;
 
 		Ok( Self
 		{
@@ -211,6 +211,7 @@ impl<Out, MS> Peer<Out, MS>
 
 	{
 		self.services.insert( <S as Service<NS>>::sid(), (box handler, NS::boxed()) );
+		trace!( "Register Service: {:?}", S::sid() );
 	}
 
 
@@ -238,7 +239,7 @@ impl<Out, MS> Peer<Out, MS>
 			Some( self_addr ) => self_addr.clone() ,
 			None              =>
 
-				Err( ThesRemoteErrKind::ConnectionClosed{ operation: "register_relayed_services".to_string() } )?,
+				Err( ThesRemoteErrKind::ConnectionClosed( "register_relayed_services".to_string() ))?,
 		};
 
 		let peer_id = < Addr<Self> as Recipient<RelayEvent> >::actor_id( &peer );
@@ -277,7 +278,7 @@ impl<Out, MS> Peer<Out, MS>
 		let (remote, handle) = listen.remote_handle();
 		rt::spawn( remote ).map_err( |_|
 		{
-			ThesRemoteErrKind::Spawn { context: "Stream of events from relay peer".to_string() }
+			ThesRemoteErrKind::ThesErr( "Stream of events from relay peer".into() )
 		})?;
 
 		self.relays .insert( peer_id, (peer, handle) );
@@ -303,7 +304,7 @@ impl<Out, MS> Peer<Out, MS>
 
 			None =>
 			{
-				Err( ThesRemoteErrKind::ConnectionClosed{ operation: "send MultiService over network".to_string() } )?
+				Err( ThesRemoteErrKind::ConnectionClosed( "send MultiService over network".to_string() ))?
 			}
 		}
 	}
@@ -344,7 +345,7 @@ impl<Out, MS> Peer<Out, MS>
 
 	// serialize a ConnectionError to be sent across the wire.
 	//
-	fn prep_error( cid: <MS as MultiService>::ConnID, err: &ConnectionError ) -> MS
+	pub fn prep_error( cid: <MS as MultiService>::ConnID, err: &ConnectionError ) -> MS
 	{
 		let serialized   = serde_cbor::to_vec( err ).expect( "serialize response" );
 		let codec: Bytes = Codecs::CBOR.into();

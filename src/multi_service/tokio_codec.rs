@@ -39,7 +39,7 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 
 			.as_ref()
 			.read_u64::<LittleEndian>()
-			.context( ThesRemoteErrKind::Deserialize{ what: "Tokio codec: Length".to_string() } )?
+			.context( ThesRemoteErrKind::Deserialize( "Tokio codec: Length".to_string() ))?
 
 			as usize
 		;
@@ -100,6 +100,7 @@ mod tests
 	// 1. A valid MultiServiceImpl, encoded + decoded should be identical to original.
 	// 2. Send like 2 and a half full objects, test that 2 correctly come out, and there is the
 	//    exact amount of bytes left in the buffer for the other half.
+	// 3. TODO: send invalid data (not enough bytes to make a full multiservice header...)
 	//
 	use crate::{ * };
 	use super::{ *, assert_eq };
@@ -107,17 +108,7 @@ mod tests
 
 	type MulServ = MultiServiceImpl<ServiceID, ConnID, Codecs>;
 
-	// fn ashex( buf: &[u8] ) -> String
-	// {
-	// 	let mut f = String::new();
 
-	// 	for byte in buf
-	// 	{
-	// 		std::fmt::write( &mut f, format_args!( "{:02x}", byte ) ).expect( "Create hex string from slice" )
-	// 	}
-
-	// 	f
-	// }
 
 
 	fn empty_data() -> MulServ

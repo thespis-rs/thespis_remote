@@ -11,10 +11,11 @@ use crate::{ import::*, * };
 //
 pub enum PeerEvent
 {
-	Closed                   ,
-	ClosedByRemote           ,
-	RelayDisappeared(usize)  ,
-	Error( ConnectionError ) ,
+	Closed                         ,
+	ClosedByRemote                 ,
+	RelayDisappeared(usize)        ,
+	Error      ( ConnectionError ) ,
+	RemoteError( ConnectionError ) ,
 }
 
 
@@ -52,10 +53,11 @@ impl<Out, MS> Handler<RelayEvent> for Peer<Out, MS>
 			{
 				// Clean up relays if they disappear
 				//
-				PeerEvent::Closed | PeerEvent::ClosedByRemote =>
+				  PeerEvent::Closed
+				| PeerEvent::ClosedByRemote =>
 				{
 					self.relayed.retain( |_, peer| *peer != re.id );
-					self.relays.remove( &re.id );
+					self.relays .remove( &re.id );
 
 					let shine = PeerEvent::RelayDisappeared( re.id );
 					await!( self.pharos.notify( &shine ));
