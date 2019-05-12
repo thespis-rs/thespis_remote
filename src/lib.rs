@@ -3,7 +3,9 @@
 //! ## Cargo Features
 //!
 //! - tokio: makes the tokio executor available. enabled by default.
-//!
+
+#![deny(bare_trait_objects)]
+#![forbid(unsafe_code)]
 
 #![ feature
 (
