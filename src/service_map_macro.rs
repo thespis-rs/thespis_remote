@@ -248,25 +248,15 @@ impl Services
 		;
 
 
+		let cid_null = <$ms_type as MultiService>::ConnID::null() ;
+		let cid      = msg.conn_id()?                             ;
+
+
 		rt::spawn( async move
 		{
-			let cid_null = <$ms_type as MultiService>::ConnID::null();
-
-			// Deserialize the cid
-			//
-			let cid = match await!( Self::handle_err
-			(
-				&mut return_addr                                                                   ,
-				&cid_null                                                                          ,
-				msg.conn_id().map_err( |e| { error!( "{:?}", e ); ConnectionError::Deserialize } ) ,
-			))
-			{
-				Ok (cid) => cid    ,
-				Err(_  ) => return ,
-			};
-
-
 			// Call the service
+			// TODO: we should probably match this error later. If it is a mailbox full, we could
+			//       try again.
 			//
 			let resp = match await!( Self::handle_err
 			(
