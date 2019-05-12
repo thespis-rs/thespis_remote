@@ -1,4 +1,4 @@
-#![ feature( await_macro, async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, slice_concat_ext ) ]
+#![ feature( async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, slice_concat_ext ) ]
 
 mod common;
 
@@ -19,7 +19,7 @@ fn main()
 
 		// Create peera network connection actor
 		//
-		let (sink_a, stream_a)       = await!( listen_tcp( "127.0.0.1:8998" ) );
+		let (sink_a, stream_a)       = listen_tcp( "127.0.0.1:8998" ).await;
 		let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
 		let peer_addr                = Addr ::new( mb_peer.sender() );
 

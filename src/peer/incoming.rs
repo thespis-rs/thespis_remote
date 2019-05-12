@@ -34,11 +34,11 @@ Box::pin( async move
 		{
 			error!( "Error extracting MultiService from stream: {:#?}", error );
 
-			await!( self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ) );
+			self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
 
 			// Send an error back to the remote peer and close the connection
 			//
-			await!( self.send_err( cid_null, &ConnectionError::Deserialize, true ) );
+			self.send_err( cid_null, &ConnectionError::Deserialize, true ).await;
 
 			return
 		}
@@ -99,11 +99,11 @@ Box::pin( async move
 		{
 			error!( "Fail to get service_id from incoming frame: {}", err );
 
-			await!( self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ) );
+			self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
 
 			// Send an error back to the remote peer and close the connection
 			//
-			await!( self.send_err( cid_null, &ConnectionError::Deserialize, true ) );
+			self.send_err( cid_null, &ConnectionError::Deserialize, true ).await;
 
 			return
 		}
@@ -117,11 +117,11 @@ Box::pin( async move
 		{
 			error!( "Fail to get conn_id from incoming frame: {}", err );
 
-			await!( self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ) );
+			self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
 
 			// Send an error back to the remote peer and close the connection
 			//
-			await!( self.send_err( cid_null, &ConnectionError::Deserialize, true ) );
+			self.send_err( cid_null, &ConnectionError::Deserialize, true ).await;
 
 			return
 		}
@@ -142,7 +142,7 @@ Box::pin( async move
 			error!( "Remote error: {:?}", err );
 
 			let shine = PeerEvent::RemoteError(err.clone());
-			await!( self.pharos.notify( &shine ) );
+			self.pharos.notify( &shine ).await;
 
 
 			// Certain errors happen in the remote peer without it being able to close the
@@ -162,7 +162,7 @@ Box::pin( async move
 				{
 					if let Some( ref mut self_addr ) = self.addr
 					{
-						let _ = await!( self_addr.send( CloseConnection{ remote: true } ));
+						let _ = self_addr.send( CloseConnection{ remote: true } ).await;
 					}
 				},
 
@@ -200,22 +200,22 @@ Box::pin( async move
 					{
 						ThesRemoteErrKind::Deserialize(..) =>
 						{
-							await!( self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ));
+							self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
 
 							// Send an error back to the remote peer and close the connection
 							//
-							await!( self.send_err( cid_null, &ConnectionError::Deserialize, true ) );
+							self.send_err( cid_null, &ConnectionError::Deserialize, true ).await;
 						},
 
 
 						  ThesRemoteErrKind::ThesErr (..) // This is a spawn error
 						| ThesRemoteErrKind::Downcast(..) =>
 						{
-							await!( self.pharos.notify( &PeerEvent::Error( ConnectionError::InternalServerError ) ));
+							self.pharos.notify( &PeerEvent::Error( ConnectionError::InternalServerError ) ).await;
 
 							// Send an error back to the remote peer and close the connection
 							//
-							await!( self.send_err( cid_null, &ConnectionError::InternalServerError, true ) );
+							self.send_err( cid_null, &ConnectionError::InternalServerError, true ).await;
 						},
 
 
@@ -225,10 +225,10 @@ Box::pin( async move
 
 							// Send an error back to the remote peer and don't close the connection
 							//
-							await!( self.send_err( cid_null, &err, false ) );
+							self.send_err( cid_null, &err, false ).await;
 
 							let evt = PeerEvent::Error( err );
-							await!( self.pharos.notify( &evt ) );
+							self.pharos.notify( &evt ).await;
 
 						},
 
@@ -259,15 +259,15 @@ Box::pin( async move
 			//       also, if we no longer use unbounded channels, this might fail because the
 			//       channel is full.
 			//
-			if await!( relay.send( frame ) ).is_err()
+			if  relay.send( frame ).await.is_err()
 			{
 				let err = ConnectionError::LostRelayBeforeSend( sid.into().to_vec() );
 				error!( "Lost relay: {:?}", err );
 
-				await!( self.send_err( cid_null, &err, false ) );
+				self.send_err( cid_null, &err, false ).await;
 
 				let err = PeerEvent::Error( err );
-				await!( self.pharos.notify( &err ) );
+				self.pharos.notify( &err ).await;
 			};
 		}
 
@@ -281,10 +281,10 @@ Box::pin( async move
 			// Send an error back to the remote peer and to the observers
 			//
 			let err = ConnectionError::UnknownService( sid.into().to_vec() );
-			await!( self.send_err( cid_null, &err, false ) );
+			self.send_err( cid_null, &err, false ).await;
 
 			let err = PeerEvent::Error( err );
-			await!( self.pharos.notify( &err ) );
+			self.pharos.notify( &err ).await;
 		}
 	}
 
@@ -339,11 +339,11 @@ Box::pin( async move
 
 							ThesRemoteErrKind::Deserialize(..) =>
 							{
-								await!( self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ));
+								self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
 
 								// Send an error back to the remote peer and close the connection
 								//
-								await!( self.send_err( cid, &ConnectionError::Deserialize, true ) );
+								self.send_err( cid, &ConnectionError::Deserialize, true ).await;
 							},
 
 
@@ -353,10 +353,10 @@ Box::pin( async move
 
 								// Send an error back to the remote peer and don't close the connection
 								//
-								await!( self.send_err( cid, &err, false ) );
+								self.send_err( cid, &err, false ).await;
 
 								let evt = PeerEvent::Error( err );
-								await!( self.pharos.notify( &evt ) );
+								self.pharos.notify( &evt ).await;
 
 							},
 
@@ -364,11 +364,11 @@ Box::pin( async move
 							  ThesRemoteErrKind::ThesErr (..) // This is a spawn error
 							| ThesRemoteErrKind::Downcast(..) =>
 							{
-								await!( self.pharos.notify( &PeerEvent::Error( ConnectionError::InternalServerError ) ));
+								self.pharos.notify( &PeerEvent::Error( ConnectionError::InternalServerError ) ).await;
 
 								// Send an error back to the remote peer and close the connection
 								//
-								await!( self.send_err( cid, &ConnectionError::InternalServerError, true ) );
+								self.send_err( cid, &ConnectionError::InternalServerError, true ).await;
 							},
 
 
@@ -404,7 +404,7 @@ Box::pin( async move
 				{
 					// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 					//
-					let channel = await!( peer.call( Call::new( frame ) ) ).expect( "Call to relay failed" );
+					let channel = peer.call( Call::new( frame ) ).await.expect( "Call to relay failed" );
 
 
 					// TODO: Let the incoming remote know that their call failed
@@ -413,7 +413,7 @@ Box::pin( async move
 					//
 					match channel
 					{
-						Ok( receiver ) =>	{match await!( receiver )
+						Ok( receiver ) =>	{match  receiver.await
 						{
 
 							Ok( resp ) =>
@@ -422,7 +422,7 @@ Box::pin( async move
 
 								// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 								//
-								await!( self_addr.send( resp ) ).expect( "Failed to send response from relay out on connection" );
+								self_addr.send( resp ).await.expect( "Failed to send response from relay out on connection" );
 							},
 
 
@@ -441,7 +441,7 @@ Box::pin( async move
 
 								// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 								//
-								await!( self_addr.send( err ) ).expect( "send msg to self" );
+								self_addr.send( err ).await.expect( "send msg to self" );
 							}
 						}},
 
@@ -458,7 +458,7 @@ Box::pin( async move
 
 							// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 							//
-							await!( self_addr.send( err ) ).expect( "send msg to self" );
+							self_addr.send( err ).await.expect( "send msg to self" );
 						}
 					}
 
@@ -475,10 +475,10 @@ Box::pin( async move
 				// Send an error back to the remote peer and to the observers
 				//
 				let err = ConnectionError::UnknownService( sid.into().to_vec() );
-				await!( self.send_err( cid_null, &err, false ) );
+				self.send_err( cid_null, &err, false ).await;
 
 				let err = PeerEvent::Error( err );
-				await!( self.pharos.notify( &err ) );
+				self.pharos.notify( &err ).await;
 			}
 		}
 

@@ -1,4 +1,4 @@
-#![ feature( await_macro, async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, optin_builtin_traits ) ]
+#![ feature( async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, optin_builtin_traits ) ]
 
 
 mod common;
@@ -37,28 +37,28 @@ fn remote()
 
 		// get a framed connection
 		//
-		let _ = await!( listen_tcp( "127.0.0.1:8998", sm ) );
+		let _ = listen_tcp( "127.0.0.1:8998", sm ).await;
 	};
 
 
 	let peerb = async
 	{
-		let (mut peera, _)  = await!( connect_to_tcp( "127.0.0.1:8998" ) );
+		let (mut peera, _)  = connect_to_tcp( "127.0.0.1:8998" ).await;
 
 		// Call the service and receive the response
 		//
 		let mut add  = remotes::Services::recipient::<Add >( peera.clone() );
 		let mut show = remotes::Services::recipient::<Show>( peera.clone() );
 
-		let resp = await!( add.call( Add(5) ) ).expect( "Call failed" );
+		let resp = add.call( Add(5) ).await.expect( "Call failed" );
 		assert_eq!( (), resp );
 
-		await!( add.send( Add(5) ) ).expect( "Send failed" );
+		add.send( Add(5) ).await.expect( "Send failed" );
 
-		let resp = await!( show.call( Show ) ).expect( "Call failed" );
+		let resp = show.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 10, resp );
 
-		await!( peera.send( CloseConnection{ remote: false } ) ).expect( "close connection to peera" );
+		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
 	};
 
 
@@ -86,7 +86,7 @@ impl Handler< Show > for Parallel
 {
 	fn handle( &mut self, _: Show ) -> ReturnNoSend<u64> { Box::pin( async move
 	{
-		await!( self.sum.call( Show ) ).expect( "call sum" )
+		self.sum.call( Show ).await.expect( "call sum" )
 	})}
 }
 
@@ -113,7 +113,7 @@ fn parallel()
 	{
 		// get a framed connection
 		//
-		let (sink_a, stream_a) = await!( listen_tcp_stream( "127.0.0.1:20001" ) );
+		let (sink_a, stream_a) = listen_tcp_stream( "127.0.0.1:20001" ).await;
 
 		// Create mailbox for peer
 		//
@@ -145,7 +145,7 @@ fn parallel()
 
 	let peerb = async
 	{
-		let (sink_b, stream_b) = await!( connect_return_stream( "127.0.0.1:20001" ) );
+		let (sink_b, stream_b) = connect_return_stream( "127.0.0.1:20001" ).await;
 
 		// Create mailbox for peer
 		//
@@ -175,12 +175,12 @@ fn parallel()
 		//
 		let mut show = parallel::Services::recipient::<Show>( peer_addr.clone() );
 
-		let resp = await!( show.call( Show ) ).expect( "Call failed" );
+		let resp = show.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 19, resp );
 
 		// dbg!( resp );
 
-		await!( peer_addr.send( CloseConnection{ remote: false } ) ).expect( "close connection to peera" );
+		peer_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
 	};
 
 
@@ -203,21 +203,21 @@ fn call_after_close_connection()
 	{
 		// drop as soon as there is a connection
 		//
-		let _ = await!( listen_tcp_stream( "127.0.0.1:20002" ) );
+		let _ = listen_tcp_stream( "127.0.0.1:20002" ).await;
 	};
 
 
 	let nodeb = async
 	{
-		let (peera, mut peera_evts)  = await!( connect_to_tcp( "127.0.0.1:20002" ) );
+		let (peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20002" ).await;
 
 		// Call the service and receive the response
 		//
 		let mut add = remotes::Services::recipient::<Add>( peera.clone() );
 
-		assert_eq!( PeerEvent::ClosedByRemote, await!( peera_evts.next() ).unwrap() );
+		assert_eq!( PeerEvent::ClosedByRemote,  peera_evts.next().await.unwrap() );
 
-		match await!( add.call( Add(5) ) )
+		match  add.call( Add(5) ).await
 		{
 			Ok (_) => unreachable!(),
 			Err(e) =>

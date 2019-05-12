@@ -44,7 +44,7 @@ impl<Out, MS> Handler<Call<MS>> for Peer<Out, MS>
 			// Fallible operations first
 			//
 			let conn_id = call.mesg.conn_id()?;
-			await!( self.send_msg( call.mesg ) )?;
+			self.send_msg( call.mesg ).await?;
 
 			// If the above succeeded, store the other end of the channel
 			//

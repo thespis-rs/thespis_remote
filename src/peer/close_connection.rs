@@ -43,8 +43,8 @@ impl<Out, MS> Handler<CloseConnection> for Peer<Out, MS>
 
 			match msg.remote
 			{
-				true  => await!( self.pharos.notify( &PeerEvent::ClosedByRemote ) ),
-				false => await!( self.pharos.notify( &PeerEvent::Closed         ) ),
+				true  => self.pharos.notify( &PeerEvent::ClosedByRemote ).await,
+				false => self.pharos.notify( &PeerEvent::Closed         ).await,
 			}
 
 
@@ -54,7 +54,7 @@ impl<Out, MS> Handler<CloseConnection> for Peer<Out, MS>
 			{
 				Some( out ) =>
 				{
-					await!( out.close() ).expect( "close sink for peer" );
+					out.close().await.expect( "close sink for peer" );
 					self.outgoing = None;
 				},
 

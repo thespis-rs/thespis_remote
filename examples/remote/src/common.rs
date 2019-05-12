@@ -17,7 +17,7 @@ pub use
 	},
 
 
-	tokio        ::
+	tokio::
 	{
 		prelude :: { StreamAsyncExt, Stream as TokStream, stream::{ SplitStream as TokSplitStream, SplitSink as TokSplitSink } } ,
  		net     :: { TcpStream, TcpListener                                                                                    } ,
@@ -75,7 +75,7 @@ pub async fn listen_tcp( socket: &str ) ->
 
 	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new();
 
-	let stream   = await!( listener.incoming().take(1).into_future().compat() )
+	let stream = listener.incoming().take(1).into_future().compat().await
 		.expect( "find one stream" ).0
 		.expect( "find one stream" );
 
@@ -93,7 +93,7 @@ pub async fn connect_to_tcp( socket: &str ) -> (Addr<MyPeer>, mpsc::Receiver<Pee
 	// Connect to tcp server
 	//
 	let socket = socket.parse::<SocketAddr>().unwrap();
-	let stream = await!( TcpStream::connect( &socket ).compat() ).expect( "connect address" );
+	let stream = TcpStream::connect( &socket ).compat().await.expect( "connect address" );
 
 	// frame the connection with codec for multiservice
 	//

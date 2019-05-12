@@ -150,11 +150,11 @@ impl<Out, MS> Peer<Out, MS>
 			//
 			// So, I think we can unwrap for now.
 			//
-			await!( addr2.send_all( stream ) ).expect( "peer send to self");
+			addr2.send_all( stream ).await.expect( "peer send to self");
 
 			// Same as above.
 			//
-			await!( addr2.send( CloseConnection{ remote: true } ) ).expect( "peer send to self");
+			addr2.send( CloseConnection{ remote: true } ).await.expect( "peer send to self");
 		};
 
 		// When we need to stop listening, we have to drop this future, because it contains
@@ -221,7 +221,7 @@ impl<Out, MS> Peer<Out, MS>
 			//
 			// So, I think we can unwrap for now.
 			//
-			await!( self_addr.send_all( stream ) ).expect( "peer send to self" );
+			self_addr.send_all( stream ).await.expect( "peer send to self" );
 
 			// Same as above.
 			// Normally relays shouldn't just dissappear, without notifying us, but it could
@@ -232,7 +232,7 @@ impl<Out, MS> Peer<Out, MS>
 			//
 			let evt = PeerEvent::Closed;
 
-			await!( self_addr.send( RelayEvent{ id: peer_id, evt } ) ).expect( "peer send to self");
+			self_addr.send( RelayEvent{ id: peer_id, evt } ).await.expect( "peer send to self");
 		};
 
 		// When we need to stop listening, we have to drop this future, because it contains
@@ -263,7 +263,7 @@ impl<Out, MS> Peer<Out, MS>
 	{
 		match &mut self.outgoing
 		{
-			Some( out ) => await!( out.send( msg ) ),
+			Some( out ) =>  out.send( msg ).await,
 
 			None =>
 			{
@@ -292,14 +292,14 @@ impl<Out, MS> Peer<Out, MS>
 		{
 			let msg = Self::prep_error( cid, err );
 
-			let _ = await!( out.send( msg ) );
+			let _ = out.send( msg ).await;
 
 			if close {
 			if let Some( ref mut addr ) = self.addr
 			{
 				// until we have bounded channels, this should never fail, so I'm leaving the expect.
 				//
-				await!( addr.send( CloseConnection{ remote: false } ) ).expect( "send close connection" );
+				addr.send( CloseConnection{ remote: false } ).await.expect( "send close connection" );
 			}}
 		}
 	}
@@ -348,7 +348,7 @@ impl<Out, MS> Handler<MS> for Peer<Out, MS>
 		{
 			trace!( "Peer sending OUT" );
 
-			let _ = await!( self.send_msg( msg ) );
+			let _ = self.send_msg( msg ).await;
 
 		})
 	}

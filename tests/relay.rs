@@ -1,4 +1,4 @@
-#![ feature( await_macro, async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, optin_builtin_traits ) ]
+#![ feature( async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, optin_builtin_traits ) ]
 
 
 // TODO:
@@ -40,7 +40,7 @@ fn relay()
 
 		// get a framed connection
 		//
-		let _ = await!( listen_tcp( "127.0.0.1:20000", sm ) );
+		let _ = listen_tcp( "127.0.0.1:20000", sm ).await;
 
 		trace!( "End of nodea" );
 	};
@@ -49,7 +49,7 @@ fn relay()
 
 	let nodeb = async
 	{
-		let (sink_b, stream_b) = await!( connect_return_stream( "127.0.0.1:20000" ) );
+		let (sink_b, stream_b) = connect_return_stream( "127.0.0.1:20000" ).await;
 
 		// Create mailbox for peer
 		//
@@ -75,7 +75,7 @@ fn relay()
 
 		let relay = async move
 		{
-			let (srv_sink, srv_stream) = await!( listen_tcp_stream( "127.0.0.1:30000" ) );
+			let (srv_sink, srv_stream) = listen_tcp_stream( "127.0.0.1:30000" ).await;
 
 
 			// Create mailbox for peer
@@ -92,7 +92,7 @@ fn relay()
 
 			peer.register_relayed_services( vec![ add, show ], peera2, peera_evts ).expect( "register relayed" );
 
-			await!( mb_peer.start_fut( peer ) );
+			mb_peer.start_fut( peer ).await;
 		};
 
 
@@ -103,22 +103,22 @@ fn relay()
 
 		let nodec = async
 		{
-			let (mut peerb, _)  = await!( connect_to_tcp( "127.0.0.1:30000" ) );
+			let (mut peerb, _)  = connect_to_tcp( "127.0.0.1:30000" ).await;
 
 			// Call the service and receive the response
 			//
 			let mut add  = remotes::Services::recipient::<Add >( peerb.clone() );
 			let mut show = remotes::Services::recipient::<Show>( peerb.clone() );
 
-			let resp = await!( add.call( Add(5) ) ).expect( "Call failed" );
+			let resp = add.call( Add(5) ).await.expect( "Call failed" );
 			assert_eq!( (), resp );
 
-			await!( add.send( Add(5) ) ).expect( "Send failed" );
+			add.send( Add(5) ).await.expect( "Send failed" );
 
-			let resp = await!( show.call( Show ) ).expect( "Call failed" );
+			let resp = show.call( Show ).await.expect( "Call failed" );
 			assert_eq!( 10, resp );
 
-			await!( peerb.send( CloseConnection{ remote: false } ) ).expect( "close connection to nodeb" );
+			peerb.send( CloseConnection{ remote: false } ).await.expect( "close connection to nodeb" );
 		};
 
 		// we need to spawn this after peerb, otherwise peerb is not listening yet when we try to connect.
@@ -128,8 +128,8 @@ fn relay()
 
 		// If the nodec closes the connection, close our connection to peera.
 		//
-		await!( relay_outcome );
-		await!( peera_addr.send( CloseConnection{ remote: false } ) ).expect( "close connection to nodea" );
+		relay_outcome.await;
+		peera_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to nodea" );
 	};
 
 	rt::spawn( nodea  ).expect( "Spawn nodea"  );

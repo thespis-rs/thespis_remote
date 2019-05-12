@@ -22,7 +22,6 @@ features:
 
 dependencies:
 
-  # crossbeam-channel: { path: ../../crossbeam-channel, features: [ async  ]                          }
   thespis             : { path: ../thespis_iface        }
   thespis_impl        : { path: ../thespis_impl         }
   thespis_remote      : { path: ../thespis_iface_remote }
@@ -38,7 +37,7 @@ dependencies:
   tokio:
 
     version          : ^0.1
-    features         : [ async-await-preview, rt-full, codec ]
+    features         : [ rt-full, codec ]
     default-features : false
     optional         : true
 
@@ -60,7 +59,7 @@ dev-dependencies:
   actix             : ^0.7.9
   criterion         : { version: ^0.2           , features: [ real_blackbox ]                                 }
   futures-preview   : { version: ^0.3.0-alpha.15, default-features: false, features: [ std, compat, nightly ] }
-  tokio             : { version: ^0.1 , default-features: false, features: [ async-await-preview, rt-full, tcp, codec ] }
+  tokio             : { version: ^0.1 , default-features: false, features: [ rt-full, codec ] }
 
   pretty_assertions : ^0.6
   serde_cbor        : ^0.9

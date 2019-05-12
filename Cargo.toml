@@ -52,7 +52,7 @@ path = "../thespis_iface_remote"
 
 [dependencies.tokio]
 default-features = false
-features = ["async-await-preview", "rt-full", "codec"]
+features = ["rt-full", "codec"]
 optional = true
 version = "^0.1"
 
@@ -76,7 +76,7 @@ version = "^0.3.0-alpha.15"
 
 [dev-dependencies.tokio]
 default-features = false
-features = ["async-await-preview", "rt-full", "tcp", "codec"]
+features = ["rt-full", "codec"]
 version = "^0.1"
 
 [features]

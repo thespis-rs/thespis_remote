@@ -336,7 +336,7 @@ impl Services
 			// TODO: we are only logging the potential error. Can we do better? Note that spawn requires
 			//       we return a tuple.
 			//
-			let res = await!( rec.send( message ) );
+			let res = rec.send( message ).await;
 
 			error!( "Failed to deliver remote message to actor: {:?}", &rec );
 
@@ -353,7 +353,7 @@ impl Services
 	(
 		     msg        :  $ms_type               ,
 		     receiver   : &BoxAny                 ,
-		 mut return_addr:  BoxRecipient<$ms_type> ,
+		mut return_addr:  BoxRecipient<$ms_type> ,
 
 	) -> ThesRemoteRes<()>
 
@@ -384,12 +384,13 @@ impl Services
 			// TODO: we should probably match this error later. If it is a mailbox full, we could
 			//       try again.
 			//
-			let resp = match await!( Self::handle_err
+			let resp = match Self::handle_err
 			(
-				&mut return_addr                                                                                           ,
-				&cid                                                                                                       ,
-				await!( rec.call( message ) ).map_err( |e| { error!( "{:?}", e ); ConnectionError::InternalServerError } ) ,
-			))
+				&mut return_addr                                                                                       ,
+				&cid                                                                                                   ,
+				rec.call( message ).await.map_err( |e| { error!( "{:?}", e ); ConnectionError::InternalServerError } ) ,
+
+			).await
 			{
 				Ok (resp) => resp   ,
 				Err(_   ) => return ,
@@ -398,12 +399,13 @@ impl Services
 
 			// Serialize the response
 			//
-			let serialized = match await!( Self::handle_err
+			let serialized = match Self::handle_err
 			(
 				&mut return_addr                                                                               ,
 				&cid                                                                                           ,
 				serde_cbor::to_vec( &resp ).map_err( |e| { error!( "{:?}", e ); ConnectionError::Serialize } ) ,
-			))
+
+			).await
 			{
 				Ok (ser) => ser    ,
 				Err(_  ) => return ,
@@ -419,12 +421,13 @@ impl Services
 			// Send the MultiService out over the network.
 			// We're returning anyway, so there's nothing to do with the result.
 			//
-			let _ = await!( Self::handle_err
+			let _ = Self::handle_err
 			(
 				&mut return_addr                                                                                                ,
 				&cid                                                                                                            ,
-				await!( return_addr2.send( mul ) ).map_err( |e| { error!( "{:?}", e ); ConnectionError::InternalServerError } ) ,
-			));
+				return_addr2.send( mul ).await.map_err( |e| { error!( "{:?}", e ); ConnectionError::InternalServerError } ) ,
+
+			).await;
 
 		}).context( ThesRemoteErrKind::ThesErr( "Spawn task for calling the local Service".into() ))?;
 
@@ -451,14 +454,14 @@ impl Services
 			Err(e) =>
 			{
 				let ms  = <$peer_type>::prep_error( cid.clone(), &e );
-				let res = await!( peer.send( ms ) );
+				let res = peer.send( ms ).await;
 
 				if let Err( ref err ) = res { error!( "Failed to send error back to remote: {:?}", err ) };
 
 				// TODO: In any case, close the connection.
 				// we will need access to the peer other than the Recipient<MS>
 				//
-				// let res2 = await!( peer.send( CloseConnection{ remote: false } ) );
+				// let res2 = peer.send( CloseConnection{ remote: false } ).await;
 
 				// if let Err( ref err ) = res2 { error!( "Failed to close connection: {:?}", err ) };
 
@@ -557,8 +560,8 @@ impl ServiceMap<$ms_type> for Services
 	fn call_service
 	(
 		&self                                 ,
-		 msg        :  $ms_type               ,
-		 return_addr:  BoxRecipient<$ms_type> ,
+		msg        :  $ms_type               ,
+		return_addr:  BoxRecipient<$ms_type> ,
 
 	) -> ThesRemoteRes<()>
 
@@ -634,7 +637,7 @@ impl ServicesRecipient
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
-		await!( self.peer.send( Self::build_ms( msg, ConnID::null() )? ) )
+		self.peer.send( Self::build_ms( msg, ConnID::null() )? ).await
 	}
 
 
@@ -646,9 +649,9 @@ impl ServicesRecipient
 	{
 		let call = Call::new( Self::build_ms( msg, ConnID::default() )? );
 
-		let re = match await!( self.peer.call( call ) )?
+		let re = match self.peer.call( call ).await?
 		{
-			Ok (rx) => await!( rx ).context( ThesErrKind::MailboxClosedBeforeResponse{ actor: "Peer".into() } )?,
+			Ok (rx) => rx.await.context( ThesErrKind::MailboxClosedBeforeResponse{ actor: "Peer".into() } )?,
 
 			Err(e ) => match e.kind()
 			{

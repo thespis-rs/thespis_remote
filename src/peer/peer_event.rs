@@ -60,7 +60,7 @@ impl<Out, MS> Handler<RelayEvent> for Peer<Out, MS>
 					self.relays .remove( &re.id );
 
 					let shine = PeerEvent::RelayDisappeared( re.id );
-					await!( self.pharos.notify( &shine ));
+					self.pharos.notify( &shine ).await;
 				}
 
 				_ => {}

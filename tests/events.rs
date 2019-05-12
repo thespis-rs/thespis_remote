@@ -1,4 +1,4 @@
-#![ feature( await_macro, async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, optin_builtin_traits ) ]
+#![ feature( async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, optin_builtin_traits ) ]
 
 
 // This currently combines testing error handling and peer events, because often the events are the way
@@ -45,19 +45,19 @@ fn close_connection()
 
 		// get a framed connection
 		//
-		let _ = await!( listen_tcp( "127.0.0.1:20003", sm ) );
+		let _ = listen_tcp( "127.0.0.1:20003", sm ).await;
 	};
 
 
 	let nodeb = async
 	{
-		let (mut peera, mut peera_evts)  = await!( connect_to_tcp( "127.0.0.1:20003" ) );
+		let (mut peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20003" ).await;
 
 		// Close the connection and check the event
 		//
-		await!( peera.send( peer::CloseConnection{ remote: false } ) ).expect( "Send CloseConnection" );
+		peera.send( peer::CloseConnection{ remote: false } ).await.expect( "Send CloseConnection" );
 
-		assert_eq!( PeerEvent::Closed, await!( peera_evts.next() ).unwrap() );
+		assert_eq!( PeerEvent::Closed,  peera_evts.next().await.unwrap() );
 	};
 
 
@@ -93,15 +93,15 @@ fn header_unknown_service_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = await!( listen_tcp( "127.0.0.1:20004", sm ) );
+		let (_, mut evts) = listen_tcp( "127.0.0.1:20004", sm ).await;
 
-		assert_eq!( PeerEvent::Error(ConnectionError::UnknownService( vec![3;16] )), await!( evts.next() ).unwrap() );
+		assert_eq!( PeerEvent::Error(ConnectionError::UnknownService( vec![3;16] )),  evts.next().await.unwrap() );
 	};
 
 
 	let nodeb = async
 	{
-		let (mut peera, mut peera_evts)  = await!( connect_to_tcp( "127.0.0.1:20004" ) );
+		let (mut peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20004" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -115,11 +115,11 @@ fn header_unknown_service_error()
 			.expect( "serialize Add(5)" ).into() )
 		;
 
-		await!( peera.send( ms ) ).expect( "send ms to peera" );
+		peera.send( ms ).await.expect( "send ms to peera" );
 
-		assert_eq!( PeerEvent::RemoteError(ConnectionError::UnknownService( vec![3;16] )), await!( peera_evts.next() ).unwrap() );
+		assert_eq!( PeerEvent::RemoteError(ConnectionError::UnknownService( vec![3;16] )),  peera_evts.next().await.unwrap() );
 
-		await!( peera.send( CloseConnection{ remote: false } ) ).expect( "close connection" );
+		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection" );
 	};
 
 
@@ -155,24 +155,24 @@ fn sm_deserialize_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = await!( listen_tcp( "127.0.0.1:20005", sm ) );
+		let (_, mut evts) = listen_tcp( "127.0.0.1:20005", sm ).await;
 
-		assert_eq!( PeerEvent::Error(ConnectionError::Deserialize), await!( evts.next() ).unwrap() );
+		assert_eq!( PeerEvent::Error(ConnectionError::Deserialize),  evts.next().await.unwrap() );
 	};
 
 
 	let nodeb = async
 	{
-		let (mut peera, mut peera_evts)  = await!( connect_to_tcp( "127.0.0.1:20005" ) );
+		let (mut peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20005" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
 		let sid = <Add as Service<remotes::Services>>::sid().clone();
 		let ms  = MultiServiceImpl::create( sid, ConnID::null(), Codecs::CBOR, Bytes::from( vec![3,3]));
 
-		await!( peera.send( ms ) ).expect( "send ms to peera" );
+		peera.send( ms ).await.expect( "send ms to peera" );
 
-		assert_eq!( PeerEvent::RemoteError(ConnectionError::Deserialize), await!( peera_evts.next() ).unwrap() );
+		assert_eq!( PeerEvent::RemoteError(ConnectionError::Deserialize),  peera_evts.next().await.unwrap() );
 	};
 
 

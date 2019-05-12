@@ -1,4 +1,4 @@
-#![ feature( await_macro, async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, slice_concat_ext ) ]
+#![ feature( async_await, arbitrary_self_types, specialization, nll, never_type, unboxed_closures, trait_alias, box_syntax, box_patterns, todo_macro, try_trait, slice_concat_ext ) ]
 
 mod common;
 use common::*;
@@ -11,14 +11,14 @@ fn main()
 	{
 		trace!( "Starting peerB" );
 
-		let (mut peera_addr, peera_evts) = await!( connect_to_tcp( "127.0.0.1:8998" ) );
+		let (mut peera_addr, peera_evts) = connect_to_tcp( "127.0.0.1:8998" ).await;
 		let peera_addr2 = peera_addr.clone();
 
 		// Relay part ---------------------
 
 		let relay = async move
 		{
-			let (srv_sink, srv_stream) = await!( listen_tcp( "127.0.0.1:8999" ) );
+			let (srv_sink, srv_stream) = listen_tcp( "127.0.0.1:8999" ).await;
 
 			// Create mailbox for peer
 			//
@@ -53,7 +53,7 @@ fn main()
 			// you can inspect the elements of this stream, but this is an easy trick to just detect
 			// the dropping of the peer.
 			//
-			await!( peerc_evts.into_future() );
+			peerc_evts.into_future().await;
 		};
 
 		let (relay, relay_outcome) = relay.remote_handle();
@@ -71,7 +71,7 @@ fn main()
 
 
 
-		let resp = await!( service_a.call( ServiceA{ msg: "hi from peerb".to_string() } ) ).expect( "Call failed" );
+		let resp = service_a.call( ServiceA{ msg: "hi from peerb".to_string() } ).await.expect( "Call failed" );
 
 		dbg!( resp );
 
@@ -79,22 +79,22 @@ fn main()
 
 		// Send
 		//
-		await!( service_b.send( ServiceB{ msg: "SEND from peerb".to_string() } ) ).expect( "Send failed" );
+		service_b.send( ServiceB{ msg: "SEND from peerb".to_string() } ).await.expect( "Send failed" );
 
 
 
-		let resp = await!( service_a.call( ServiceA{ msg: "hi from peerb -- again!!!".to_string() } ) ).expect( "Call failed" );
+		let resp = service_a.call( ServiceA{ msg: "hi from peerb -- again!!!".to_string() } ).await.expect( "Call failed" );
 
 		dbg!( resp );
 
 
 		// Send
 		//
-		await!( service_b.send( ServiceB{ msg: "SEND AGAIN from peerb".to_string() } ) ).expect( "Send failed" );
+		service_b.send( ServiceB{ msg: "SEND AGAIN from peerb".to_string() } ).await.expect( "Send failed" );
 
 
 		// Call ServiceB
-		let resp = await!( service_b.call( ServiceB{ msg: "hi from peerb -- Calling to ServiceB!!!".to_string() } ) )
+		let resp = service_b.call( ServiceB{ msg: "hi from peerb -- Calling to ServiceB!!!".to_string() } ).await
 
 			.expect( "Call failed" );
 
@@ -102,8 +102,8 @@ fn main()
 
 		// If the peerc closes the connection, we might as well terminate as well, because we did all our work.
 		//
-		await!( relay_outcome );
-		await!( peera_addr.send( CloseConnection{ remote: false } ) ).expect( "close connection to peera" );
+		relay_outcome.await;
+		peera_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
 
 		trace!( "After close connection" );
 	};
