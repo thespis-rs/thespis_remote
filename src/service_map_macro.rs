@@ -191,19 +191,19 @@ impl Services
 			      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
-		/// TODO: for now leaving this expect, as this is obviously a programmer error.
-		///       This cannot be triggered by an external process, only exists if the user
-		///       Send the wrong Receiver to Peer::register_service, but normally it's type
-		///       checked. So waiting to see how this error can be triggered before deciding
-		///       how it should be handled.
-		///
-		let     backup: &Receiver<S> = receiver.downcast_ref().expect( "downcast_ref failed" );
-		let mut rec                  = backup.clone_box();
+		let backup: &Receiver<S> = receiver.downcast_ref()
+
+			.ok_or( ThesRemoteErrKind::Downcast( "Receiver in service_macro".into() ))?
+		;
+
 
 		let message = des( &msg.mesg() )
 
 			.context( ThesRemoteErrKind::Deserialize( "Deserialize incoming remote message".into() ))?
 		;
+
+
+		let mut rec = backup.clone_box();
 
 		rt::spawn( async move
 		{
@@ -238,16 +238,17 @@ impl Services
 	{
 		// for reasoning on the expect, see send_service_gen
 		//
-		let     backup: &Receiver<S> = receiver.downcast_ref().expect( "downcast_ref failed" );
-		let mut rec                  = backup.clone_box();
+		let backup: &Receiver<S> = receiver.downcast_ref()
 
+			.ok_or( ThesRemoteErrKind::Downcast( "Receiver in service_macro".into() ))?
+		;
 
 		let message = des( &msg.mesg() )
 
 			.context( ThesRemoteErrKind::Deserialize( "Deserialize incoming remote message".into() ))?
 		;
 
-
+		let mut rec  = backup.clone_box();
 		let cid_null = <$ms_type as MultiService>::ConnID::null() ;
 		let cid      = msg.conn_id()?                             ;
 
@@ -332,9 +333,10 @@ impl Services
 				// TODO: In any case, close the connection.
 				// we will need access to the peer other than the Recipient<MS>
 				//
-				// let res = await!( peer.send( CloseConnection{ remote: false } ) );
+				// let res2 = await!( peer.send( CloseConnection{ remote: false } ) );
 
-				if let Err( ref err ) = res { error!( "Failed to close connection: {:?}", err ) };
+				// if let Err( ref err ) = res2 { error!( "Failed to close connection: {:?}", err ) };
+
 
 				// return the result
 				//
@@ -357,6 +359,7 @@ impl ServiceMap<$ms_type> for Services
 	/// Will match the type of the service id to deserialize the message and send it to the handling actor.
 	///
 	/// This can return the following errors:
+	/// - ThesRemoteErrKind::Downcast
 	/// - ThesRemoteErrKind::UnknownService
 	/// - ThesRemoteErrKind::Deserialize
 	/// - ThesRemoteErrKind::ThesErr -> Spawn error
@@ -390,6 +393,7 @@ impl ServiceMap<$ms_type> for Services
 	/// Will match the type of the service id to deserialize the message and call the handling actor.
 	///
 	/// This can return the following errors:
+	/// - ThesRemoteErrKind::Downcast
 	/// - ThesRemoteErrKind::UnknownService
 	/// - ThesRemoteErrKind::Deserialize
 	/// - ThesRemoteErrKind::ThesErr -> Spawn error

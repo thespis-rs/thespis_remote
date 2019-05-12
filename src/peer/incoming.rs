@@ -197,6 +197,18 @@ Box::pin( async move
 							await!( self.send_err( cid_null, &ConnectionError::Deserialize, true ) );
 						},
 
+
+						  ThesRemoteErrKind::ThesErr (..) // This is a spawn error
+						| ThesRemoteErrKind::Downcast(..) =>
+						{
+							await!( self.pharos.notify( &PeerEvent::Error( ConnectionError::InternalServerError ) ));
+
+							// Send an error back to the remote peer and close the connection
+							//
+							await!( self.send_err( cid_null, &ConnectionError::InternalServerError, true ) );
+						},
+
+
 						ThesRemoteErrKind::UnknownService(..) =>
 						{
 							let err = ConnectionError::UnknownService(sid.into().to_vec());
@@ -208,20 +220,6 @@ Box::pin( async move
 							let evt = PeerEvent::Error( err );
 							await!( self.pharos.notify( &evt ) );
 
-						},
-
-						// This is a spawn error
-						//
-						ThesRemoteErrKind::ThesErr(..) =>
-						{
-							let err = ConnectionError::InternalServerError;
-
-							// Send an error back to the remote peer and close the connection
-							//
-							await!( self.send_err( cid_null, &err, true ) );
-
-							let evt = PeerEvent::Error( err );
-							await!( self.pharos.notify( &evt ) );
 						},
 
 						_ => {}
@@ -318,6 +316,7 @@ Box::pin( async move
 					{
 						match e.kind()
 						{
+
 							ThesRemoteErrKind::Deserialize(..) =>
 							{
 								await!( self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ));
@@ -326,6 +325,7 @@ Box::pin( async move
 								//
 								await!( self.send_err( cid, &ConnectionError::Deserialize, true ) );
 							},
+
 
 							ThesRemoteErrKind::UnknownService(..) =>
 							{
@@ -340,19 +340,17 @@ Box::pin( async move
 
 							},
 
-							// This is a spawn error
-							//
-							ThesRemoteErrKind::ThesErr(..) =>
+
+							  ThesRemoteErrKind::ThesErr (..) // This is a spawn error
+							| ThesRemoteErrKind::Downcast(..) =>
 							{
-								let err = ConnectionError::InternalServerError;
+								await!( self.pharos.notify( &PeerEvent::Error( ConnectionError::InternalServerError ) ));
 
 								// Send an error back to the remote peer and close the connection
 								//
-								await!( self.send_err( cid, &err, true ) );
-
-								let evt = PeerEvent::Error( err );
-								await!( self.pharos.notify( &evt ) );
+								await!( self.send_err( cid, &ConnectionError::InternalServerError, true ) );
 							},
+
 
 							_ => {}
 						}
