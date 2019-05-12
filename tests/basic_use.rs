@@ -30,12 +30,10 @@ fn remote()
 		// Create a service map
 		//
 		let mut sm = remotes::Services::new();
-
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
 		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
-
 
 		// get a framed connection
 		//

@@ -114,7 +114,7 @@ use
 	//
 	super :: { $( $services, )+ $peer_type, $ms_type } ,
 	$crate:: { *                                     } ,
-	std   :: { pin::Pin, collections::HashMap        } ,
+	std   :: { pin::Pin, collections::HashMap, fmt   } ,
 
 	$crate::external_deps::
 	{
@@ -171,8 +171,6 @@ $(
 
 /// The actual service map.
 /// Use it to get a recipient to a remote service.
-///
-// #[ derive( Clone ) ]
 //
 pub struct Services
 {
@@ -181,6 +179,62 @@ pub struct Services
 
 
 impl Namespace for Services { const NAMESPACE: &'static str = stringify!( $ns ); }
+
+
+
+/// TODO: Add unit test
+///
+/// Will print something like:
+///
+/// ```ignore
+/// remotes::Services
+/// {
+///    Add  - sid: c5c22cab4f2d334e0000000000000000 - handler (actor_id): 0
+///    Show - sid: 0617b1cfb55b99700000000000000000 - handler (actor_id): 0
+/// }
+/// ```
+//
+impl fmt::Debug for Services
+{
+	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result
+	{
+		let mut width: usize = 0;
+
+		$(
+			width = std::cmp::max( width, stringify!( $services ).len() );
+		)+
+
+		let mut accu = String::new();
+
+		$(
+			let sid = <$services as Service<Self>>::sid();
+
+			accu += &format!
+			(
+				"\t{:width$} - sid: {:?} - handler (actor_id): {}\n",
+
+				stringify!( $services ),
+				sid,
+
+				if let Some(h) = self.handlers.get( sid )
+				{
+					let handler: &Receiver<$services> = h.downcast_ref().expect( "downcast receiver in Debug for Services" );
+					format!( "{:?}", handler.actor_id() )
+				}
+
+				else
+				{
+					"none".to_string()
+				},
+
+				width = width
+			);
+		)+
+
+		write!( f, "{}::Services\n{{\n{}}}", stringify!( $ns ), accu )
+	}
+}
+
 
 
 impl Services
@@ -214,7 +268,7 @@ impl Services
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 	{
-		self.handlers.insert( <S as Service<self::Services>>::sid(), box handler );
+		self.handlers.insert( <S as Service<Self>>::sid(), box handler );
 	}
 
 
@@ -321,7 +375,7 @@ impl Services
 
 			// Create a MultiService
 			//
-			let     sid          = <S as Service<self::Services>>::sid().clone()                           ;
+			let     sid          = <S as Service<Self>>::sid().clone()                                     ;
 			let     mul          = <$ms_type>::create( sid, cid.clone(), Codecs::CBOR, serialized.into() ) ;
 			let mut return_addr2 = return_addr.clone_box()                                                 ;
 
