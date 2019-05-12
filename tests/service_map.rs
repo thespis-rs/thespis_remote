@@ -70,3 +70,29 @@ fn sid_same_for_same_ns()
 {
 	assert_eq!( <Add as Service<a::remotes::Services>>::sid(), <Add as Service<b::remotes::Services>>::sid() );
 }
+
+
+// Test clone.
+//
+#[test]
+//
+fn clone()
+{
+	// Create mailbox for our handler
+	//
+	let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+
+	// Create a service map
+	//
+	let mut sm = remotes::Services::new();
+
+	// Register our handlers
+	//
+	sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
+	sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+
+	let serial = format!( "{:?}", sm );
+
+	assert_eq!( serial, format!( "{:?}", sm.clone() ) );
+}
+

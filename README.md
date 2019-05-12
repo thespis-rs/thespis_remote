@@ -4,7 +4,6 @@ The reference implementation of the thespis remote actor model
 
 ## TODO
 
-- implement clone for service map?
 - max length of messages in codec
 - test everything
 

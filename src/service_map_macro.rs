@@ -237,6 +237,43 @@ impl fmt::Debug for Services
 
 
 
+/// This downcasts in order to clone the handlers
+//
+impl Clone for Services
+{
+	fn clone( &self ) -> Self
+	{
+		let mut map: HashMap<&'static ServiceID, BoxAny> = HashMap::new();
+
+
+		for (k, v) in &self.handlers
+		{
+			match k
+			{
+				$(
+					_ if *k == <$services as Service<self::Services>>::sid() =>
+					{
+						let h: &Receiver<$services> = v.downcast_ref().expect( "downcast receiver in Clone" );
+
+						map.insert( k, box h.clone() );
+					},
+				)+
+
+
+				// every sid in our handlers map should also be a valid service in this service map,
+				// so this should never happen
+				//
+				_ => { unreachable!() },
+			}
+
+		}
+
+		Self { handlers: map }
+	}
+}
+
+
+
 impl Services
 {
 	/// Create a new service map
@@ -484,7 +521,7 @@ impl ServiceMap<$ms_type> for Services
 		match sid
 		{
 			$(
-				_ if sid == *<$services as Service<self::Services>>::sid() =>
+				_ if sid == *<$services as Service<Self>>::sid() =>
 				{
 					let receiver = self.handlers.get( &sid ).ok_or
 					(
