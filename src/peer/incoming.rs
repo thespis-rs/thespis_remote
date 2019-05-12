@@ -180,11 +180,17 @@ Box::pin( async move
 		trace!( "Incoming Send" );
 
 
-		if let Some( (handler, sm) ) = self.services.get( &sid )
+		if let Some( typeid ) = self.services.get( &sid )
 		{
 			trace!( "Incoming Send for local Actor" );
 
-			match sm.send_service( frame, handler )
+			// We are keeping our internal state consistent, so the unwrap is fine. if it's in
+			// self.services, it's in self.service_maps.
+			//
+			let sm = &mut self.service_maps.get( &typeid ).unwrap();
+
+
+			match sm.send_service( frame )
 			{
 				Err(e) =>
 				{
@@ -306,17 +312,23 @@ Box::pin( async move
 	{
 		trace!( "Incoming Call" );
 
+
 		if let Some( ref self_addr ) = self.addr
 		{
 			// It's a call for a local actor
 			//
-			if let Some( (handler, sm) ) = self.services.get( &sid )
+			if let Some( typeid ) = self.services.get( &sid )
 			{
 				trace!( "Incoming Call for local Actor" );
 
+				// We are keeping our internal state consistent, so the unwrap is fine. if it's in
+				// self.services, it's in self.service_maps.
+				//
+				let sm = &mut self.service_maps.get( &typeid ).unwrap();
+
 				// Call actor
 				//
-				match sm.call_service( frame, handler, self_addr.recipient() )
+				match sm.call_service( frame, self_addr.recipient() )
 				{
 					Err(e) =>
 					{

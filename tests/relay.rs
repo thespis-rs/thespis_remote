@@ -25,36 +25,25 @@ fn relay()
 
 	let nodea = async
 	{
-		// get a framed connection
-		//
-		let (sink_a, stream_a) = await!( listen_tcp( "127.0.0.1:20000" ) );
-
-
 		// Create mailbox for our handler
 		//
 		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
 
-		// Create mailbox for peer
-		//
-		let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
-		let peer_addr                = Addr ::new( mb_peer.sender() );
-
-		// create peer with stream/sink
-		//
-		let mut peer = Peer::new( peer_addr, stream_a.compat(), sink_a.sink_compat() ).expect( "spawn peer" );
 
 		// register Sum with peer as handler for Add and Show
 		//
-		peer.register_service::<Add , remotes::Services>( Receiver::new( addr_handler.recipient() ) );
-		peer.register_service::<Show, remotes::Services>( Receiver::new( addr_handler.recipient() ) );
+		let mut sm = remotes::Services::new();
+
+		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
 
 
-		mb_peer   .start( peer ).expect( "Failed to start mailbox of Peer" );
+		// get a framed connection
+		//
+		let _ = await!( listen_tcp( "127.0.0.1:20000", sm ) );
 
 		trace!( "End of nodea" );
 	};
-
-
 
 
 
@@ -86,13 +75,13 @@ fn relay()
 
 		let relay = async move
 		{
-			let (srv_sink, srv_stream) = await!( listen_tcp( "127.0.0.1:30000" ) );
+			let (srv_sink, srv_stream) = await!( listen_tcp_stream( "127.0.0.1:30000" ) );
 
 
 			// Create mailbox for peer
 			//
-			let     mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
-			let peer_addr                    = Addr ::new( mb_peer.sender() );
+			let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
+			let peer_addr                = Addr ::new( mb_peer.sender() );
 
 			// create peer with stream/sink + service map
 			//

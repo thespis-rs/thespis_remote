@@ -72,9 +72,11 @@ impl<Out, MS> Handler<CloseConnection> for Peer<Out, MS>
 			// want to send stuff over the network, so if we keep them alive, they will keep us
 			// alive. This breaks that cycle.
 			//
-			self.services .clear();
-			self.relays   .clear();
-			self.responses.clear();
+			self.services     .clear();
+			self.service_maps .clear();
+			self.relays       .clear();
+			self.relayed      .clear();
+			self.responses    .clear();
 		})
 	}
 }

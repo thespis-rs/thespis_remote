@@ -32,30 +32,20 @@ fn close_connection()
 {
 	let nodea = async
 	{
-		// get a framed connection
-		//
-		let (sink_a, stream_a) = await!( listen_tcp( "127.0.0.1:20003" ) );
-
-
 		// Create mailbox for our handler
 		//
 		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
 
-		// Create mailbox for peer
-		//
-		let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
-		let peer_addr                = Addr ::new( mb_peer.sender() );
-
-		// create peer with stream/sink
-		//
-		let mut peer = Peer::new( peer_addr, stream_a.compat(), sink_a.sink_compat() ).expect( "spawn peer" );
-
 		// register Sum with peer as handler for Add and Show
 		//
-		peer.register_service::<Add , remotes::Services>( Receiver::new( addr_handler.recipient() ) );
-		peer.register_service::<Show, remotes::Services>( Receiver::new( addr_handler.recipient() ) );
+		let mut sm = remotes::Services::new();
 
-		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+
+		// get a framed connection
+		//
+		let _ = await!( listen_tcp( "127.0.0.1:20003", sm ) );
 	};
 
 
@@ -92,31 +82,18 @@ fn header_unknown_service_error()
 
 	let nodea = async
 	{
-		// get a framed connection
-		//
-		let (sink_a, stream_a) = await!( listen_tcp( "127.0.0.1:20004" ) );
-
-
 		// Create mailbox for our handler
 		//
 		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
 
-		// Create mailbox for peer
-		//
-		let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
-		let peer_addr                = Addr ::new( mb_peer.sender() );
-
-		// create peer with stream/sink
-		//
-		let mut peer = Peer::new( peer_addr, stream_a.compat(), sink_a.sink_compat() ).expect( "spawn peer" );
-
-		let mut evts = peer.observe(10);
-
 		// register Sum with peer as handler for Add and Show
 		//
-		peer.register_service::<Add, remotes::Services>( Receiver::new( addr_handler.recipient() ) );
+		let mut sm = remotes::Services::new();
+		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
 
-		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
+		// get a framed connection
+		//
+		let (_, mut evts) = await!( listen_tcp( "127.0.0.1:20004", sm ) );
 
 		assert_eq!( PeerEvent::Error(ConnectionError::UnknownService( vec![3;16] )), await!( evts.next() ).unwrap() );
 	};
@@ -167,31 +144,18 @@ fn sm_deserialize_error()
 
 	let nodea = async
 	{
-		// get a framed connection
-		//
-		let (sink_a, stream_a) = await!( listen_tcp( "127.0.0.1:20005" ) );
-
-
 		// Create mailbox for our handler
 		//
 		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
 
-		// Create mailbox for peer
-		//
-		let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
-		let peer_addr                = Addr ::new( mb_peer.sender() );
-
-		// create peer with stream/sink
-		//
-		let mut peer = Peer::new( peer_addr, stream_a.compat(), sink_a.sink_compat() ).expect( "spawn peer" );
-
-		let mut evts = peer.observe(10);
-
 		// register Sum with peer as handler for Add and Show
 		//
-		peer.register_service::<Add, remotes::Services>( Receiver::new( addr_handler.recipient() ) );
+		let mut sm = remotes::Services::new();
+		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
 
-		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
+		// get a framed connection
+		//
+		let (_, mut evts) = await!( listen_tcp( "127.0.0.1:20005", sm ) );
 
 		assert_eq!( PeerEvent::Error(ConnectionError::Deserialize), await!( evts.next() ).unwrap() );
 	};

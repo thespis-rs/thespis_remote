@@ -91,7 +91,8 @@ pub struct Peer<Out, MS>
 	// to `Servicemap::call_service`. TODO: In principle we should be generic over recipient type, but for now
 	// I have put ThesErr, because it's getting to complex.
 	//
-	services      : HashMap<&'static <MS as MultiService>::ServiceID ,(BoxAny, BoxServiceMap<MS>)>,
+	services      : HashMap<&'static <MS as MultiService>::ServiceID, TypeId>,
+	service_maps  : HashMap<TypeId, BoxServiceMap<MS> >,
 
 	/// All services that we relay to another peer. It has to be of the same type for now since there is
 	/// no trait for peers.
@@ -168,50 +169,12 @@ impl<Out, MS> Peer<Out, MS>
 			addr         : Some( addr )     ,
 			responses    : HashMap::new()   ,
 			services     : HashMap::new()   ,
+			service_maps : HashMap::new()   ,
 			relayed      : HashMap::new()   ,
 			relays       : HashMap::new()   ,
 			listen_handle: Some( handle )   ,
 			pharos       : Pharos::new()    ,
 		})
-	}
-
-
-	/// Register a handler for a service that you want to expose over this connection.
-	///
-	/// TODO: define what has to happen when called several times on the same service
-	///       options: 1. error
-	///                2. replace prior entry
-	///                3. allow several handlers for the same service (not very likely)
-	///
-	/// ----- Currently the existing entry is replaced with the new one. For the moment
-	///       the method is infallible which could no longer be the same if we change this.
-	///
-	/// TODO: review api design. Currently this needs to be called on a peer, which needs
-	///       it's own address, so there is no way to sugar this up. Users will need to
-	///       make and address and manual mailbox, then feed the address to peer, then
-	///       register services. So it's not really possible to make a reusable method
-	///       which takes a socket address, connects and returns an address to a peer, because
-	///       you will need to start the mailbox after registering here. Since this method
-	///       is...
-	///
-	/// ----- Actually, if the servicemap could take a peer and register all it's services
-	///       that would be awesome. Or a peer could take a servicemap and register all services...
-	///       Actuall, that won't be so easy. The user decides which actor handles which
-	///       service... We would have to take a vector of (sid, Box<Any>)... not very
-	///       clean.
-	///
-	/// TODO: For now we have put the error type to ThesErr fixed. For usability, we probably
-	///       should be generic over that error type.
-	//
-	pub fn register_service<S, NS>( &mut self, handler: Receiver<S> )
-
-		where  S                    : Service<NS, UniqueID=<MS as MultiService>::ServiceID>,
-		      <S as Message>::Return: Serialize + DeserializeOwned                         ,
-		       NS                   : ServiceMap<MS> + Send + Sync + 'static               ,
-
-	{
-		self.services.insert( <S as Service<NS>>::sid(), (box handler, NS::boxed()) );
-		trace!( "Register Service: {:?}", S::sid() );
 	}
 
 
@@ -414,6 +377,33 @@ impl<Out, MS> Observable<PeerEvent> for Peer<Out, MS>
 	fn observe( &mut self, queue_size: usize ) -> mpsc::Receiver<PeerEvent>
 	{
 		self.pharos.observe( queue_size )
+	}
+}
+
+
+
+
+
+impl<Out, MS> ServiceProvider<MS> for Peer<Out, MS>
+
+	where Out: BoundsOut<MS> ,
+	      MS : BoundsMS      ,
+{
+	/// Register a service map as the handler for service ids that come in over the network. Normally you should
+	/// not call this directly, but use [´thespis_iface_remote::ServiceMap::register_with_peer´].
+	//
+	fn register_services( &mut self, services: &[&'static <MS as MultiService>::ServiceID], sm: BoxServiceMap<MS> )
+	{
+		let id = sm.type_id();
+
+		self.service_maps.insert( id, sm );
+
+
+		for sid in services.iter()
+		{
+			trace!( "Register Service: {:?}", sid );
+			self.services.insert( sid, id );
+		}
 	}
 }
 

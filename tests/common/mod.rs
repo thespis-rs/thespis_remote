@@ -47,7 +47,44 @@ pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>                  
 pub type MyPeer  = Peer<TheSink, MS>                                                            ;
 
 
-pub async fn listen_tcp( socket: &str ) ->
+pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<MyPeer>, mpsc::Receiver<PeerEvent>)
+{
+	// create tcp server
+	//
+	let socket   = socket.parse::<SocketAddr>().unwrap();
+	let listener = TcpListener::bind( &socket ).expect( "bind address" );
+
+	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new();
+
+	let stream   = await!( listener.incoming().take(1).into_future().compat() )
+		.expect( "find one stream" ).0
+		.expect( "find one stream" );
+
+	let (sink, stream) = codec.framed( stream ).split();
+
+	// Create mailbox for peer
+	//
+	let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
+	let peer_addr                = Addr ::new( mb_peer.sender() );
+
+	// create peer with stream/sink
+	//
+	let mut peer = Peer::new( peer_addr.clone(), stream.compat(), sink.sink_compat() ).expect( "create peer" );
+
+	let peer_evts = peer.observe( 10 );
+
+	// register service map with peer
+	//
+	sm.register_with_peer( &mut peer );
+
+	mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
+
+	(peer_addr, peer_evts)
+}
+
+
+
+pub async fn listen_tcp_stream( socket: &str ) ->
 
 	(TokSplitSink<Framed<TcpStream, MulServTokioCodec<MS>>>, TokSplitStream<Framed<TcpStream, MulServTokioCodec<MS>>>)
 

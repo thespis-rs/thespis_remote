@@ -57,8 +57,9 @@
 ///       ...
 ///     }
 ///
-///     // Service map is defined in the thespis crate. This is for the network peer, normally you don't
-///     // need to use this directly as a user.
+///     // Service map is defined in the thespis crate. This exposes the register_handler method so you can
+///     // register actors that handle incoming services, and call register_with_peer to tell the
+///     // service map to register all services for which it has handlers with a peer.
 ///     //
 ///     impl ServiceMap<MultiServiceImpl> for Services {...}
 ///
@@ -113,7 +114,7 @@ use
 	//
 	super :: { $( $services, )+ $peer_type, $ms_type } ,
 	$crate:: { *                                     } ,
-	std   :: { pin::Pin                              } ,
+	std   :: { pin::Pin, collections::HashMap        } ,
 
 	$crate::external_deps::
 	{
@@ -132,7 +133,7 @@ use
 
 type ConnID    = <$ms_type as MultiService>::ConnID    ;
 type ServiceID = <$ms_type as MultiService>::ServiceID ;
-// type Codecs    = <$ms_type as MultiService>::CodecAlg  ;
+// type Codecs    = <$ms_type as MultiService>::CodecAlg  ; // doesn't work as we use CBOR
 
 /// Mark the services part of this particular service map, so we can write generic impls only for them.
 //
@@ -171,15 +172,27 @@ $(
 /// The actual service map.
 /// Use it to get a recipient to a remote service.
 ///
-#[ derive( Clone ) ]
+// #[ derive( Clone ) ]
 //
-pub struct Services;
+pub struct Services
+{
+	handlers: HashMap< &'static ServiceID, BoxAny >
+}
+
 
 impl Namespace for Services { const NAMESPACE: &'static str = stringify!( $ns ); }
 
 
 impl Services
 {
+	/// Create a new service map
+	//
+	pub fn new() -> Self
+	{
+		Self{ handlers: HashMap::new() }
+	}
+
+
 	/// Creates a recipient to a Service type for a remote actor, which can be used in exactly the
 	/// same way as if the actor was local.
 	//
@@ -192,6 +205,17 @@ impl Services
 		ServicesRecipient::new( peer )
 	}
 
+
+	/// Register a handler for a given service type
+	/// Calling this method twice for the same type will override the first handler.
+	//
+	pub fn register_handler<S>( &mut self, handler: Receiver<S> )
+
+		where  S: MarkServices                                           ,
+		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
+	{
+		self.handlers.insert( <S as Service<self::Services>>::sid(), box handler );
+	}
 
 
 	// Helper function for send_service below
@@ -324,9 +348,9 @@ impl Services
 	//
 	async fn handle_err<'a, T>
 	(
-		peer: &'a mut BoxRecipient<$ms_type>         ,
-		cid : &'a ConnID ,
-		res : Result<T, ConnectionError>             ,
+		peer: &'a mut BoxRecipient<$ms_type> ,
+		cid : &'a ConnID                     ,
+		res : Result<T, ConnectionError>     ,
 
 	) -> Result<T, ConnectionError>
 	{
@@ -360,10 +384,29 @@ impl Services
 
 impl ServiceMap<$ms_type> for Services
 {
-	fn boxed() -> BoxServiceMap<MS>
+	// TODO: why do we have this? is this being used at all
+	//
+	fn boxed() -> BoxServiceMap<$ms_type>
 	{
-		box Self
+		box Self{ handlers: HashMap::new() }
 	}
+
+
+	/// Register all the services for which we have handlers with peer, so that we
+	/// can start receiving incoming messages for those handlers over this connection.
+	//
+	fn register_with_peer( self, peer: &mut dyn ServiceProvider<$ms_type> )
+	{
+		let mut s: Vec<&'static ServiceID> = Vec::with_capacity( self.handlers.len() );
+
+		for sid in self.handlers.keys()
+		{
+			s.push( sid );
+		}
+
+		peer.register_services( &s, box self );
+	}
+
 
 
 	/// Will match the type of the service id to deserialize the message and send it to the handling actor.
@@ -380,19 +423,25 @@ impl ServiceMap<$ms_type> for Services
 	/// the expect in there. See if anyone manages to trigger it, we can take it from there.
 	///
 	//
-	fn send_service( &self, msg: $ms_type, receiver: &BoxAny ) -> ThesRemoteRes<()>
+	fn send_service( &self, msg: $ms_type ) -> ThesRemoteRes<()>
 	{
-		let x = msg.service().expect( "get service" );
+		let sid = msg.service().expect( "get service" );
 
-		match x
+		match sid
 		{
 			$(
-				_ if x == *<$services as Service<self::Services>>::sid() =>
+				_ if sid == *<$services as Service<self::Services>>::sid() =>
+				{
+					let receiver = self.handlers.get( &sid ).ok_or
+					(
+						ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", sid ))
+					)?;
 
-					Self::send_service_gen::<$services>( msg, receiver )? ,
+					Self::send_service_gen::<$services>( msg, receiver )?
+				},
 			)+
 
-			_ => Err( ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", x )) )?,
+			_ => Err( ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", sid )) )?,
 		};
 
 		Ok(())
@@ -418,24 +467,29 @@ impl ServiceMap<$ms_type> for Services
 	(
 		&self                                 ,
 		 msg        :  $ms_type               ,
-		 receiver   : &BoxAny                 ,
 		 return_addr:  BoxRecipient<$ms_type> ,
 
 	) -> ThesRemoteRes<()>
 
 	{
-		let x = msg.service().expect( "get service" );
+		let sid = msg.service().expect( "get service" );
 
-		match x
+		match sid
 		{
 			$(
-				_ if x == *<$services as Service<self::Services>>::sid() =>
+				_ if sid == *<$services as Service<self::Services>>::sid() =>
+				{
+					let receiver = self.handlers.get( &sid ).ok_or
+					(
+						ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", sid ))
+					)?;
 
-					Self::call_service_gen::<$services>( msg, receiver, return_addr )? ,
+					Self::call_service_gen::<$services>( msg, receiver, return_addr )?
+				},
 			)+
 
 
-			_ => Err( ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", x )) )?,
+			_ => Err( ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", sid )) )?,
 		};
 
 		Ok(())

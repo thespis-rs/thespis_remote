@@ -23,30 +23,23 @@ fn remote()
 {
 	let peera = async
 	{
-		// get a framed connection
-		//
-		let (sink_a, stream_a) = await!( listen_tcp( "127.0.0.1:8998" ) );
-
-
 		// Create mailbox for our handler
 		//
 		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
 
-		// Create mailbox for peer
+		// Create a service map
 		//
-		let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
-		let peer_addr                = Addr ::new( mb_peer.sender() );
+		let mut sm = remotes::Services::new();
 
-		// create peer with stream/sink
+		// Register our handlers
 		//
-		let mut peer = Peer::new( peer_addr, stream_a.compat(), sink_a.sink_compat() ).expect( "spawn peer" );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
 
-		// register Sum with peer as handler for Add and Show
+
+		// get a framed connection
 		//
-		peer.register_service::<Add , remotes::Services>( Receiver::new( addr_handler.recipient() ) );
-		peer.register_service::<Show, remotes::Services>( Receiver::new( addr_handler.recipient() ) );
-
-		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
+		let _ = await!( listen_tcp( "127.0.0.1:8998", sm ) );
 	};
 
 
@@ -83,7 +76,6 @@ fn remote()
 
 
 
-
 #[ derive( Actor ) ]
 //
 pub struct Parallel
@@ -97,7 +89,6 @@ impl Handler< Show > for Parallel
 	fn handle( &mut self, _: Show ) -> ReturnNoSend<u64> { Box::pin( async move
 	{
 		await!( self.sum.call( Show ) ).expect( "call sum" )
-
 	})}
 }
 
@@ -124,7 +115,7 @@ fn parallel()
 	{
 		// get a framed connection
 		//
-		let (sink_a, stream_a) = await!( listen_tcp( "127.0.0.1:20001" ) );
+		let (sink_a, stream_a) = await!( listen_tcp_stream( "127.0.0.1:20001" ) );
 
 		// Create mailbox for peer
 		//
@@ -137,7 +128,7 @@ fn parallel()
 
 		// Create recipients
 		//
-		let show = remotes::Services::recipient::<Show>( peer_addr.clone() );
+		let show = remotes::Services::recipient::<Show>( peer_addr );
 
 		// Create mailbox for our handler
 		//
@@ -145,7 +136,10 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		peer.register_service::<Show, parallel::Services>( Receiver::new( addr_handler.recipient() ) );
+		let mut sm = parallel::Services::new();
+		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+
+		sm.register_with_peer( &mut peer );
 
 		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
 	};
@@ -171,7 +165,10 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		peer.register_service::<Show, remotes::Services>( Receiver::new( addr_handler.recipient() ) );
+		let mut sm = remotes::Services::new();
+		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+
+		sm.register_with_peer( &mut peer );
 
 		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
 
@@ -208,7 +205,7 @@ fn call_after_close_connection()
 	{
 		// drop as soon as there is a connection
 		//
-		let _ = await!( listen_tcp( "127.0.0.1:20002" ) );
+		let _ = await!( listen_tcp_stream( "127.0.0.1:20002" ) );
 	};
 
 
