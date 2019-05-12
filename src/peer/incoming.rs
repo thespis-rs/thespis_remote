@@ -139,6 +139,8 @@ Box::pin( async move
 	{
 		if let Ok( err ) = serde_cbor::from_slice::<ConnectionError>( &frame.mesg() )
 		{
+			error!( "Remote error: {:?}", err );
+
 			let shine = PeerEvent::RemoteError(err.clone());
 			await!( self.pharos.notify( &shine ) );
 
@@ -186,6 +188,8 @@ Box::pin( async move
 			{
 				Err(e) =>
 				{
+					error!( "Failed to send message to handler for service [{:?}]: {:?}", sid, e );
+
 					match e.kind()
 					{
 						ThesRemoteErrKind::Deserialize(..) =>
@@ -252,6 +256,8 @@ Box::pin( async move
 			if await!( relay.send( frame ) ).is_err()
 			{
 				let err = ConnectionError::LostRelayBeforeSend( sid.into().to_vec() );
+				error!( "Lost relay: {:?}", err );
+
 				await!( self.send_err( cid_null, &err, false ) );
 
 				let err = PeerEvent::Error( err );
@@ -314,6 +320,8 @@ Box::pin( async move
 				{
 					Err(e) =>
 					{
+						error!( "Failed to call handler for service [{:?}]: {:?}", sid, e );
+
 						match e.kind()
 						{
 
@@ -382,7 +390,7 @@ Box::pin( async move
 
 				rt::spawn( async move
 				{
-					// until we have bounded channels, this should never fail, so I'm leaving the expect.
+					// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 					//
 					let channel = await!( peer.call( Call::new( frame ) ) ).expect( "Call to relay failed" );
 
@@ -400,7 +408,7 @@ Box::pin( async move
 							{
 								trace!( "Got response from relayed call, sending out" );
 
-								// until we have bounded channels, this should never fail, so I'm leaving the expect.
+								// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 								//
 								await!( self_addr.send( resp ) ).expect( "Failed to send response from relay out on connection" );
 							},
@@ -410,24 +418,34 @@ Box::pin( async move
 							// Inform peer that their call failed because we lost connection to the relay after
 							// it was sent out.
 							//
-							Err( _err ) =>
+							Err( e ) =>
 							{
+								error!( "Lost relay: {:?}", e );
+
 								// Send an error back to the remote peer
 								//
 								let err = Self::prep_error( cid, &ConnectionError::LostRelayBeforeResponse );
 
+
+								// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
+								//
 								await!( self_addr.send( err ) ).expect( "send msg to self" );
 							}
 						}},
 
 						// Sending out call by relay failed
 						//
-						Err( _err ) =>
+						Err( e ) =>
 						{
+							error!( "Lost relay: {:?}", e );
+
 							// Send an error back to the remote peer
 							//
 							let err = Self::prep_error( cid, &ConnectionError::LostRelayBeforeCall );
 
+
+							// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
+							//
 							await!( self_addr.send( err ) ).expect( "send msg to self" );
 						}
 					}
