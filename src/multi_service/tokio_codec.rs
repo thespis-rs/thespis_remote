@@ -2,19 +2,27 @@ use crate::{ import::* };
 
 
 
-// TODO: - max_length!
+/// The tokio codec to frame AsyncRead/Write streams.
+/// TODO: test max_length
 //
 pub struct MulServTokioCodec<MS> where MS: MultiService
 {
-	pub _p: PhantomData<MS>,
+	_p: PhantomData<MS>,
+	max_length: usize  , // in bytes
+
 }
 
 
 impl<MS> MulServTokioCodec<MS> where MS: MultiService
 {
-	pub fn new() -> Self
+	/// Create a new codec, with the max length of a single message in bytes. Note that this includes the
+	/// header of the wireformat. For [`thespis_impl_remote::MultiServiceImpl`] the header is 36 bytes.
+	///
+	/// Setting a value to high might lead to more memory usage and could enable OOM/DDOS attacks.
+	//
+	pub fn new( max_length: usize ) -> Self
 	{
-		Self{ _p: PhantomData }
+		Self{ max_length, _p: PhantomData }
 	}
 }
 
@@ -45,7 +53,20 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 		;
 
 
+		// respect the max_length
+		//
+		if len > self.max_length
+		{
+			Err( ThesRemoteErrKind::MessageSizeExceeded
+			(
+				format!( "Tokio Codec Decoder: max_length={:?} bytes, message={:?} bytes", self.max_length, len )
+
+			))?
+		}
+
+
 		if buf.len() < len { return Ok( None ) }
+
 
 		// We have an entire message.
 		// Remove the length header, we won't need it anymore
@@ -77,6 +98,18 @@ impl<MS> Encoder for MulServTokioCodec<MS>
 
 	fn encode( &mut self, item: Self::Item, buf: &mut BytesMut ) -> Result<(), Self::Error>
 	{
+		// respect the max_length
+		//
+		if item.len() > self.max_length
+		{
+			Err( ThesRemoteErrKind::MessageSizeExceeded
+			(
+				format!( "Tokio Codec Encoder: max_length={:?} bytes, message={:?} bytes", self.max_length, item.len() )
+
+			))?
+		}
+
+
 		let len = item.len() + 8;
 		buf.reserve( len );
 
@@ -134,7 +167,7 @@ mod tests
 	//
 	fn empty()
 	{
-		let mut codec: MulServTokioCodec<MulServ> = MulServTokioCodec::new();
+		let mut codec: MulServTokioCodec<MulServ> = MulServTokioCodec::new( 1024 );
 
 		let mut buf   = BytesMut::new();
 		let     data  = empty_data();
@@ -158,7 +191,7 @@ mod tests
 	//
 	fn full()
 	{
-		let mut codec: MulServTokioCodec<MulServ> = MulServTokioCodec::new();
+		let mut codec: MulServTokioCodec<MulServ> = MulServTokioCodec::new(1024);
 
 		let mut buf   = BytesMut::new();
 		let     data  = full_data();
@@ -182,7 +215,7 @@ mod tests
 	//
 	fn partials()
 	{
-		let mut codec: MulServTokioCodec<MulServ> = MulServTokioCodec ::new();
+		let mut codec: MulServTokioCodec<MulServ> = MulServTokioCodec ::new(1024);
 
 		let mut buf = BytesMut::new();
 

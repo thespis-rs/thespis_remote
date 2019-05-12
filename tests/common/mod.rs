@@ -54,7 +54,7 @@ pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<MyPeer
 	let socket   = socket.parse::<SocketAddr>().unwrap();
 	let listener = TcpListener::bind( &socket ).expect( "bind address" );
 
-	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new();
+	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
 
 	let stream   = await!( listener.incoming().take(1).into_future().compat() )
 		.expect( "find one stream" ).0
@@ -94,7 +94,7 @@ pub async fn listen_tcp_stream( socket: &str ) ->
 	let socket   = socket.parse::<SocketAddr>().unwrap();
 	let listener = TcpListener::bind( &socket ).expect( "bind address" );
 
-	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new();
+	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
 
 	let stream   = await!( listener.incoming().take(1).into_future().compat() )
 		.expect( "find one stream" ).0
@@ -115,7 +115,7 @@ pub async fn connect_to_tcp( socket: &str ) -> (Addr<MyPeer>, mpsc::Receiver<Pee
 
 	// frame the connection with codec for multiservice
 	//
-	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new();
+	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
 
 	let (sink_a, stream_a) = codec.framed( stream ).split();
 
@@ -149,7 +149,7 @@ pub async fn connect_return_stream( socket: &str ) ->
 
 	// frame the connection with codec for multiservice
 	//
-	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new();
+	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
 
 	codec.framed( stream ).split()
 }

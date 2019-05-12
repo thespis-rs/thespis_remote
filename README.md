@@ -4,7 +4,6 @@ The reference implementation of the thespis remote actor model
 
 ## TODO
 
-- max length of messages in codec
 - test everything
 
 - use futures 0.3 codecs instead of tokio
