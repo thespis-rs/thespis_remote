@@ -136,11 +136,20 @@ type ServiceID = <$ms_type as MultiService>::ServiceID ;
 
 /// Mark the services part of this particular service map, so we can write generic impls only for them.
 //
-pub trait MarkServices {}
+pub trait MarkServices
+
+	where  Self                    : Service<self::Services, UniqueID=ServiceID> + Send,
+	      <Self as Message>::Return: Serialize + DeserializeOwned                + Send,
+{}
 
 $(
 
-	impl MarkServices for $services {}
+	impl MarkServices for $services
+
+		where  Self                    : Service<self::Services, UniqueID=ServiceID> + Send,
+	   	   <Self as Message>::Return: Serialize + DeserializeOwned                + Send,
+	{}
+
 
 	impl Service<self::Services> for $services
 	{
@@ -176,10 +185,9 @@ impl Services
 	//
 	pub fn recipient<S>( peer: Addr<$peer_type> ) -> impl Recipient<S>
 
-	where  S:   MarkServices + Serialize + DeserializeOwned + Send
-	          + Service<self::Services, UniqueID=ServiceID>,
+		where  S: MarkServices                                           ,
+		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
-	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 	{
 		ServicesRecipient::new( peer )
 	}
@@ -190,10 +198,8 @@ impl Services
 	//
 	fn send_service_gen<S>( msg: $ms_type, receiver: &BoxAny ) -> ThesRemoteRes<()>
 
-		where  S:   MarkServices + Serialize + DeserializeOwned + Send
-		          + Service<self::Services, UniqueID=ServiceID>,
-
-			      <S as Message>::Return: Serialize + DeserializeOwned + Send,
+		where  S: MarkServices                                           ,
+		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
 		let backup: &Receiver<S> = receiver.downcast_ref()
@@ -236,10 +242,9 @@ impl Services
 
 	) -> ThesRemoteRes<()>
 
-	where S:   MarkServices + Serialize + DeserializeOwned + Send
-	         + Service<self::Services, UniqueID=ServiceID>,
+		where  S: MarkServices                                           ,
+		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
-	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 	{
 		// for reasoning on the expect, see send_service_gen
 		//
@@ -461,8 +466,8 @@ impl ServicesRecipient
 	//
 	fn build_ms<S>( msg: S, cid: ConnID ) -> ThesRes< $ms_type >
 
-		where  S: Service<self::Services, UniqueID=ServiceID> + Send,
-				<S as Message>::Return: Serialize + DeserializeOwned + Send,
+		where  S: MarkServices                                           ,
+		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
 		let sid = <S as Service<self::Services>>::sid().clone();
@@ -480,8 +485,8 @@ impl ServicesRecipient
 	//
 	async fn send_gen<S>( &mut self, msg: S ) -> ThesRes<()>
 
-		where  S: Service<self::Services, UniqueID=ServiceID> + Send,
-				<S as Message>::Return: Serialize + DeserializeOwned + Send,
+		where  S: MarkServices                                           ,
+		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
 		await!( self.peer.send( Self::build_ms( msg, ConnID::null() )? ) )
@@ -490,8 +495,8 @@ impl ServicesRecipient
 
 	async fn call_gen<S>( &mut self, msg: S ) -> ThesRes<<S as Message>::Return>
 
-		where  S: Service<self::Services, UniqueID=ServiceID> + Send,
-				<S as Message>::Return: Serialize + DeserializeOwned + Send,
+		where  S: MarkServices                                           ,
+		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
 		let call = Call::new( Self::build_ms( msg, ConnID::default() )? );
@@ -531,7 +536,7 @@ impl ServicesRecipient
 
 impl<S> Recipient<S> for ServicesRecipient
 
-	where  S: MarkServices + Service<self::Services, UniqueID=ServiceID> + Serialize + DeserializeOwned + Send,
+	where  S: MarkServices                                           ,
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 {
@@ -564,7 +569,7 @@ impl<S> Recipient<S> for ServicesRecipient
 
 impl<S> Sink<S> for ServicesRecipient
 
-	where  S: MarkServices + Service<self::Services, UniqueID=ServiceID> + Serialize + DeserializeOwned + Send,
+	where  S: MarkServices                                           ,
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 
