@@ -373,9 +373,9 @@ impl Services
 			.context( ThesRemoteErrKind::Deserialize( "Deserialize incoming remote message".into() ))?
 		;
 
-		let mut rec  = backup.clone_box();
-		let cid_null = ConnID::null() ;
-		let cid      = msg.conn_id()?                             ;
+		let mut rec  = backup.clone_box() ;
+		let cid_null = ConnID::null()     ;
+		let cid      = msg.conn_id()?     ;
 
 
 		rt::spawn( async move
@@ -423,8 +423,8 @@ impl Services
 			//
 			let _ = Self::handle_err
 			(
-				&mut return_addr                                                                                                ,
-				&cid                                                                                                            ,
+				&mut return_addr                                                                                            ,
+				&cid                                                                                                        ,
 				return_addr2.send( mul ).await.map_err( |e| { error!( "{:?}", e ); ConnectionError::InternalServerError } ) ,
 
 			).await;
@@ -629,6 +629,7 @@ impl ServicesRecipient
 	}
 
 
+
 	// Actual impl for send
 	//
 	async fn send_gen<S>( &mut self, msg: S ) -> ThesRes<()>
@@ -641,18 +642,33 @@ impl ServicesRecipient
 	}
 
 
+
+	// potential errors:
+	// 1. serialization of the outgoing message
+	// 2.
 	async fn call_gen<S>( &mut self, msg: S ) -> ThesRes<<S as Message>::Return>
 
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
+		// Serialization can fail
+		//
 		let call = Call::new( Self::build_ms( msg, ConnID::default() )? );
 
+		// Call can fail (normally only if the thread in which the mailbox lives craches), or TODO: when we will
+		// use bounded channels.
+		//
 		let re = match self.peer.call( call ).await?
 		{
+			           // Channel can be canceled
+			           //
 			Ok (rx) => rx.await.context( ThesErrKind::MailboxClosedBeforeResponse{ actor: "Peer".into() } )?,
 
+			// Errors that happen when trying to send out:
+			// - connection has been closed
+			// - failed to deserialize the connection id from the message we send out
+			//
 			Err(e ) => match e.kind()
 			{
 				ThesRemoteErrKind::ConnectionClosed{..} =>
@@ -675,7 +691,26 @@ impl ServicesRecipient
 			}
 		};
 
-		Ok( des( &re.mesg() ).context( ThesErrKind::Deserialize{ what: "response from remote actor".to_string() } )? )
+
+		// A response came back from the other side.
+		//
+		match re
+		{
+			Ok ( resp ) =>
+			{
+				// deserialize the payload and return it to the caller.
+				// Deserialization can fail.
+				//
+				return Ok( des( &resp.mesg() ).context( ThesErrKind::Deserialize{ what: "response from remote actor".into() } )? )
+			},
+
+			// The remote returned an error
+			//
+			Err( err ) =>
+			{
+				Err( ThesErrKind::Connection { what: format!( "Remote could not process our call correctly: {:?}", err ) } )?
+			},
+		}
 	}
 }
 

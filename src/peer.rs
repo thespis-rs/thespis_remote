@@ -108,7 +108,7 @@ pub struct Peer<Out, MS>
 
 	/// We use onshot channels to give clients a future that will resolve to their response.
 	//
-	responses     : HashMap< <MS as MultiService>::ConnID, oneshot::Sender<MS> >,
+	responses     : HashMap< <MS as MultiService>::ConnID, oneshot::Sender<Result<MS, ConnectionError>> >,
 
 	/// The pharos allows us to have observers.
 	//

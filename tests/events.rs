@@ -9,9 +9,9 @@
 // - ✔ Connection Closed events -> closed by remote tested in basic_use
 // - Header Deserialization (Remote)Error
 // - ✔ Header Unknown Service (Remote)Error
-// - ✔ Service map Deserialization (Remote)Error
 // - all errors in send_service and call_service in the macro. A lot of things can go wrong.
-// - handling remote errors on call (let the caller know there wer connection errors)
+//   - ✔ Service map Deserialization (Remote)Error
+// - handling remote errors on call (let the caller know there were connection errors)
 // - Same errors on call instead of Send
 //
 // - SEND A WHOLE BUNCH OF BINARY DATA OVER THE NETWORK AND VERIFY THE CORRECT ERROR FOR EACH TYPE OF INPUT.

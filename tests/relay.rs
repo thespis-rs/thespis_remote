@@ -6,6 +6,7 @@
 // - ✔ Basic relaying
 // - Relay dissapeared event
 // - try to send after relay has dissapeared (should give mailboxclosed)
+// - relay 2 deep
 
 
 mod common;

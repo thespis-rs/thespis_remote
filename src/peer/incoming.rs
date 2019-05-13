@@ -145,28 +145,14 @@ Box::pin( async move
 			self.pharos.notify( &shine ).await;
 
 
-			// Certain errors happen in the remote peer without it being able to close the
-			// connection (because they happen in a spawned task). To work around this problem
-			// for now, close them from this end. To really fix this, the spawend taskes in
-			// sm.send_service and sm.call_service should have access to the addr of the peer,
-			// but the methods are defined in a trait ServiceMap, and for now, there is no trait
-			// for peers... so the iface does not have a way of referencing the type of the peer.
+			// We need to report the connection error to the caller
 			//
-			match err
+			if let Some( channel ) = self.responses.remove( &cid )
 			{
-				  ConnectionError::InternalServerError
-				| ConnectionError::Deserialize
-				| ConnectionError::Serialize
-
-				=>
-				{
-					if let Some( ref mut self_addr ) = self.addr
-					{
-						let _ = self_addr.send( CloseConnection{ remote: true } ).await;
-					}
-				},
-
-				_ => {},
+				// If this returns an error, it means the receiver was dropped, so if they no longer
+				// care for the result, neither do we, so ignoring the result.
+				//
+				let _ = channel.send( Err( err ) );
 			}
 		}
 	}
@@ -289,7 +275,7 @@ Box::pin( async move
 	}
 
 
-	// it's a response or an error
+	// it's a succesful response
 	//
 	else if let Some( channel ) = self.responses.remove( &cid )
 	{
@@ -302,7 +288,7 @@ Box::pin( async move
 		// they are no longer interested in the reponse? Should we log?
 		// Have a different behaviour in release than debug?
 		//
-		let _ = channel.send( frame );
+		let _ = channel.send( Ok( frame ) );
 	}
 
 
@@ -336,7 +322,6 @@ Box::pin( async move
 
 						match e.kind()
 						{
-
 							ThesRemoteErrKind::Deserialize(..) =>
 							{
 								self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
@@ -404,25 +389,56 @@ Box::pin( async move
 				{
 					// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 					//
-					let channel = peer.call( Call::new( frame ) ).await.expect( "Call to relay failed" );
+					let called = peer.call( Call::new( frame ) ).await.expect( "Call to relay failed" );
 
 
 					// TODO: Let the incoming remote know that their call failed
 					// not sure the current process wants to know much about this. We sure shouldn't
 					// crash.
 					//
-					match channel
+					match called
 					{
-						Ok( receiver ) =>	{match  receiver.await
+						// Sending out over the sink (connection) didn't fail
+						//
+						Ok( receiver ) =>	{ match receiver.await
 						{
-
-							Ok( resp ) =>
+							// The channel was not dropped before resolving, so the relayed connection didn't close
+							// until we got a response.
+							//
+							Ok( result ) =>
 							{
-								trace!( "Got response from relayed call, sending out" );
+								match result
+								{
+									// The remote managed to process the message and send a result back
+									// (no connection errors like deserialization failures etc)
+									//
+									Ok( resp ) =>
+									{
+										trace!( "Got response from relayed call, sending out" );
 
-								// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
-								//
-								self_addr.send( resp ).await.expect( "Failed to send response from relay out on connection" );
+										// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
+										//
+										self_addr.send( resp ).await.expect( "Failed to send response from relay out on connection" );
+									},
+
+									// The relayed remote had connection errors, forward the error to the caller.
+									// This is a particular case. In principle we can imagine that the caller does not know
+									// whether we are providing a service, or relaying it. However. When these errors would
+									// happen here, on our connection, it would mean the stream was potentially corrupt
+									// and we would close the connection. However, as these errors are on the connection to the
+									// relay, we don't need to close the connection. Currently we don't explicitly have an error
+									// type to tell the caller that this is an error in a relayed process, but they might observe
+									// that we don't close the connection.
+									//
+									Err(e) =>
+									{
+										let err = Self::prep_error( cid, &e );
+
+										// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
+										//
+										self_addr.send( err ).await.expect( "send msg to self" );
+									},
+								}
 							},
 
 

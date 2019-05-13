@@ -5,6 +5,9 @@ use crate::{ import::*, * };
 /// an outgoing call to [Peer]. Also used by [Peer] to call a remote service when relaying.
 ///
 /// MS must be of the same type as the type parameter on [Peer].
+///
+/// Normally you don't use this directly, but use the recipient a service map gives you to call
+/// remote services.
 //
 pub struct Call<MS: MultiService>
 {
@@ -13,7 +16,7 @@ pub struct Call<MS: MultiService>
 
 impl<MS: 'static +  MultiService + Send> Message for Call<MS>
 {
-	type Return = Result< oneshot::Receiver<MS>, ThesRemoteErr >;
+	type Return = ThesRemoteRes< oneshot::Receiver<Result<MS, ConnectionError>> >;
 }
 
 impl<MS: MultiService> Call<MS>
@@ -27,8 +30,12 @@ impl<MS: MultiService> Call<MS>
 
 
 /// Handler for outgoing Calls
-//
-// we use channels to create an async response.
+///
+/// If the sending to the remote succeeds, you get back a oneshot receiver.
+///
+/// If sending to the remote fails, you get a ThesRemoteErr.
+/// If the connection gets dropped before the answer comes, the onshot::Receiver will err with Cancelled.
+/// If the remote fails to process the message, you will get a ConnectionError out of the channel.
 //
 impl<Out, MS> Handler<Call<MS>> for Peer<Out, MS>
 
@@ -42,13 +49,14 @@ impl<Out, MS> Handler<Call<MS>> for Peer<Out, MS>
 		Box::pin( async move
 		{
 			// Fallible operations first
+			// Can fail to deserialize connection id from the outgoing call.
 			//
 			let conn_id = call.mesg.conn_id()?;
 			self.send_msg( call.mesg ).await?;
 
 			// If the above succeeded, store the other end of the channel
 			//
-			let (sender, receiver) = oneshot::channel::< MS >() ;
+			let (sender, receiver) = oneshot::channel::< Result<MS, ConnectionError> >() ;
 
 			self.responses.insert( conn_id, sender );
 
