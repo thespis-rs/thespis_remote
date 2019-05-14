@@ -13,7 +13,7 @@ pub mod import
 		thespis_impl_remote :: { *, service_map, peer } ,
 		log                 :: { *                    } ,
 
-		bytes               :: { Bytes                } ,
+		bytes               :: { Bytes, BytesMut      } ,
 		failure             :: { Fail                 } ,
 		pharos              :: { Observable           } ,
 

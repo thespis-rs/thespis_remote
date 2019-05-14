@@ -20,7 +20,7 @@ pub use register_relay    :: RegisterRelay    ;
 //
 pub trait BoundsIn <MS: BoundsMS>: 'static + Stream< Item = Result<MS, ThesRemoteErr> > + Unpin {}
 pub trait BoundsOut<MS: BoundsMS>: 'static + Sink<MS, SinkError=ThesRemoteErr > + Unpin + Send {}
-pub trait BoundsMS               : 'static + Message<Return=()> + MultiService + Send + fmt::Debug {}
+pub trait BoundsMS               : 'static + Message<Return=()> + MultiService<CodecAlg=Codecs> + Send + fmt::Debug {}
 
 impl<T, MS> BoundsIn<MS> for T
 
@@ -35,7 +35,7 @@ impl<T, MS> BoundsOut<MS> for T
 {}
 
 impl<T> BoundsMS for T
-where T: 'static + Message<Return=()> + MultiService + Send + fmt::Debug {}
+where T: 'static + Message<Return=()> + MultiService<CodecAlg=Codecs> + Send + fmt::Debug {}
 
 
 /// Represents a connection to another process over which you can send actor messages.

@@ -116,6 +116,49 @@ Box::pin( async move
 	};
 
 
+	// We only support CBOR for now. This is to verify that the stream is not corrupt and to
+	// future proof the api by obliging people to pass in a valid codec.
+	//
+	let _cod = match frame.encoding()
+	{
+		Ok ( codec ) =>
+		{
+			if codec != Codecs::CBOR
+			{
+				error!( "Invalid codec [{:?}], only CBOR supported", codec );
+
+				let b_codec: Bytes = codec.into();
+
+				let err = ConnectionError::UnsupportedCodec(b_codec.to_vec());
+
+				// Send an error back to the remote peer and don't close the connection
+				//
+				self.send_err( cid_null, &err, false ).await;
+
+				let evt = PeerEvent::Error( err );
+				self.pharos.notify( &evt ).await;
+
+				return
+			}
+
+			codec
+		},
+
+		Err( err ) =>
+		{
+			error!( "Fail to get codec from incoming frame: {}", err );
+
+			self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
+
+			// Send an error back to the remote peer and close the connection
+			//
+			self.send_err( cid_null, &ConnectionError::Deserialize, true ).await;
+
+			return
+		}
+	};
+
+
 
 	// It's a connection error from the remote peer
 	//

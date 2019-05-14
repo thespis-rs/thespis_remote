@@ -247,7 +247,25 @@ fn relay_unknown_service()
 	{
 		let (mut relay, _relay_evts) = connect_to_tcp( "127.0.0.1:30016" ).await;
 
-		let corrupt = MultiServiceImpl::try_from( Bytes::from( vec![ 5;40 ] ) ).expect( "create corrupt MultiServiceImpl" );
+		// Create some random data that shouldn't deserialize
+		//
+		let sid        = Bytes::from( vec![ 5;16 ]);
+		let cid: Bytes = ConnID::null().into();
+		let msg: Bytes = serde_cbor::to_vec( &Add(5) ).unwrap().into();
+
+		// This is the corrupt one that should trigger a deserialization error and close the connection
+		//
+		let cod: Bytes = Codecs::CBOR.into();
+
+		let mut buf = BytesMut::new();
+
+		buf.extend( sid );
+		buf.extend( cid );
+		buf.extend( cod );
+		buf.extend( msg );
+
+		let corrupt = MultiServiceImpl::try_from( Bytes::from( buf ) ).expect( "serialize Add(5)" );
+
 
 		let rx = relay.call( Call::new( corrupt ) ).await
 
@@ -334,8 +352,23 @@ fn relay_disappeared()
 			rx.await.expect( "return error, don't drop connection" ).unwrap_err()
 		);
 
-		assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::Deserialize) )                    , relay_evts.next().await );
-		assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::ServiceGone(bytes_sid.to_vec())) ), relay_evts.next().await );
+		// TODO: These sometimes arrive in opposite order. Can we make the order deterministic? Should we?
+		//
+		// assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::Deserialize) )                    , relay_evts.next().await );
+		// assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::ServiceGone(bytes_sid.to_vec())) ), relay_evts.next().await );
+
+		for _ in 0..2
+		{
+			match relay_evts.next().await
+			{
+				Some(PeerEvent::RemoteError( ConnectionError::Deserialize      )) => {},
+				Some(PeerEvent::RemoteError( ConnectionError::ServiceGone( s ) )) => assert_eq!( bytes_sid.to_vec(), s ) ,
+
+				_ => unreachable!(),
+			}
+		}
+
+
 
 
 		// The relay should have closed.

@@ -338,7 +338,7 @@ impl Services
 			//
 			let res = rec.send( message ).await;
 
-			error!( "Failed to deliver remote message to actor: {:?}", &rec );
+			if res.is_err() { error!( "Failed to deliver remote message to actor: {:?}", &rec ); }
 
 		}).context( ThesRemoteErrKind::ThesErr( "Spawn task for sending to the local Service".into() ))?;
 

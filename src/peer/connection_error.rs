@@ -46,4 +46,9 @@ pub enum ConnectionError
 	/// We don't provide this service. Data is sid.
 	//
 	UnknownService(Vec<u8>),
+
+	/// The codec is not valid for the operation.
+	/// The data is the codec passsed in, in serialized form.
+	//
+	UnsupportedCodec(Vec<u8>)
 }
