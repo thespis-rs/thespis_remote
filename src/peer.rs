@@ -58,6 +58,21 @@ where T: 'static + Message<Return=()> + MultiService + Send + fmt::Debug {}
 /// when errors happen and to react accordingly. If the connection gets closed, you can make
 /// reconnect and make a new peer.
 ///
+/// ### Errors
+/// A lot of things can go wrong with networking. The main issue is that we interprete the
+/// MultiService messages that come in. They are actually still deserialized. The only validation
+/// that has happened before is that the message size was at least HEADER_SIZE + 1, (in the codec).
+///
+/// We still deserialize elements of this message, and if things don't deserialize correctly it
+/// might mean the stream is corrupt, and that what we think is the beginning of a message is not
+/// actually the beginning. Peer has a conservative approach to this and will close the connection
+/// as soon as a potential corruption has taken place. You will know this happens by observing the
+/// event stream from `observe`.
+///
+/// Any errors that occur which do not hint that the stream has become corrupted will not close the
+/// connection. When a connection is closed, just drop all addresses you hold to the peer to allow
+/// it to be dropped, create a new connection and a new peer.
+///
 //
 #[ derive( Actor ) ]
 //

@@ -72,19 +72,7 @@ Box::pin( async move
 	// sid null      -> ConnectionError
 	//
 	//
-	// TODO: Error handling
-	// --------------------
-	//
-	// A. When calling a remote process, it might send back an error instead of a response
-	//
-	// B. Incoming messages:
-	//
-	//    - might fail to deserialize
-	//    - might be for an unknown actor
-	//    - come in after we are closing down? Verify with the listen function. If there's no
-	//      awaits between reception on the stream and here, then we can't see this condition in
-	//      both places.
-	//
+	// TODO: Refactor!!!
 
 
 	// I think these should never fail, because they accept random data in the current implementation.
@@ -201,7 +189,7 @@ Box::pin( async move
 
 							// Send an error back to the remote peer and close the connection
 							//
-							self.send_err( cid_null, &ConnectionError::InternalServerError, true ).await;
+							self.send_err( cid_null, &ConnectionError::InternalServerError, false ).await;
 						},
 
 
@@ -247,7 +235,7 @@ Box::pin( async move
 			//
 			if  relay.send( frame ).await.is_err()
 			{
-				let err = ConnectionError::LostRelayBeforeSend( sid.into().to_vec() );
+				let err = ConnectionError::FailedToRelay( sid.into().to_vec() );
 				error!( "Lost relay: {:?}", err );
 
 				self.send_err( cid_null, &err, false ).await;
@@ -353,7 +341,7 @@ Box::pin( async move
 
 								// Send an error back to the remote peer and close the connection
 								//
-								self.send_err( cid, &ConnectionError::InternalServerError, true ).await;
+								self.send_err( cid, &ConnectionError::InternalServerError, false ).await;
 							},
 
 
@@ -375,21 +363,21 @@ Box::pin( async move
 			// - we manage to call, but then when we await the response, the relay goes down, so the
 			//   sender of the channel for the response will come back as a disconnected error.
 			//
-			else if let Some( peer ) = self.relayed.get( &sid )
+			else if let Some( relayed ) = self.relayed.get( &sid )
 			{
 				trace!( "Incoming Call for relayed Actor" );
 
 				// The unwrap is safe, because we just checked self.relayed and we shall keep both
 				// in sync
 				//
-				let mut peer      = self.relays.get_mut( &peer ).unwrap().0.clone();
+				let mut relayed   = self.relays.get_mut( &relayed ).unwrap().0.clone();
 				let mut self_addr = self_addr.clone();
 
 				rt::spawn( async move
 				{
 					// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 					//
-					let called = peer.call( Call::new( frame ) ).await.expect( "Call to relay failed" );
+					let called = relayed.call( Call::new( frame ) ).await.expect( "Call to relay failed" );
 
 
 					// TODO: Let the incoming remote know that their call failed
@@ -432,6 +420,8 @@ Box::pin( async move
 									//
 									Err(e) =>
 									{
+										warn!( "Got ERROR back from relayed call, error to caller: {:?}", &e );
+
 										let err = Self::prep_error( cid, &e );
 
 										// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
@@ -461,7 +451,8 @@ Box::pin( async move
 							}
 						}},
 
-						// Sending out call by relay failed
+						// Sending out call to relayed failed. This normally only happens if the connection
+						// was closed, or a network transport malfunctioned.
 						//
 						Err( e ) =>
 						{
@@ -469,7 +460,7 @@ Box::pin( async move
 
 							// Send an error back to the remote peer
 							//
-							let err = Self::prep_error( cid, &ConnectionError::LostRelayBeforeCall );
+							let err = Self::prep_error( cid, &ConnectionError::FailedToRelay(sid.into().to_vec()) );
 
 
 							// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
@@ -491,7 +482,7 @@ Box::pin( async move
 				// Send an error back to the remote peer and to the observers
 				//
 				let err = ConnectionError::UnknownService( sid.into().to_vec() );
-				self.send_err( cid_null, &err, false ).await;
+				self.send_err( cid, &err, false ).await;
 
 				let err = PeerEvent::Error( err );
 				self.pharos.notify( &err ).await;

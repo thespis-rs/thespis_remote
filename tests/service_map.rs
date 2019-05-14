@@ -129,12 +129,20 @@ fn debug()
 	sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
 	sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
 
-	let txt =
-"remotes::Services
-{
-	Add  - sid: c5c22cab4f2d334e0000000000000000 - handler (actor_id): 0
-	Show - sid: 0617b1cfb55b99700000000000000000 - handler (actor_id): 0
-}";
+	// All tests from the same file seem to run in the same process, so sometimes
+	// if the test for clone has run first, the ID will be 1.
+	//
+	let id = < Addr<Sum> as Recipient<Add> >::actor_id( &addr_handler );
+
+	let txt = format!
+("remotes::Services
+{{
+	Add  - sid: c5c22cab4f2d334e0000000000000000 - handler (actor_id): {:?}
+	Show - sid: 0617b1cfb55b99700000000000000000 - handler (actor_id): {:?}
+}}",
+&id,
+&id,
+);
 
 	assert_eq!( txt, format!( "{:?}", sm ) );
 }

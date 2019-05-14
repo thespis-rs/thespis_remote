@@ -12,14 +12,20 @@ pub mod import
 		thespis_impl        :: { *, runtime::{ rt }   } ,
 		thespis_impl_remote :: { *, service_map, peer } ,
 		log                 :: { *                    } ,
-		std                 :: { net::SocketAddr, convert::TryFrom } ,
 
 		bytes               :: { Bytes                } ,
 		failure             :: { Fail                 } ,
 		pharos              :: { Observable           } ,
 
+		std::
+		{
+			net     :: SocketAddr ,
+			convert :: TryFrom    ,
+			future  :: Future     ,
+			pin     :: Pin        ,
+		},
 
-		futures      ::
+		futures::
 		{
 			channel :: { mpsc                                                                    } ,
 			compat  :: { Compat01As03Sink, Stream01CompatExt, Sink01CompatExt, Future01CompatExt } ,
@@ -45,6 +51,8 @@ pub use actors::*;
 pub type TheSink = Compat01As03Sink<TokSplitSink<Framed<TcpStream, MulServTokioCodec<MS>>>, MS> ;
 pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>                                  ;
 pub type MyPeer  = Peer<TheSink, MS>                                                            ;
+
+
 
 
 pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<MyPeer>, mpsc::Receiver<PeerEvent>)
