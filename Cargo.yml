@@ -26,7 +26,7 @@ dependencies:
   thespis_impl        : { path: ../thespis_impl         }
   thespis_remote      : { path: ../thespis_iface_remote }
   failure             : ^0.1
-  futures-preview     : { version: ^0.3.0-alpha.15, features: [ std, compat, nightly ], default-features: false }
+  futures-preview     : { version: ^0.3.0-alpha.16, features: [ std, compat, nightly ], default-features: false }
   log                 : ^0.4
   simple_logger       : ^1
   regex               : { version: ^1, features: [ pattern ] }
@@ -56,10 +56,9 @@ dependencies:
 
 dev-dependencies:
 
-  actix             : ^0.7.9
   criterion         : { version: ^0.2           , features: [ real_blackbox ]                                 }
-  futures-preview   : { version: ^0.3.0-alpha.15, default-features: false, features: [ std, compat, nightly ] }
-  tokio             : { version: ^0.1 , default-features: false, features: [ rt-full, codec ] }
+  futures-preview   : { version: ^0.3.0-alpha.16, default-features: false, features: [ std, compat, nightly ] }
+  tokio             : { version: ^0.1 , default-features: false, features: [ tcp, codec ] }
 
   pretty_assertions : ^0.6
   serde_cbor        : ^0.9

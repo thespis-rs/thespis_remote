@@ -152,7 +152,7 @@ impl<Out, MS> Peer<Out, MS>
 		{
 			// We need to map this to a custom type, since we had to impl Message for it.
 			//
-			let stream  = &mut incoming.map( |msg|
+			let stream = &mut incoming.map( |msg|
 			{
 				Incoming{ msg }
 			});
