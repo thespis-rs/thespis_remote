@@ -4,7 +4,7 @@ The reference implementation of the thespis remote actor model
 
 ## TODO
 
-- test everything
+- fuzz testing
 
 - use futures 0.3 codecs instead of tokio
 - Peer should probably be able to tell the remote which services it provides.
@@ -15,3 +15,5 @@ The reference implementation of the thespis remote actor model
 - remote Addr? if the actor is known compile time?
 
 ## Remote design
+
+- currently relaying is very static. A unique service id exists only at compile time. Imagine a chat service where many identical clients connect to a central server. We could not currently use the relay feature to relay messages from users to eachother, because they would each need to compile a different binary... to be solved.
