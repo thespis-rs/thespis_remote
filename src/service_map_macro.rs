@@ -255,7 +255,7 @@ impl Clone for Services
 					{
 						let h: &Receiver<$services> = v.downcast_ref().expect( "downcast receiver in Clone" );
 
-						map.insert( k, box h.clone() );
+						map.insert( k, Box::new( h.clone() ) );
 					},
 				)+
 
@@ -305,7 +305,7 @@ impl Services
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 	{
-		self.handlers.insert( <S as Service<Self>>::sid(), box handler );
+		self.handlers.insert( <S as Service<Self>>::sid(), Box::new( handler ) );
 	}
 
 
@@ -482,7 +482,7 @@ impl ServiceMap<$ms_type> for Services
 	//
 	fn boxed() -> BoxServiceMap<$ms_type>
 	{
-		box Self{ handlers: HashMap::new() }
+		Box::new( Self{ handlers: HashMap::new() } )
 	}
 
 
@@ -498,7 +498,7 @@ impl ServiceMap<$ms_type> for Services
 			s.push( sid );
 		}
 
-		peer.register_services( &s, box self );
+		peer.register_services( &s, Box::new( self ) );
 	}
 
 
@@ -735,7 +735,7 @@ impl<S> Recipient<S> for ServicesRecipient
 	//
 	fn clone_box( &self ) -> BoxRecipient<S>
 	{
-		box Self { peer: self.peer.clone() }
+		Box::new( Self { peer: self.peer.clone() } )
 	}
 
 
