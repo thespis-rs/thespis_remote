@@ -78,7 +78,7 @@ fn remote()
 //
 pub struct Parallel
 {
-	pub sum: Box< Recipient<Show> >,
+	pub sum: Box< dyn Recipient<Show> >,
 }
 
 

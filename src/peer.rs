@@ -357,7 +357,7 @@ impl<Out, MS> Handler<MS> for Peer<Out, MS>
 	      MS : BoundsMS      ,
 
 {
-	fn handle( &mut self, msg: MS ) -> ReturnNoSend<()>
+	fn handle( &mut self, msg: MS ) -> Return<()>
 	{
 		Box::pin( async move
 		{

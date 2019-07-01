@@ -5,6 +5,10 @@ log = "^0.4"
 once_cell = "^0.1"
 simple_logger = "^1"
 
+[dependencies.async_runtime]
+default-features = false
+path = "../../async_runtime"
+
 [dependencies.byteorder]
 version = "^1.3"
 

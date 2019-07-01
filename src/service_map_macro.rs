@@ -118,11 +118,12 @@ use
 
 	$crate::external_deps::
 	{
+		async_runtime   :: { rt                                           } ,
 		once_cell       :: { sync::OnceCell                               } ,
 		futures         :: { future::FutureExt, task::{ Context, Poll }   } ,
 		thespis         :: { *                                            } ,
 		thespis_remote  :: { *                                            } ,
-		thespis_impl    :: { runtime::rt, Addr, Receiver                  } ,
+		thespis_impl    :: { Addr, Receiver                               } ,
 		serde_cbor      :: { self, from_slice as des                      } ,
 		serde           :: { Serialize, Deserialize, de::DeserializeOwned } ,
 		failure         :: { Fail, ResultExt                              } ,
@@ -351,8 +352,8 @@ impl Services
 	//
 	fn call_service_gen<S>
 	(
-		     msg        :  $ms_type               ,
-		     receiver   : &BoxAny                 ,
+		    msg        :  $ms_type               ,
+		    receiver   : &BoxAny                 ,
 		mut return_addr:  BoxRecipient<$ms_type> ,
 
 	) -> ThesRemoteRes<()>

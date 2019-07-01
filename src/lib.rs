@@ -43,6 +43,7 @@ pub use
 //
 pub mod external_deps
 {
+	pub use async_runtime  ;
 	pub use failure        ;
 	pub use futures        ;
 	pub use log            ;
@@ -72,35 +73,35 @@ pub fn ashex( buf: &[u8] ) -> String
 
 
 // Import module. Avoid * imports here. These are all the foreign names that exist throughout
-// the crate. The must all be unique.
+// the crate. They must all be unique.
 // Separate use imports per enabled features.
 //
 mod import
 {
 	pub use
 	{
+		async_runtime  :: { rt                                                                        } ,
 		failure        :: { Fail, bail, err_msg, AsFail, Context as FailContext, Backtrace, ResultExt } ,
-		thespis        :: { *                                           } ,
-		thespis_remote :: { *                                           } ,
-		thespis_impl   :: { Addr, Receiver, runtime::rt                 } ,
-		log            :: { *                                           } ,
-		once_cell      :: { unsync::OnceCell, unsync::Lazy, unsync_lazy } ,
-		byteorder   :: { LittleEndian, ReadBytesExt, WriteBytesExt           } ,
-		bytes       :: { Bytes, BytesMut, Buf, BufMut, IntoBuf               } ,
-		num_traits  :: { FromPrimitive, ToPrimitive                          } ,
-		num_derive  :: { FromPrimitive, ToPrimitive                          } ,
-		rand        :: { Rng                                                 } ,
-		std         :: { hash::{ BuildHasher, Hasher }, io::Cursor, any::Any } ,
-		twox_hash   :: { RandomXxHashBuilder, XxHash                         } ,
-		futures     :: { future::RemoteHandle                                } ,
-		pharos      :: { Pharos, Observable                                  } ,
-		serde       :: { Serialize, Deserialize, de::DeserializeOwned        } ,
+		thespis        :: { *                                                                         } ,
+		thespis_remote :: { *                                                                         } ,
+		thespis_impl   :: { Addr, Receiver                                                            } ,
+		log            :: { *                                                                         } ,
+		once_cell      :: { unsync::OnceCell, unsync::Lazy, unsync_lazy                               } ,
+		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt                                 } ,
+		bytes          :: { Bytes, BytesMut, Buf, BufMut, IntoBuf                                     } ,
+		num_traits     :: { FromPrimitive, ToPrimitive                                                } ,
+		num_derive     :: { FromPrimitive, ToPrimitive                                                } ,
+		rand           :: { Rng                                                                       } ,
+		std            :: { hash::{ BuildHasher, Hasher }, io::Cursor, any::Any                       } ,
+		twox_hash      :: { RandomXxHashBuilder, XxHash                                               } ,
+		futures        :: { future::RemoteHandle                                                      } ,
+		pharos         :: { Pharos, Observable                                                        } ,
+		serde          :: { Serialize, Deserialize, de::DeserializeOwned                              } ,
 
 		std ::
 		{
 			fmt                                                       ,
 			any         :: { TypeId                                 } ,
-			cell        :: { RefCell                                } ,
 			convert     :: { TryFrom, TryInto                       } ,
 			future      :: { Future                                 } ,
 			marker      :: { PhantomData                            } ,

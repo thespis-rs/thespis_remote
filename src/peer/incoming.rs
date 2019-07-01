@@ -2,12 +2,19 @@ use crate::{ import::*, * };
 
 /// Type representing Messages coming in over the wire, for internal use only.
 //
-pub(super) struct Incoming<MS>
+pub(super) struct Incoming<MS: 'static + MultiService + Send>
+
+	where <<MS as MultiService>::ServiceID as TryFrom<Bytes>>::Error: Send,
+	      <<MS as MultiService>::ConnID    as TryFrom<Bytes>>::Error: Send,
 {
 	pub msg: Result<MS, ThesRemoteErr>
 }
 
 impl<MS: 'static + MultiService + Send> Message for Incoming<MS>
+
+	where <<MS as MultiService>::ServiceID as TryFrom<Bytes>>::Error: Send,
+	      <<MS as MultiService>::ConnID    as TryFrom<Bytes>>::Error: Send,
+
 {
 	type Return = ();
 }
@@ -19,8 +26,10 @@ impl<Out, MS> Handler<Incoming<MS>> for Peer<Out, MS>
 
 	where Out: BoundsOut<MS>,
 	      MS : BoundsMS     ,
+	      <<MS as MultiService>::ServiceID as TryFrom<Bytes>>::Error: Send,
+	      <<MS as MultiService>::ConnID    as TryFrom<Bytes>>::Error: Send,
 {
-fn handle( &mut self, incoming: Incoming<MS> ) -> ReturnNoSend<()>
+fn handle( &mut self, incoming: Incoming<MS> ) -> Return<()>
 {
 
 Box::pin( async move

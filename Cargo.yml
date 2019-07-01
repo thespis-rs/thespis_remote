@@ -25,6 +25,7 @@ dependencies:
   thespis             : { path: ../thespis_iface        }
   thespis_impl        : { path: ../thespis_impl         }
   thespis_remote      : { path: ../thespis_iface_remote }
+  async_runtime       : { path: ../../async_runtime, default-features: false }
   failure             : ^0.1
   futures-preview     : { version: ^0.3.0-alpha.16, features: [ std, compat, nightly ], default-features: false }
   log                 : ^0.4
