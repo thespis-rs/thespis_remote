@@ -7,9 +7,10 @@ pub mod import
 {
 	pub use
 	{
+		async_runtime       :: { rt                   } ,
 		thespis             :: { *                    } ,
 		thespis_remote      :: { *                    } ,
-		thespis_impl        :: { *, runtime::{ rt }   } ,
+		thespis_impl        :: { *                    } ,
 		thespis_impl_remote :: { *, service_map, peer } ,
 		log                 :: { *                    } ,
 

@@ -22,7 +22,7 @@ use common::import::{ *, assert_eq };
 
 // Helper method to create relays
 //
-async fn relay( connect: &'static str, listen: &'static str, next: Pin<Box< dyn Future< Output=() >>>, relay_show: bool )
+async fn relay( connect: &'static str, listen: &'static str, next: Pin<Box< dyn Future<Output=()> + Send >>, relay_show: bool )
 {
 	let (mut peera_addr, peera_evts) = connect_to_tcp( connect ).await;
 	let peera_addr2                  = peera_addr.clone();

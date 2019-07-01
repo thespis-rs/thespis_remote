@@ -84,7 +84,7 @@ pub struct Parallel
 
 impl Handler< Show > for Parallel
 {
-	fn handle( &mut self, _: Show ) -> ReturnNoSend<u64> { Box::pin( async move
+	fn handle( &mut self, _: Show ) -> Return<u64> { Box::pin( async move
 	{
 		self.sum.call( Show ).await.expect( "call sum" )
 	})}

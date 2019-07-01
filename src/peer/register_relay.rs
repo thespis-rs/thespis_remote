@@ -51,7 +51,7 @@ impl<Out, MS> Handler< RegisterRelay<Out, MS> > for Peer<Out, MS>
 	where Out: BoundsOut<MS>,
 	      MS : BoundsMS     ,
 {
-	fn handle( &mut self, msg: RegisterRelay<Out, MS> ) -> ReturnNoSend< <RegisterRelay<Out, MS> as Message>::Return >
+	fn handle( &mut self, msg: RegisterRelay<Out, MS> ) -> Return< <RegisterRelay<Out, MS> as Message>::Return >
 	{
 		trace!( "peer: starting Handler<RegisterRelay<Out, MS>>" );
 

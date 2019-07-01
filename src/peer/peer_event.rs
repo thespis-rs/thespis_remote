@@ -43,7 +43,7 @@ impl<Out, MS> Handler<RelayEvent> for Peer<Out, MS>
 	where Out: BoundsOut<MS>,
 	      MS : BoundsMS     ,
 {
-	fn handle( &mut self, re: RelayEvent ) -> ReturnNoSend< <RelayEvent as Message>::Return >
+	fn handle( &mut self, re: RelayEvent ) -> Return< <RelayEvent as Message>::Return >
 	{
 		let id = <Addr<Self> as Recipient<RelayEvent>>::actor_id( &self.addr.clone().unwrap() );
 

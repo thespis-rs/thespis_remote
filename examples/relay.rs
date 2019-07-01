@@ -14,7 +14,7 @@ use common::import::{ *, assert_eq };
 // The next parameter could be called consumer here, but you can actually chain as many relays as you want
 // and that's exaclty what the integration tests do.
 //
-async fn relay( connect: &'static str, listen: &'static str, next: Pin<Box< dyn Future< Output=() >>> )
+async fn relay( connect: &'static str, listen: &'static str, next: Pin<Box< dyn Future<Output=()> + Send>> )
 {
 	// Part that connects to the provider
 	//

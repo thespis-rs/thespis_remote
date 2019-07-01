@@ -101,7 +101,7 @@ fn main()
 
 		let next_event = peera_evts.next().await.unwrap();
 
-		println!( "The event from peer: {:?}",next_event );
+		println!( "The event from peer (should be “Closed”: {:?}", next_event );
 
 		assert_eq!( PeerEvent::Closed, next_event );
 	};
