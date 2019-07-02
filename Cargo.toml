@@ -7,7 +7,8 @@ simple_logger = "^1"
 
 [dependencies.async_runtime]
 default-features = false
-path = "../../async_runtime"
+package = "naja_async_runtime"
+version = "^0.1"
 
 [dependencies.byteorder]
 version = "^1.3"

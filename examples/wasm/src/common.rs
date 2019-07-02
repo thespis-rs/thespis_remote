@@ -1,5 +1,6 @@
 pub use
 {
+	async_runtime         :: { rt             } ,
 	thespis               :: { *              } ,
 	thespis_impl          :: { *              } ,
 	thespis_impl_remote   :: { *              } ,
@@ -26,8 +27,8 @@ pub use
 
 
 pub type TheSink = Compat01As03Sink<TokSplitSink<Framed<WsStream, MulServTokioCodec<MS>>>, MS> ;
-pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>                                  ;
-pub type MyPeer  = Peer<TheSink, MS>                                                            ;
+pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>                                 ;
+pub type MyPeer  = Peer<TheSink, MS>                                                           ;
 
 
 #[ derive( Serialize, Deserialize ) ]
@@ -48,7 +49,7 @@ pub struct MyActor { pub count: usize }
 //
 impl Handler<Ping> for MyActor
 {
-	fn handle( &mut self, msg: Ping ) -> ReturnNoSend<<Ping as Message>::Return>
+	fn handle( &mut self, msg: Ping ) -> Return<<Ping as Message>::Return>
 	{
 		Box::pin( async move
 		{

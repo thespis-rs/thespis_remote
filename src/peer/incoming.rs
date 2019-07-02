@@ -165,10 +165,6 @@ async move
 
 	// It's a connection error from the remote peer
 	//
-	// This includes failing to deserialize our messages, failing to relay, unknown service, ...
-	// TODO: when we sent a Call, it will have the cid in frame, so we should correctly react
-	// to that and forward it to the original caller.
-	//
 	if sid.is_null()
 	{
 		remote_conn_err( self, frame.mesg(), cid ).await;
@@ -183,7 +179,7 @@ async move
 	}
 
 
-	// it's a succesful response
+	// it's a succesful response to a (relayed) call
 	//
 	else if let Some( channel ) = self.responses.remove( &cid )
 	{
@@ -214,17 +210,30 @@ async move
 
 
 
+
+// It's a connection error from the remote peer
+//
+// This includes failing to deserialize our messages, failing to relay, unknown service, ...
+// TODO: when we sent a Call, it will have the cid in frame, so we should correctly react
+// to that and forward it to the original caller.
+//
 async fn remote_conn_err<Out, MS>( peer: &mut Peer<Out, MS>, msg: Bytes, cid: <MS as MultiService>::ConnID )
 
 	where Out: BoundsOut<MS>,
 	      MS : BoundsMS     ,
 
 {
+	// We can correctly interprete the error
+	//
 	if let Ok( err ) = serde_cbor::from_slice::<ConnectionError>( &msg )
 	{
+		// TODO: Do we want to log here if we relay? Maybe only debug
+		//
 		error!( "Remote error: {:?}", err );
 
-		let shine = PeerEvent::RemoteError(err.clone());
+		// Notify observers
+		//
+		let shine = PeerEvent::RemoteError( err.clone() );
 		peer.pharos.notify( &shine ).await;
 
 
@@ -243,6 +252,8 @@ async fn remote_conn_err<Out, MS>( peer: &mut Peer<Out, MS>, msg: Bytes, cid: <M
 	//
 	else
 	{
+		error!( "We received an error message from a remote peer, but couldn't deserialize it" );
+
 		unimplemented!();
 	}
 }
@@ -465,6 +476,7 @@ async fn incoming_call<Out, MS>
 		// - relay peer has been shut down (eg. remote closed connection)
 		// - we manage to call, but then when we await the response, the relay goes down, so the
 		//   sender of the channel for the response will come back as a disconnected error.
+		// - the remote peer responds with a ConnectionError
 		//
 		else if let Some( relayed ) = peer.relayed.get( &sid )
 		{
@@ -559,9 +571,10 @@ async fn incoming_call<Out, MS>
 					//
 					Err( e ) =>
 					{
-						error!( "Lost relay: {:?}", e );
+						error!( "Relay returned a ConnectionError for a remote Call: {:?}", &e );
 
 						// Send an error back to the remote peer
+						// We do not include
 						//
 						let err = Peer::<Out, MS>::prep_error( cid, &ConnectionError::FailedToRelay(sid.into().to_vec()) );
 

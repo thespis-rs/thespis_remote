@@ -6,6 +6,7 @@ The reference implementation of the thespis remote actor model
 
 - fuzz testing
 
+- WASM in tests
 - use futures 0.3 codecs instead of tokio
 - Peer should probably be able to tell the remote which services it provides.
 - we don't close the connection when errors happen in the spawned tasks in send_service and call_service in the macro... bad! It also won't emit events for them...bad again!
