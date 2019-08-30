@@ -1,4 +1,4 @@
-#![ feature( async_await, box_syntax ) ]
+#![ feature( box_syntax ) ]
 
 
 

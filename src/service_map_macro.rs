@@ -159,7 +159,7 @@ $(
 
 		fn sid() -> &'static Self::UniqueID
 		{
-			static INSTANCE: OnceCell< ServiceID > = OnceCell::INIT;
+			static INSTANCE: OnceCell< ServiceID > = OnceCell::new();
 
 			INSTANCE.get_or_init( ||
 			{
@@ -758,22 +758,22 @@ impl<S> Sink<S> for ServicesRecipient
 
 
 {
-	type SinkError = ThesErr;
+	type Error = ThesErr;
 
 
-	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::SinkError>>
+	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
 		<Addr<$peer_type> as Sink<$ms_type>>::poll_ready( self.peer.as_mut(), cx )
 	}
 
 
-	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::SinkError>
+	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
 		<Addr<$peer_type> as Sink<$ms_type>>::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? )
 	}
 
 
-	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::SinkError>>
+	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
 		<Addr<$peer_type> as Sink<$ms_type>>::poll_flush( self.peer.as_mut(), cx )
 	}
@@ -781,7 +781,7 @@ impl<S> Sink<S> for ServicesRecipient
 
 	/// Will only close when dropped, this method can never return ready
 	//
-	fn poll_close( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::SinkError>>
+	fn poll_close( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
 		Poll::Pending
 	}

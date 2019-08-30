@@ -2,13 +2,13 @@
 [dependencies]
 failure = "^0.1"
 log = "^0.4"
-once_cell = "^0.1"
+once_cell = "^1.0.0-pre"
 simple_logger = "^1"
 
 [dependencies.async_runtime]
 default-features = false
 package = "naja_async_runtime"
-version = "^0.1"
+version = "^0.3"
 
 [dependencies.byteorder]
 version = "^1.3"
@@ -28,11 +28,11 @@ version = "^0.2"
 version = "^0.2"
 
 [dependencies.pharos]
-version = "^0.1"
+version = "^0.2"
 
 [dependencies.rand]
 default-features = false
-version = "^0.6"
+version = "^0.7"
 
 [dependencies.regex]
 features = ["pattern"]
@@ -44,7 +44,7 @@ features = ["derive"]
 version = "^1"
 
 [dependencies.serde_cbor]
-version = "^0.9"
+version = "^0.10"
 
 [dependencies.thespis]
 path = "../thespis_iface"
@@ -65,13 +65,12 @@ version = "^0.1"
 version = "^1.1"
 
 [dev-dependencies]
-flexi_logger = "^0.11"
+flexi_logger = "^0.14"
 pretty_assertions = "^0.6"
-serde_cbor = "^0.9"
 
 [dev-dependencies.criterion]
 features = ["real_blackbox"]
-version = "^0.2"
+version = "^0.3"
 
 [dev-dependencies.futures-preview]
 default-features = false

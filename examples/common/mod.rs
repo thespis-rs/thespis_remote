@@ -30,8 +30,8 @@ pub mod import
 		{
 			channel :: { mpsc                                                                    } ,
 			compat  :: { Compat01As03Sink, Stream01CompatExt, Sink01CompatExt, Future01CompatExt } ,
-			prelude :: { StreamExt                                                               } ,
 			future  :: { FutureExt                                                               } ,
+			stream  :: { StreamExt                                                               } ,
 		},
 
 

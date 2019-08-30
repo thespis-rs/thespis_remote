@@ -10,7 +10,6 @@
 #![ feature
 (
 	arbitrary_self_types   ,
-	async_await            ,
 	box_into_pin           ,
 	box_patterns           ,
 	box_syntax             ,
@@ -86,7 +85,7 @@ mod import
 		thespis_remote :: { *                                                                         } ,
 		thespis_impl   :: { Addr, Receiver                                                            } ,
 		log            :: { *                                                                         } ,
-		once_cell      :: { unsync::OnceCell, unsync::Lazy, unsync_lazy                               } ,
+		once_cell      :: { unsync::OnceCell, unsync::Lazy                                            } ,
 		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt                                 } ,
 		bytes          :: { Bytes, BytesMut, Buf, BufMut, IntoBuf                                     } ,
 		num_traits     :: { FromPrimitive, ToPrimitive                                                } ,
@@ -116,10 +115,12 @@ mod import
 
 		futures ::
 		{
-			prelude :: { Stream, StreamExt, Sink, SinkExt                                         } ,
+			prelude :: { Stream, Sink                                                             } ,
 			channel :: { oneshot, mpsc                                                            } ,
 			future  :: { FutureExt, TryFutureExt                                                  } ,
 			task    :: { Spawn, SpawnExt, LocalSpawn, LocalSpawnExt, Context as TaskContext, Poll } ,
+			sink    :: { SinkExt                                                                  } ,
+			stream  :: { StreamExt                                                                } ,
 
 			executor::
 			{

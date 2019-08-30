@@ -19,7 +19,7 @@ pub use register_relay    :: RegisterRelay    ;
 // Reduce trait bound boilerplate, since we have to repeat them all over
 //
 pub trait BoundsIn <MS: BoundsMS>: 'static + Stream< Item = Result<MS, ThesRemoteErr> > + Unpin + Send {}
-pub trait BoundsOut<MS: BoundsMS>: 'static + Sink<MS, SinkError=ThesRemoteErr > + Unpin + Send {}
+pub trait BoundsOut<MS: BoundsMS>: 'static + Sink<MS, Error=ThesRemoteErr > + Unpin + Send {}
 pub trait BoundsMS               : 'static + Message<Return=()> + MultiService<CodecAlg=Codecs> + Send + fmt::Debug {}
 
 impl<T, MS> BoundsIn<MS> for T
@@ -30,7 +30,7 @@ impl<T, MS> BoundsIn<MS> for T
 
 impl<T, MS> BoundsOut<MS> for T
 
-	where T : 'static + Sink<MS, SinkError=ThesRemoteErr > + Unpin + Send,
+	where T : 'static + Sink<MS, Error=ThesRemoteErr > + Unpin + Send,
 	      MS: BoundsMS
 {}
 

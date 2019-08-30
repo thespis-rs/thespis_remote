@@ -1,6 +1,6 @@
 // The macro uses box syntax for now, so we enable it.
 //
-#![ feature( async_await, box_syntax ) ]
+#![ feature( box_syntax ) ]
 
 
 // In common we have the definitions of some simple Actors and a few helper functions to setup
