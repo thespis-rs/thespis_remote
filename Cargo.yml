@@ -32,6 +32,8 @@ dependencies:
   simple_logger       : ^1
   regex               : { version: ^1, features: [ pattern ] }
   once_cell           : ^1.0.0-pre
+  futures_codec       : ^0.2
+  futures_cbor_codec  : ^0.1
 
   # tokio stuff
   #
@@ -53,7 +55,8 @@ dependencies:
   twox-hash         : { version: ^1.1                                                 }
   byteorder         : { version: ^1.3                                                 }
   rand              : { version: ^0.7, default-features: false                        }
-  pharos            : { version: ^0.2                                                                 }
+  pharos            : { version: ^0.2                                                 }
+  romio             : ^0.3.0-alpha
 
 dev-dependencies:
 
@@ -75,3 +78,10 @@ profile:
 
     lto          : false
     debug        : true
+
+
+patch:
+
+  crates-io:
+
+    futures_codec : { git: "https://github.com/matthunz/futures-codec.git" }

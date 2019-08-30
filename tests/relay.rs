@@ -40,7 +40,7 @@ async fn relay( connect: &'static str, listen: &'static str, next: Pin<Box< dyn 
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::new( peer_addr, srv_stream.compat(), srv_sink.sink_compat() ).expect( "spawn peer" );
+		let mut peer = Peer::new( peer_addr, srv_stream, srv_sink ).expect( "spawn peer" );
 
 		let add  = <Add   as Service<remotes::Services>>::sid();
 		let show = <Show  as Service<remotes::Services>>::sid();

@@ -4,6 +4,8 @@ The reference implementation of the thespis remote actor model
 
 ## TODO
 
+- switch to futures_ringbuf for testing and examples
+
 - fuzz testing
 
 - WASM in tests

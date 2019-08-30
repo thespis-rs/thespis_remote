@@ -96,6 +96,7 @@ mod import
 		futures        :: { future::RemoteHandle                                                      } ,
 		pharos         :: { Pharos, Observable                                                        } ,
 		serde          :: { Serialize, Deserialize, de::DeserializeOwned                              } ,
+		futures_codec  :: { Encoder, Decoder, Framed, FramedRead, FramedWrite                         } ,
 
 		std ::
 		{
@@ -137,7 +138,7 @@ mod import
 	pub use
 	{
 		tokio :: { prelude::{ AsyncRead as TokioAsyncR, AsyncWrite as TokioAsyncW }          } ,
-		tokio :: { codec::{ Decoder, Encoder, Framed, FramedParts, FramedRead, FramedWrite } } ,
+		// tokio :: { codec::{ Decoder, Encoder, Framed, FramedParts, FramedRead, FramedWrite } } ,
 	};
 
 

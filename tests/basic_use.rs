@@ -122,7 +122,7 @@ fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::new( peer_addr.clone(), stream_a.compat(), sink_a.sink_compat() ).expect( "spawn peer" );
+		let mut peer = Peer::new( peer_addr.clone(), stream_a, sink_a ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -154,7 +154,7 @@ fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::new( peer_addr.clone(), stream_b.compat(), sink_b.sink_compat() ).expect( "spawn peer" );
+		let mut peer = Peer::new( peer_addr.clone(), stream_b, sink_b ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//
