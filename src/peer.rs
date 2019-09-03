@@ -385,13 +385,36 @@ impl<Out, MS> Observable<PeerEvent> for Peer<Out, MS>
 	/// An actor does not get dropped as long as you have adresses to it.
 	///
 	/// You can then create a new connection, frame it, and create a new peer. This will send you
-	/// a PeerEvent::ConnectionClosed if the peer is in unsalvagable state and you should drop all addresses
+	/// a PeerEvent::Closed if the peer is in unsalvagable state and you should drop all addresses
 	///
 	/// See [PeerEvent] for more details on all possible events.
 	//
 	fn observe( &mut self, queue_size: usize ) -> mpsc::Receiver<PeerEvent>
 	{
 		self.pharos.observe( queue_size )
+	}
+}
+
+
+impl<Out, MS> UnboundedObservable<PeerEvent> for Peer<Out, MS>
+
+	where Out: BoundsOut<MS> ,
+	      MS : BoundsMS      ,
+{
+
+	/// Register an observer to receive events from this connection. This will allow you to detect
+	/// Connection errors and loss. Note that the peer automatically goes in shut down mode if the
+	/// connection is closed. When that happens, you should drop all remaining addresses of this peer.
+	/// An actor does not get dropped as long as you have adresses to it.
+	///
+	/// You can then create a new connection, frame it, and create a new peer. This will send you
+	/// a PeerEvent::Closed if the peer is in unsalvagable state and you should drop all addresses
+	///
+	/// See [PeerEvent] for more details on all possible events.
+	//
+	fn observe_unbounded( &mut self ) -> mpsc::UnboundedReceiver<PeerEvent>
+	{
+		self.pharos.observe_unbounded()
 	}
 }
 

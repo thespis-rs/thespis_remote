@@ -94,7 +94,7 @@ mod import
 		std            :: { hash::{ BuildHasher, Hasher }, io::Cursor, any::Any                       } ,
 		twox_hash      :: { RandomXxHashBuilder, XxHash                                               } ,
 		futures        :: { future::RemoteHandle                                                      } ,
-		pharos         :: { Pharos, Observable                                                        } ,
+		pharos         :: { Pharos, Observable, UnboundedObservable                                   } ,
 		serde          :: { Serialize, Deserialize, de::DeserializeOwned                              } ,
 		futures_codec  :: { Encoder, Decoder, Framed, FramedRead, FramedWrite                         } ,
 
