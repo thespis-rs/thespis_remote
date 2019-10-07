@@ -39,8 +39,8 @@ impl<MS> Handler<CloseConnection> for Peer<MS> where MS: BoundsMS
 
 			match msg.remote
 			{
-				true  => self.pharos.notify( &PeerEvent::ClosedByRemote ).await,
-				false => self.pharos.notify( &PeerEvent::Closed         ).await,
+				true  => self.pharos.send( PeerEvent::ClosedByRemote ).await.expect( "pharos not closed" ),
+				false => self.pharos.send( PeerEvent::Closed         ).await.expect( "pharos not closed" ),
 			}
 
 

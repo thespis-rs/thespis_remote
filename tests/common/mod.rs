@@ -7,16 +7,16 @@ pub mod import
 {
 	pub use
 	{
-		async_runtime       :: { rt                   } ,
-		thespis             :: { *                    } ,
-		thespis_remote      :: { *                    } ,
-		thespis_impl        :: { *                    } ,
-		thespis_impl_remote :: { *, service_map, peer } ,
-		log                 :: { *                    } ,
+		async_runtime       :: { rt                                } ,
+		thespis             :: { *                                 } ,
+		thespis_remote      :: { *                                 } ,
+		thespis_impl        :: { *                                 } ,
+		thespis_impl_remote :: { *, service_map, peer              } ,
+		log                 :: { *                                 } ,
 
-		bytes               :: { Bytes, BytesMut      } ,
-		failure             :: { Fail                 } ,
-		pharos              :: { Observable           } ,
+		bytes               :: { Bytes, BytesMut                   } ,
+		failure             :: { Fail                              } ,
+		pharos              :: { Observable, ObserveConfig, Events } ,
 
 		std::
 		{
@@ -56,7 +56,7 @@ pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>                ;
 
 
 
-pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<Peer<MS>>, mpsc::Receiver<PeerEvent>)
+pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<Peer<MS>>, Events<PeerEvent>)
 {
 	// create tcp server
 	//
@@ -80,7 +80,7 @@ pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<Peer<M
 	//
 	let mut peer = Peer::new( peer_addr.clone(), stream, sink ).expect( "create peer" );
 
-	let peer_evts = peer.observe( 10 );
+	let peer_evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
 	// register service map with peer
 	//
@@ -115,7 +115,7 @@ pub async fn listen_tcp_stream( socket: &str ) ->
 
 
 
-pub async fn connect_to_tcp( socket: &str ) -> (Addr<Peer<MS>>, mpsc::Receiver<PeerEvent>)
+pub async fn connect_to_tcp( socket: &str ) -> (Addr<Peer<MS>>, Events<PeerEvent>)
 {
 	// Connect to tcp server
 	//
@@ -137,7 +137,7 @@ pub async fn connect_to_tcp( socket: &str ) -> (Addr<Peer<MS>>, mpsc::Receiver<P
 	//
 	let mut peer = Peer::new( addr.clone(), stream_a, sink_a ).expect( "spawn peer" );
 
-	let evts = peer.observe( 10 );
+	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
 	mb.start( peer ).expect( "Failed to start mailbox" );
 

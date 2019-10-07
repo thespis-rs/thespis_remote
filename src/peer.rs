@@ -180,7 +180,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 			relayed      : HashMap::new()             ,
 			relays       : HashMap::new()             ,
 			listen_handle: Some( handle )             ,
-			pharos       : Pharos::new()              ,
+			pharos       : Pharos::default()          ,
 		})
 	}
 
@@ -194,7 +194,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 		&mut self                                                        ,
 		     services    : Vec<&'static <MS as MultiService>::ServiceID> ,
 		     peer        : Addr<Self>                                    ,
-		     peer_events : mpsc::Receiver<PeerEvent>                     ,
+		     peer_events : Events<PeerEvent>                             ,
 
 	) -> Result<(), ThesRemoteErr>
 
@@ -363,6 +363,7 @@ impl<MS> Handler<MS> for Peer<MS> where MS: BoundsMS,
 //
 impl<MS> Observable<PeerEvent> for Peer<MS> where MS: BoundsMS
 {
+	type Error = pharos::Error;
 
 	/// Register an observer to receive events from this connection. This will allow you to detect
 	/// Connection errors and loss. Note that the peer automatically goes in shut down mode if the
@@ -374,9 +375,9 @@ impl<MS> Observable<PeerEvent> for Peer<MS> where MS: BoundsMS
 	///
 	/// See [PeerEvent] for more details on all possible events.
 	//
-	fn observe( &mut self, queue_size: usize ) -> mpsc::Receiver<PeerEvent>
+	fn observe( &mut self, config: ObserveConfig<PeerEvent> ) -> Result< Events<PeerEvent>, pharos::Error >
 	{
-		self.pharos.observe( queue_size )
+		self.pharos.observe( config )
 	}
 }
 

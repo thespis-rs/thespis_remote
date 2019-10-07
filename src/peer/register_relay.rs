@@ -13,7 +13,7 @@ pub struct RegisterRelay<MS>
 {
 	pub services   : Vec<&'static <MS as MultiService>::ServiceID> ,
 	pub peer       : Addr< Peer<MS> >                              ,
-	pub peer_events: mpsc::Receiver<PeerEvent>                     ,
+	pub peer_events: Events<PeerEvent>                             ,
 }
 
 impl<MS> Message for RegisterRelay<MS> where MS: BoundsMS

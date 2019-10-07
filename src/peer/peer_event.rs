@@ -87,7 +87,7 @@ impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
 					self.relays.remove( &re.id );
 
 					let shine = PeerEvent::RelayDisappeared( re.id );
-					self.pharos.notify( &shine ).await;
+					self.pharos.send( shine ).await.expect( "pharos not closed" );
 				}
 
 

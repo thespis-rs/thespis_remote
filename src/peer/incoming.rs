@@ -31,7 +31,7 @@ async move
 		{
 			error!( "Error extracting MultiService from stream: {:#?}", error );
 
-			self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
+			self.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
 
 			// Send an error back to the remote peer and close the connection
 			//
@@ -87,7 +87,7 @@ async move
 		{
 			error!( "Fail to get service_id from incoming frame: {}", err );
 
-			self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
+			self.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
 
 			// Send an error back to the remote peer and close the connection
 			//
@@ -105,7 +105,7 @@ async move
 		{
 			error!( "Fail to get conn_id from incoming frame: {}", err );
 
-			self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
+			self.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
 
 			// Send an error back to the remote peer and close the connection
 			//
@@ -136,7 +136,7 @@ async move
 				self.send_err( cid_null, &err, false ).await;
 
 				let evt = PeerEvent::Error( err );
-				self.pharos.notify( &evt ).await;
+				self.pharos.send( evt ).await.expect( "pharos not closed" );
 
 				return
 			}
@@ -148,7 +148,7 @@ async move
 		{
 			error!( "Fail to get codec from incoming frame: {}", err );
 
-			self.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
+			self.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
 
 			// Send an error back to the remote peer and close the connection
 			//
@@ -230,7 +230,7 @@ async fn remote_conn_err<MS>( peer: &mut Peer<MS>, msg: Bytes, cid: <MS as Multi
 		// Notify observers
 		//
 		let shine = PeerEvent::RemoteError( err.clone() );
-		peer.pharos.notify( &shine ).await;
+		peer.pharos.send( shine ).await.expect( "pharos not closed" );
 
 
 		// We need to report the connection error to the caller
@@ -290,7 +290,7 @@ async fn incoming_send<MS>
 				{
 					ThesRemoteErrKind::Deserialize(..) =>
 					{
-						peer.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
+						peer.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
 
 						// Send an error back to the remote peer and close the connection
 						//
@@ -301,7 +301,10 @@ async fn incoming_send<MS>
 					  ThesRemoteErrKind::ThesErr (..) // This is a spawn error
 					| ThesRemoteErrKind::Downcast(..) =>
 					{
-						peer.pharos.notify( &PeerEvent::Error( ConnectionError::InternalServerError ) ).await;
+						peer.pharos.send( PeerEvent::Error( ConnectionError::InternalServerError ) ).await
+
+							.expect( "pharos not closed" )
+						;
 
 						// Send an error back to the remote peer and close the connection
 						//
@@ -318,7 +321,7 @@ async fn incoming_send<MS>
 						peer.send_err( cid_null, &err, false ).await;
 
 						let evt = PeerEvent::Error( err );
-						peer.pharos.notify( &evt ).await;
+						peer.pharos.send( evt ).await.expect( "pharos not closed" );
 
 					},
 
@@ -357,7 +360,7 @@ async fn incoming_send<MS>
 			peer.send_err( cid_null, &err, false ).await;
 
 			let err = PeerEvent::Error( err );
-			peer.pharos.notify( &err ).await;
+			peer.pharos.send( err ).await.expect( "pharos not closed" );
 		};
 	}
 
@@ -374,7 +377,7 @@ async fn incoming_send<MS>
 		peer.send_err( cid_null, &err, false ).await;
 
 		let err = PeerEvent::Error( err );
-		peer.pharos.notify( &err ).await;
+		peer.pharos.send( err ).await.expect( "pharos not closed" );
 	}
 }
 
@@ -419,7 +422,7 @@ async fn incoming_call<MS>
 					{
 						ThesRemoteErrKind::Deserialize(..) =>
 						{
-							peer.pharos.notify( &PeerEvent::Error( ConnectionError::Deserialize ) ).await;
+							peer.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
 
 							// Send an error back to the remote peer and close the connection
 							//
@@ -435,16 +438,17 @@ async fn incoming_call<MS>
 							//
 							peer.send_err( cid, &err, false ).await;
 
-							let evt = PeerEvent::Error( err );
-							peer.pharos.notify( &evt ).await;
-
+							peer.pharos.send( PeerEvent::Error( err ) ).await.expect( "pharos not closed" );
 						},
 
 
 						  ThesRemoteErrKind::ThesErr (..) // This is a spawn error
 						| ThesRemoteErrKind::Downcast(..) =>
 						{
-							peer.pharos.notify( &PeerEvent::Error( ConnectionError::InternalServerError ) ).await;
+							peer.pharos.send( PeerEvent::Error( ConnectionError::InternalServerError ) ).await
+
+								.expect( "pharos not closed" )
+							;
 
 							// Send an error back to the remote peer and close the connection
 							//
@@ -594,7 +598,7 @@ async fn incoming_call<MS>
 			peer.send_err( cid, &err, false ).await;
 
 			let err = PeerEvent::Error( err );
-			peer.pharos.notify( &err ).await;
+			peer.pharos.send( err ).await.expect( "pharos not closed" );
 		}
 	}
 
