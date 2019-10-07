@@ -88,10 +88,6 @@ macro_rules! service_map
 	//
 	namespace: $ns: ident;
 
-	/// The type used for [Peer]. This is because [Peer] is generic, thus you need to specify the exact type.
-	//
-	peer_type: $peer_type: path;
-
 	/// The type you want to use that implements [thespis::MultiService] (the wire format).
 	//
 	multi_service: $ms_type: path;
@@ -112,7 +108,7 @@ use
 	// we should not have a leading comma before the next item, but if the comma is after the closing
 	// parenthesis, it will not output a trailing comma, which will be needed to separate from the next item.
 	//
-	super :: { $( $services, )+ $peer_type, $ms_type } ,
+	super :: { $( $services, )+ Peer, $ms_type       } ,
 	$crate:: { *                                     } ,
 	std   :: { pin::Pin, collections::HashMap, fmt   } ,
 
@@ -288,7 +284,7 @@ impl Services
 	/// Creates a recipient to a Service type for a remote actor, which can be used in exactly the
 	/// same way as if the actor was local.
 	//
-	pub fn recipient<S>( peer: Addr<$peer_type> ) -> impl Recipient<S>
+	pub fn recipient<S>( peer: Addr<Peer<$ms_type>> ) -> impl Recipient<S>
 
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -324,7 +320,7 @@ impl Services
 		;
 
 
-		let message = des( &msg.mesg() )
+		let message: S = des( &msg.mesg() )
 
 			.context( ThesRemoteErrKind::Deserialize( "Deserialize incoming remote message".into() ))?
 		;
@@ -369,7 +365,7 @@ impl Services
 			.ok_or( ThesRemoteErrKind::Downcast( "Receiver in service_macro".into() ))?
 		;
 
-		let message = des( &msg.mesg() )
+		let message: S = des( &msg.mesg() )
 
 			.context( ThesRemoteErrKind::Deserialize( "Deserialize incoming remote message".into() ))?
 		;
@@ -397,14 +393,15 @@ impl Services
 				Err(_   ) => return ,
 			};
 
+			let bytes = serde_cbor::to_vec( &resp ).map_err( |e| { error!( "{:?}", e ); ConnectionError::Serialize } );
 
 			// Serialize the response
 			//
 			let serialized = match Self::handle_err
 			(
-				&mut return_addr                                                                               ,
-				&cid                                                                                           ,
-				serde_cbor::to_vec( &resp ).map_err( |e| { error!( "{:?}", e ); ConnectionError::Serialize } ) ,
+				&mut return_addr  ,
+				&cid              ,
+				bytes             ,
 
 			).await
 			{
@@ -454,7 +451,7 @@ impl Services
 			Ok (t) => Ok(t),
 			Err(e) =>
 			{
-				let ms  = <$peer_type>::prep_error( cid.clone(), &e );
+				let ms  = <Peer<$ms_type>>::prep_error( cid.clone(), &e );
 				let res = peer.send( ms ).await;
 
 				if let Err( ref err ) = res { error!( "Failed to send error back to remote: {:?}", err ) };
@@ -599,13 +596,13 @@ impl ServiceMap<$ms_type> for Services
 //
 pub struct ServicesRecipient
 {
-	peer: Pin<Box< Addr<$peer_type> >>
+	peer: Pin<Box< Addr<Peer<$ms_type>> >>
 }
 
 
 impl ServicesRecipient
 {
-	pub fn new( peer: Addr<$peer_type> ) -> Self
+	pub fn new( peer: Addr<Peer<$ms_type>> ) -> Self
 	{
 		Self { peer: Box::pin( peer ) }
 	}
@@ -744,7 +741,7 @@ impl<S> Recipient<S> for ServicesRecipient
 	//
 	fn actor_id( &self ) -> usize
 	{
-		< Addr<$peer_type> as Recipient<$ms_type> >::actor_id( &self.peer )
+		< Addr<Peer<$ms_type>> as Recipient<$ms_type> >::actor_id( &self.peer )
 	}
 }
 
@@ -763,19 +760,19 @@ impl<S> Sink<S> for ServicesRecipient
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		<Addr<$peer_type> as Sink<$ms_type>>::poll_ready( self.peer.as_mut(), cx )
+		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::poll_ready( self.peer.as_mut(), cx )
 	}
 
 
 	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
-		<Addr<$peer_type> as Sink<$ms_type>>::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? )
+		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? )
 	}
 
 
 	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		<Addr<$peer_type> as Sink<$ms_type>>::poll_flush( self.peer.as_mut(), cx )
+		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::poll_flush( self.peer.as_mut(), cx )
 	}
 
 

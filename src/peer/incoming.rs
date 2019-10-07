@@ -15,10 +15,7 @@ impl<MS: 'static + MultiService> Message for Incoming<MS>
 
 /// Handler for incoming messages
 //
-impl<Out, MS> Handler<Incoming<MS>> for Peer<Out, MS>
-
-	where Out: BoundsOut<MS>,
-	      MS : BoundsMS     ,
+impl<MS> Handler<Incoming<MS>> for Peer<MS> where MS: BoundsMS,
 {
 fn handle( &mut self, incoming: Incoming<MS> ) -> Return<()>
 {
@@ -217,10 +214,9 @@ async move
 // TODO: when we sent a Call, it will have the cid in frame, so we should correctly react
 // to that and forward it to the original caller.
 //
-async fn remote_conn_err<Out, MS>( peer: &mut Peer<Out, MS>, msg: Bytes, cid: <MS as MultiService>::ConnID )
+async fn remote_conn_err<MS>( peer: &mut Peer<MS>, msg: Bytes, cid: <MS as MultiService>::ConnID )
 
-	where Out: BoundsOut<MS>,
-	      MS : BoundsMS     ,
+	where MS: BoundsMS
 
 {
 	// We can correctly interprete the error
@@ -260,16 +256,15 @@ async fn remote_conn_err<Out, MS>( peer: &mut Peer<Out, MS>, msg: Bytes, cid: <M
 
 
 
-async fn incoming_send<Out, MS>
+async fn incoming_send<MS>
 (
-	peer    : &mut Peer<Out, MS>              ,
+	peer    : &mut Peer<MS>                   ,
 	sid     : <MS as MultiService>::ServiceID ,
 	cid_null: <MS as MultiService>::ConnID    ,
 	frame   : MS                              ,
 )
 
-	where Out: BoundsOut<MS>,
-   	   MS : BoundsMS     ,
+	where MS: BoundsMS,
 
 {
 	trace!( "Incoming Send" );
@@ -385,17 +380,15 @@ async fn incoming_send<Out, MS>
 
 
 
-async fn incoming_call<Out, MS>
+async fn incoming_call<MS>
 (
-	peer    : &mut Peer<Out, MS>              ,
+	peer    : &mut Peer<MS>                   ,
 	cid     : <MS as MultiService>::ConnID    ,
 	sid     : <MS as MultiService>::ServiceID ,
 	frame   : MS                              ,
 )
 
-
-	where Out: BoundsOut<MS>,
-   	   MS : BoundsMS     ,
+	where MS: BoundsMS,
 
 {
 	trace!( "Incoming Call" );
@@ -537,7 +530,7 @@ async fn incoming_call<Out, MS>
 								{
 									warn!( "Got ERROR back from relayed call, error to caller: {:?}", &e );
 
-									let err = Peer::<Out, MS>::prep_error( cid, &e );
+									let err = Peer::<MS>::prep_error( cid, &e );
 
 									// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 									//
@@ -557,7 +550,7 @@ async fn incoming_call<Out, MS>
 
 							// Send an error back to the remote peer
 							//
-							let err = Peer::<Out, MS>::prep_error( cid, &ConnectionError::LostRelayBeforeResponse );
+							let err = Peer::<MS>::prep_error( cid, &ConnectionError::LostRelayBeforeResponse );
 
 
 							// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
@@ -576,7 +569,7 @@ async fn incoming_call<Out, MS>
 						// Send an error back to the remote peer
 						// We do not include
 						//
-						let err = Peer::<Out, MS>::prep_error( cid, &ConnectionError::FailedToRelay(sid.into().to_vec()) );
+						let err = Peer::<MS>::prep_error( cid, &ConnectionError::FailedToRelay(sid.into().to_vec()) );
 
 
 						// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.

@@ -51,13 +51,12 @@ pub mod import
 pub use actors::*;
 
 pub type TheSink = SplitSink< Framed< TcpStream, MulServTokioCodec<MS> >, MS> ;
-pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>     ;
-pub type MyPeer  = Peer<TheSink, MS>                               ;
+pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>                ;
 
 
 
 
-pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<MyPeer>, mpsc::Receiver<PeerEvent>)
+pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<Peer<MS>>, mpsc::Receiver<PeerEvent>)
 {
 	// create tcp server
 	//
@@ -74,7 +73,7 @@ pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<MyPeer
 
 	// Create mailbox for peer
 	//
-	let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
+	let mb_peer  : Inbox<Peer<MS>> = Inbox::new()                  ;
 	let peer_addr                = Addr ::new( mb_peer.sender() );
 
 	// create peer with stream/sink
@@ -116,7 +115,7 @@ pub async fn listen_tcp_stream( socket: &str ) ->
 
 
 
-pub async fn connect_to_tcp( socket: &str ) -> (Addr<MyPeer>, mpsc::Receiver<PeerEvent>)
+pub async fn connect_to_tcp( socket: &str ) -> (Addr<Peer<MS>>, mpsc::Receiver<PeerEvent>)
 {
 	// Connect to tcp server
 	//
@@ -131,7 +130,7 @@ pub async fn connect_to_tcp( socket: &str ) -> (Addr<MyPeer>, mpsc::Receiver<Pee
 
 	// Create mailbox for peer
 	//
-	let mb  : Inbox<MyPeer> = Inbox::new()             ;
+	let mb  : Inbox<Peer<MS>> = Inbox::new()             ;
 	let addr                = Addr ::new( mb.sender() );
 
 	// create peer with stream/sink + service map
@@ -170,7 +169,6 @@ pub async fn connect_return_stream( socket: &str ) ->
 service_map!
 (
 	namespace:     remotes   ;
-	peer_type:     MyPeer    ;
 	multi_service: MS        ;
 	services     : Add, Show ;
 );

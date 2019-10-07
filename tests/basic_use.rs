@@ -94,7 +94,6 @@ impl Handler< Show > for Parallel
 service_map!
 (
 	namespace     : parallel ;
-	peer_type     : MyPeer   ;
 	multi_service : MS       ;
 	services      : Show     ;
 );
@@ -117,8 +116,8 @@ fn parallel()
 
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
-		let peer_addr                = Addr ::new( mb_peer.sender() );
+		let mb_peer  : Inbox<Peer<MS>> = Inbox::new()                  ;
+		let peer_addr                  = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink
 		//
@@ -149,8 +148,8 @@ fn parallel()
 
 		// Create mailbox for peer
 		//
-		let     mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
-		let mut peer_addr                = Addr ::new( mb_peer.sender() );
+		let     mb_peer  : Inbox<Peer<MS>> = Inbox::new()                  ;
+		let mut peer_addr                  = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink
 		//

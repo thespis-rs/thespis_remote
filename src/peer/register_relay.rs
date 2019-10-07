@@ -6,21 +6,17 @@ use crate :: { import::*, * };
 ///
 /// MS must be of the same type as the type parameter on [Peer].
 //
-pub struct RegisterRelay<Out, MS>
+pub struct RegisterRelay<MS>
 
-	where Out: BoundsOut<MS>,
-	      MS : BoundsMS     ,
+	where MS: BoundsMS,
 
 {
 	pub services   : Vec<&'static <MS as MultiService>::ServiceID> ,
-	pub peer       : Addr<Peer<Out, MS>>                           ,
+	pub peer       : Addr< Peer<MS> >                              ,
 	pub peer_events: mpsc::Receiver<PeerEvent>                     ,
 }
 
-impl<MS, Out> Message for RegisterRelay<Out, MS>
-
-	where Out: BoundsOut<MS>,
-	      MS : BoundsMS     ,
+impl<MS> Message for RegisterRelay<MS> where MS: BoundsMS
 
 {
 	type Return = Result<(), ThesRemoteErr>;
@@ -46,14 +42,11 @@ impl<MS, Out> Message for RegisterRelay<Out, MS>
 // - store in a hashmap, but put the peer address in an Rc? + a unique id (addr doesn't have Eq)
 //
 //
-impl<Out, MS> Handler< RegisterRelay<Out, MS> > for Peer<Out, MS>
-
-	where Out: BoundsOut<MS>,
-	      MS : BoundsMS     ,
+impl<MS> Handler< RegisterRelay<MS> > for Peer<MS> where MS: BoundsMS
 {
-	fn handle( &mut self, msg: RegisterRelay<Out, MS> ) -> Return< <RegisterRelay<Out, MS> as Message>::Return >
+	fn handle( &mut self, msg: RegisterRelay<MS> ) -> Return< <RegisterRelay<MS> as Message>::Return >
 	{
-		trace!( "peer: starting Handler<RegisterRelay<Out, MS>>" );
+		trace!( "peer: starting Handler<RegisterRelay<MS>>" );
 
 		let RegisterRelay { services, peer, peer_events } = msg;
 

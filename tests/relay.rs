@@ -35,8 +35,8 @@ async fn relay( connect: &'static str, listen: &'static str, next: Pin<Box< dyn 
 
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<MyPeer> = Inbox::new()                  ;
-		let peer_addr                = Addr ::new( mb_peer.sender() );
+		let mb_peer  : Inbox<Peer<MS>> = Inbox::new()                  ;
+		let peer_addr                  = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink + service map
 		//

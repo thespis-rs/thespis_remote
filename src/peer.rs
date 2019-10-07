@@ -76,15 +76,11 @@ where T: 'static + Message<Return=()> + MultiService<CodecAlg=Codecs> + Send + f
 //
 #[ derive( Actor ) ]
 //
-pub struct Peer<Out, MS>
-
-	where Out: BoundsOut<MS> ,
-	      MS : BoundsMS      ,
-
+pub struct Peer<MS> where MS: BoundsMS
 {
 	/// The sink
 	//
-	outgoing      : Option< Out >,
+	outgoing      : Option< Box<dyn BoundsOut<MS> > >,
 
 	/// This is needed so that the loop listening to the incoming stream can send messages to this actor.
 	/// The loop runs in parallel of the rest of the actor, yet processing incoming messages need mutable
@@ -132,15 +128,11 @@ pub struct Peer<Out, MS>
 
 
 
-impl<Out, MS> Peer<Out, MS>
-
-	where Out: BoundsOut<MS> ,
-	      MS : BoundsMS      ,
-
+impl<MS> Peer<MS> where MS : BoundsMS,
 {
 	/// Create a new peer to represent a connection to some remote.
 	//
-	pub fn new( addr: Addr<Self>, incoming: impl BoundsIn<MS>, outgoing: Out ) -> Result< Self, ThesRemoteErr >
+	pub fn new( addr: Addr<Self>, incoming: impl BoundsIn<MS>, outgoing: impl BoundsOut<MS> ) -> Result< Self, ThesRemoteErr >
 	{
 		trace!( "create peer" );
 
@@ -180,15 +172,15 @@ impl<Out, MS> Peer<Out, MS>
 
 		Ok( Self
 		{
-			outgoing     : Some( outgoing ) ,
-			addr         : Some( addr )     ,
-			responses    : HashMap::new()   ,
-			services     : HashMap::new()   ,
-			service_maps : HashMap::new()   ,
-			relayed      : HashMap::new()   ,
-			relays       : HashMap::new()   ,
-			listen_handle: Some( handle )   ,
-			pharos       : Pharos::new()    ,
+			outgoing     : Some( Box::new(outgoing) ) ,
+			addr         : Some( addr )               ,
+			responses    : HashMap::new()             ,
+			services     : HashMap::new()             ,
+			service_maps : HashMap::new()             ,
+			relayed      : HashMap::new()             ,
+			relays       : HashMap::new()             ,
+			listen_handle: Some( handle )             ,
+			pharos       : Pharos::new()              ,
 		})
 	}
 
@@ -207,7 +199,7 @@ impl<Out, MS> Peer<Out, MS>
 	) -> Result<(), ThesRemoteErr>
 
 	{
-		trace!( "peer: starting Handler<RegisterRelay<Out, MS>>" );
+		trace!( "peer: starting Handler<RegisterRelay<MS>>" );
 
 		// When called from a RegisterRelay message, it's possible that in the mean time
 		// the connection closed. We should immediately return a ConnectionClosed error.
@@ -351,11 +343,7 @@ impl<Out, MS> Peer<Out, MS>
 // Put an outgoing multiservice message on the wire.
 // TODO: why do we not return the error?
 //
-impl<Out, MS> Handler<MS> for Peer<Out, MS>
-
-	where Out: BoundsOut<MS> ,
-	      MS : BoundsMS      ,
-
+impl<MS> Handler<MS> for Peer<MS> where MS: BoundsMS,
 {
 	fn handle( &mut self, msg: MS ) -> Return<()>
 	{
@@ -373,10 +361,7 @@ impl<Out, MS> Handler<MS> for Peer<Out, MS>
 
 // Pharos, shine!
 //
-impl<Out, MS> Observable<PeerEvent> for Peer<Out, MS>
-
-	where Out: BoundsOut<MS> ,
-	      MS : BoundsMS      ,
+impl<MS> Observable<PeerEvent> for Peer<MS> where MS: BoundsMS
 {
 
 	/// Register an observer to receive events from this connection. This will allow you to detect
@@ -395,37 +380,7 @@ impl<Out, MS> Observable<PeerEvent> for Peer<Out, MS>
 	}
 }
 
-
-impl<Out, MS> UnboundedObservable<PeerEvent> for Peer<Out, MS>
-
-	where Out: BoundsOut<MS> ,
-	      MS : BoundsMS      ,
-{
-
-	/// Register an observer to receive events from this connection. This will allow you to detect
-	/// Connection errors and loss. Note that the peer automatically goes in shut down mode if the
-	/// connection is closed. When that happens, you should drop all remaining addresses of this peer.
-	/// An actor does not get dropped as long as you have adresses to it.
-	///
-	/// You can then create a new connection, frame it, and create a new peer. This will send you
-	/// a PeerEvent::Closed if the peer is in unsalvagable state and you should drop all addresses
-	///
-	/// See [PeerEvent] for more details on all possible events.
-	//
-	fn observe_unbounded( &mut self ) -> mpsc::UnboundedReceiver<PeerEvent>
-	{
-		self.pharos.observe_unbounded()
-	}
-}
-
-
-
-
-
-impl<Out, MS> ServiceProvider<MS> for Peer<Out, MS>
-
-	where Out: BoundsOut<MS> ,
-	      MS : BoundsMS      ,
+impl<MS> ServiceProvider<MS> for Peer<MS> where MS: BoundsMS
 {
 	/// Register a service map as the handler for service ids that come in over the network. Normally you should
 	/// not call this directly, but use [´thespis_iface_remote::ServiceMap::register_with_peer´].

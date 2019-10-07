@@ -28,11 +28,7 @@ pub struct CloseConnection
 
 impl Message for CloseConnection { type Return = (); }
 
-impl<Out, MS> Handler<CloseConnection> for Peer<Out, MS>
-
-	where Out: BoundsOut<MS> ,
-	      MS : BoundsMS      ,
-
+impl<MS> Handler<CloseConnection> for Peer<MS> where MS: BoundsMS
 {
 	fn handle( &mut self, msg: CloseConnection ) -> Return<()>
 	{

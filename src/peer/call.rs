@@ -37,10 +37,7 @@ impl<MS: MultiService> Call<MS>
 /// If the connection gets dropped before the answer comes, the onshot::Receiver will err with Cancelled.
 /// If the remote fails to process the message, you will get a ConnectionError out of the channel.
 //
-impl<Out, MS> Handler<Call<MS>> for Peer<Out, MS>
-
-	where Out: BoundsOut<MS>,
-	      MS : BoundsMS     ,
+impl<MS> Handler<Call<MS>> for Peer<MS> where MS: BoundsMS,
 {
 	fn handle( &mut self, call: Call<MS> ) -> Return< <Call<MS> as Message>::Return >
 	{

@@ -38,10 +38,7 @@ impl Message for RelayEvent
 /// Handler for events from relays.
 /// If we notice Closed or ClosedByRemote on relays, we will stop relaying their services.
 //
-impl<Out, MS> Handler<RelayEvent> for Peer<Out, MS>
-
-	where Out: BoundsOut<MS>,
-	      MS : BoundsMS     ,
+impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
 {
 	fn handle( &mut self, re: RelayEvent ) -> Return< <RelayEvent as Message>::Return >
 	{

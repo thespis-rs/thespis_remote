@@ -23,7 +23,6 @@ mod a
 	service_map!
 	(
 		namespace:     remotes   ;
-		peer_type:     MyPeer    ;
 		multi_service: MS        ;
 		services     : Add, Show ;
 	);
@@ -32,7 +31,6 @@ mod a
 	service_map!
 	(
 		namespace:     others  ;
-		peer_type:     MyPeer  ;
 		multi_service: MS      ;
 		services     : Add     ;
 	);
@@ -45,7 +43,6 @@ mod b
 	service_map!
 	(
 		namespace:     remotes ;
-		peer_type:     MyPeer  ;
 		multi_service: MS      ;
 		services     : Add     ;
 	);
