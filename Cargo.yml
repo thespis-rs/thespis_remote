@@ -16,7 +16,7 @@ lib:
 
 features:
 
-  default: [ tokio ]
+  default: []
 
 
 
@@ -27,7 +27,7 @@ dependencies:
   thespis_remote      : { path: ../thespis_iface_remote }
   async_runtime       : { version: ^0.3, default-features: false, package: naja_async_runtime }
   failure             : ^0.1
-  futures-preview     : { version: ^0.3.0-alpha.16, features: [ std, compat, nightly ], default-features: false }
+  futures-preview     : { version: ^0.3.0-alpha.16, features: [ std, compat ], default-features: false }
   log                 : ^0.4
   simple_logger       : ^1
   regex               : { version: ^1, features: [ pattern ] }
@@ -60,9 +60,9 @@ dependencies:
 
 dev-dependencies:
 
-  criterion         : { version: ^0.3           , features: [ real_blackbox ]                                 }
-  futures-preview   : { version: ^0.3.0-alpha.16, default-features: false, features: [ std, compat, nightly ] }
-  tokio             : { version: ^0.1 , default-features: false, features: [ tcp, codec ] }
+  criterion         : { version: ^0.3        , features: [ real_blackbox ]                        }
+  futures-preview   : { version: ^0.3.0-alpha, default-features: false, features: [ std, compat ] }
+  tokio             : { version: ^0.1 , default-features: false, features: [ tcp, codec ]            }
 
   pretty_assertions : ^0.6
   flexi_logger      : ^0.14

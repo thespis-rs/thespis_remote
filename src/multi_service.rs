@@ -11,8 +11,8 @@ pub use
 
 
 
-#[ cfg( feature = "tokio" ) ] pub mod tokio_codec   ;
-#[ cfg( feature = "tokio" ) ] pub use tokio_codec::*;
+pub mod tokio_codec   ;
+pub use tokio_codec::*;
 
 use crate::{ import::* };
 
