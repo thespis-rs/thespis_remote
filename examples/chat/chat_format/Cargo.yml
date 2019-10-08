@@ -16,11 +16,5 @@ dependencies:
   thespis_impl_remote  : { path: ../../../../thespis_impl_remote, default-features: false }
   bytes                : { version: ^0.4                                                 }
   futures-preview      : { version: ^0.3.0-alpha.16, default-features: false, features: [ std, compat, nightly ] }
-  futures_codec        : ^0.2
+  futures_codec        : ^0.3
 
-
-patch:
-
-  crates-io:
-
-    futures_codec : { git: "https://github.com/matthunz/futures-codec.git" }

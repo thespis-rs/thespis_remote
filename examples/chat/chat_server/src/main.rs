@@ -13,39 +13,35 @@ use user::*;
 
 mod import
 {
-	pub use
+	pub(crate) use
 	{
-		chat_format         :: { ChatMsg, SetNick, Join, ChatErr, ChatErrKind, ServerMsg, Welcome } ,
-		chrono              :: { Utc                                                        } ,
-		futures             :: { join, select, sink::SinkExt, future::{ join_all, TryFutureExt }   } ,
-		futures_cbor_codec  :: { Codec                                                      } ,
-		futures_codec       :: { Framed, FramedRead, FramedWrite                            } ,
-		locks::rwlock       :: { RwLock, read::FutureReadable, write::FutureWriteable       } ,
-		log                 :: { *                                                          } ,
-		pin_utils           :: { pin_mut                                                    } ,
-		regex               :: { Regex                                                      } ,
-		std                 :: { env, collections::HashMap, net::SocketAddr, error::Error as ErrorTrait, future::Future } ,
-		std::sync           :: { Arc, atomic::{ AtomicUsize, Ordering }                     } ,
-		warp                :: { Filter                                                     } ,
-		ws_stream           :: { *                                                          } ,
-		thespis             :: { Mailbox, Message, Actor, Handler, Recipient, Return, Address } ,
-		thespis_impl        :: { Addr, Inbox, Receiver } ,
-		thespis_impl_remote :: { MulServTokioCodec, MultiServiceImpl, PeerEvent, service_map, peer::Peer, ConnID, ServiceID, Codecs } ,
-		thespis_remote      :: { ServiceMap } ,
-		pharos              :: { UnboundedObservable                                        } ,
-		ws_stream           :: { WsStream, WarpWebSocket } ,
+		chat_format           :: { ChatMsg, SetNick, Join, ChatErr, ChatErrKind, ServerMsg, Welcome } ,
+		chat_format           :: { client_map, server_map                                           } ,
+		chrono                :: { Utc                                                              } ,
+		futures_codec         :: { Framed                                                           } ,
+		log                   :: { *                                                                } ,
+		pin_utils             :: { pin_mut                                                          } ,
+		regex                 :: { Regex                                                            } ,
+		std                   :: { env, collections::HashMap, net::SocketAddr                       } ,
+		warp                  :: { Filter                                                           } ,
+		ws_stream_tungstenite :: { *                                                                } ,
+		tokio_tungstenite     :: { WebSocketStream, accept_async                                    } ,
+		thespis               :: { Mailbox, Message, Actor, Handler, Recipient, Return, Address     } ,
+		thespis_impl          :: { Addr, Inbox, Receiver                                            } ,
+		thespis_impl_remote   :: { MulServTokioCodec, MultiServiceImpl, PeerEvent                   } ,
+		thespis_impl_remote   :: { peer::Peer, ConnID, ServiceID, Codecs                            } ,
+		thespis_remote        :: { ServiceMap                                                       } ,
+		pharos                :: { Observable, ObserveConfig                                        } ,
+		tokio01               :: { net::{ TcpListener, TcpStream }                                  } ,
+		futures01             :: { future::{ Future as Future01, ok }                               } ,
 
 		futures::
 		{
-			channel :: { mpsc                                                                    } ,
-			compat  :: { Compat01As03Sink, Stream01CompatExt, Sink01CompatExt, Future01CompatExt } ,
-			stream  :: { StreamExt, SplitSink, SplitStream                                       } ,
-			future  :: { FutureExt                                                               } ,
-		},
-
-		futures ::
-		{
-			channel::mpsc::{ unbounded, UnboundedSender } ,
+			select,
+			compat  :: { Stream01CompatExt, Future01CompatExt } ,
+			stream  :: { StreamExt, SplitSink                 } ,
+			sink    :: { SinkExt                              } ,
+			future  :: { FutureExt, TryFutureExt              } ,
 		},
 	};
 }
@@ -55,60 +51,18 @@ use import::*;
 use server::ConnectionClosed;
 
 
-pub type TheSink    = SplitSink< Framed< WsStream<WarpWebSocket>, MulServTokioCodec<MS> >, MS> ;
-pub type MS         = MultiServiceImpl<ServiceID, ConnID, Codecs>                              ;
-pub type ClientConn = Peer<TheSink, MS>                                                        ;
+pub type TheSink    = SplitSink< Framed< WsStream<WebSocketStream<TcpStream>>, MulServTokioCodec<MS> >, MS> ;
+pub type MS         = MultiServiceImpl<ServiceID, ConnID, Codecs>                                           ;
 
-
-service_map!
-(
-	namespace    : server_map             ;
-	peer_type    : ClientConn             ;
-	multi_service: MS                     ;
-	services     : Join, SetNick, ChatMsg ;
-);
 
 
 fn main()
 {
-
-
-
 	flexi_logger::Logger::with_str( "chat_server=trace, ws_stream=error, tokio=warn" ).start().unwrap();
 
-	// Create mailbox for peer
-	//
-	let mb_svr  : Inbox<Server> = Inbox::new()                 ;
-	let sv_addr                 = Addr ::new( mb_svr.sender() );
+	warp::spawn( accept_ws().unit_error().boxed().compat() );
 
-	let server = Server::new();
-
-	tokio::spawn( mb_svr.start_fut( server ).unit_error().boxed().compat() );
-
-	let sv_addr = warp::any().map( move || sv_addr.clone() );
-
-	// GET /chat -> websocket upgrade
-	//
-	let chat = warp::path( "chat" )
-
-		// The `ws2()` filter will prepare Websocket handshake...
-		//
-		.and( warp::ws2()          )
-		.and( warp::addr::remote() )
-		.and( sv_addr              )
-
-		.map( |ws: warp::ws::Ws2, peer_addr: Option<SocketAddr>, sv_addr|
-		{
-			// This will call our function if the handshake succeeds.
-			//
-			ws.on_upgrade( move |socket|
-
-				handle_conn( WarpWebSocket::new(socket), peer_addr.expect( "need peer_addr" ), sv_addr )
-
-					.unit_error().boxed().compat()
-			)
-		})
-	;
+	// let sv_addr = warp::any().map( move || sv_addr.clone() );
 
 	// GET / -> index html
 	//
@@ -116,7 +70,7 @@ fn main()
 	let style   = warp::path( "style.css" ).and( warp::fs::file( "../chat_client/style.css"  ) );
 	let statics = warp::path( "pkg"       ).and( warp::fs::dir ( "../chat_client/pkg"        ) );
 
-	let routes  = index.or( style ).or( chat ).or( statics );
+	let routes  = index.or( style ).or( statics );
 
 
 	let addr: SocketAddr = env::args().nth(1).unwrap_or( "127.0.0.1:3412".to_string() ).parse().expect( "valid addr" );
@@ -127,10 +81,36 @@ fn main()
 
 
 
+async fn accept_ws()
+{
+	// Create mailbox for peer
+	//
+	let mb_svr  : Inbox<Server> = Inbox::new()                 ;
+	let sv_addr                 = Addr ::new( mb_svr.sender() );
+
+	let server = Server::new();
+
+	warp::spawn( mb_svr.start_fut( server ).unit_error().boxed().compat() );
+
+
+	let socket = TcpListener::bind( &"127.0.0.1:3012".parse().unwrap() ).unwrap();
+	let mut connections = socket.incoming().compat();
+
+	while let Some( tcp ) = connections.next().await.transpose().expect( "tcp connection" )
+	{
+		let peer_addr = tcp.peer_addr().expect( "peer_addr" );
+		let s = ok( tcp ).and_then( accept_async ).compat().await.expect( "ws handshake" );
+
+		warp::spawn( handle_conn( s, peer_addr, sv_addr.clone() ).unit_error().boxed().compat() );
+	}
+}
+
+
+
 // Runs once for each incoming connection, ends when the stream closes or sending causes an
 // error.
 //
-async fn handle_conn( socket: WarpWebSocket, peer_addr: SocketAddr, server: Addr<Server> )
+async fn handle_conn( socket: WebSocketStream<TcpStream>, peer_addr: SocketAddr, server: Addr<Server> )
 {
 	info!( "Incoming connection from: {:?}", peer_addr );
 
@@ -141,12 +121,12 @@ async fn handle_conn( socket: WarpWebSocket, peer_addr: SocketAddr, server: Addr
 
 	// Create mailbox for peer
 	//
-	let mb_peer: Inbox<ClientConn> = Inbox::new()                  ;
-	let cc_addr                    = Addr ::new( mb_peer.sender() );
+	let mb_peer: Inbox<Peer<MS>> = Inbox::new()                  ;
+	let cc_addr                  = Addr ::new( mb_peer.sender() );
 
 	// create peer with stream/sink
 	//
-	let mut peer = ClientConn::new( cc_addr.clone(), msgs, out ).expect( "create peer" );
+	let mut peer = Peer::new( cc_addr.clone(), msgs, out ).expect( "create peer" );
 
 
 	// Create mailbox for user
@@ -180,7 +160,7 @@ async fn handle_conn( socket: WarpWebSocket, peer_addr: SocketAddr, server: Addr
 	let user = User::new( server.clone(), usr_addr.clone(), Box::new( peer_out ) );
 
 
-	let mut peer_evts = peer.observe_unbounded();
+	let mut peer_evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 	let mut sa        = server.clone();
 	let     sid       = usr_addr.id();
 

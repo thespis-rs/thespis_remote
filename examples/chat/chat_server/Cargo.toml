@@ -3,10 +3,12 @@
 chrono = "^0.4"
 flexi_logger = "^0.14"
 futures_cbor_codec = "^0.1"
-futures_codec = "^0.2"
+futures_codec = "^0.3"
 log = "^0.4"
 pin-utils = "^0.1.0-alpha"
 regex = "^1"
+tokio-tungstenite = "^0.9"
+ws_stream_tungstenite = "^0.1.0-alpha"
 
 [dependencies.bytes]
 version = "^0.4"
@@ -15,15 +17,20 @@ version = "^0.4"
 path = "../chat_format"
 
 [dependencies.futures-preview]
-features = ["async-await", "nightly"]
+features = ["async-await"]
 version = "^0.3.0-alpha"
+
+[dependencies.futures01]
+default-features = false
+package = "futures"
+version = "^0.1"
 
 [dependencies.locks]
 package = "future-parking_lot"
 version = "^0.3.2-alpha"
 
 [dependencies.pharos]
-version = "^0.2"
+version = "^0.4"
 
 [dependencies.thespis]
 path = "../../../../thespis_iface"
@@ -37,18 +44,16 @@ path = "../../../../thespis_impl_remote"
 [dependencies.thespis_remote]
 path = "../../../../thespis_iface_remote"
 
-[dependencies.tokio]
+[dependencies.tokio01]
 default-features = false
 features = ["rt-full", "codec"]
+package = "tokio"
 version = "^0.1"
 
 [dependencies.warp]
 default-features = false
 features = ["websocket"]
 version = "^0.1"
-
-[dependencies.ws_stream]
-path = "../../../../../ws_stream"
 
 [package]
 authors = ["Naja Melan <najamelan@autistici.org>"]
@@ -57,8 +62,3 @@ edition = "2018"
 name = "chat_server"
 repository = "https::/github.com/najamelan/ws_stream"
 version = "0.1.0"
-
-[patch]
-[patch.crates-io]
-[patch.crates-io.futures_codec]
-git = "https://github.com/matthunz/futures-codec.git"

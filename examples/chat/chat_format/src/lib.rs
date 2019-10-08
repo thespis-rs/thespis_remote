@@ -36,7 +36,7 @@ use import::*;
 pub mod error;
 pub use error::*;
 
-
+pub type MS = MultiServiceImpl<ServiceID, ConnID, Codecs>;
 
 
 /// Services exposed by the server
@@ -79,11 +79,18 @@ pub struct Welcome
 
 
 
-// service_map!
-// (
-// 	namespace    : client_map ;
-// 	peer_type    : ClientConn ;
-// 	multi_service: MS         ;
-// 	services     : ServerMsg  ;
-// );
+service_map!
+(
+	namespace    : client_map ;
+	multi_service: MS         ;
+	services     : ServerMsg  ;
+);
+
+
+service_map!
+(
+	namespace    : server_map             ;
+	multi_service: MS                     ;
+	services     : Join, SetNick, ChatMsg ;
+);
 
