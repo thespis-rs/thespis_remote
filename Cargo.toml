@@ -5,7 +5,6 @@ futures_cbor_codec = "^0.1"
 futures_codec = "^0.3"
 log = "^0.4"
 once_cell = "^1.0.0-pre"
-romio = "^0.3.0-alpha"
 simple_logger = "^1"
 
 [dependencies.async_runtime]
@@ -22,7 +21,7 @@ version = "^0.4"
 [dependencies.futures-preview]
 default-features = false
 features = ["std", "compat"]
-version = "^0.3.0-alpha.16"
+version = "=0.3.0-alpha.19"
 
 [dependencies.num-derive]
 version = "^0.2"
@@ -70,6 +69,7 @@ version = "^1.1"
 [dev-dependencies]
 flexi_logger = "^0.14"
 pretty_assertions = "^0.6"
+romio = "^0.3.0-alpha"
 
 [dev-dependencies.criterion]
 features = ["real_blackbox"]
@@ -78,7 +78,7 @@ version = "^0.3"
 [dev-dependencies.futures-preview]
 default-features = false
 features = ["std", "compat"]
-version = "^0.3.0-alpha"
+version = "=0.3.0-alpha.19"
 
 [dev-dependencies.tokio]
 default-features = false
