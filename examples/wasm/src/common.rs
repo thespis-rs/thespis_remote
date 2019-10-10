@@ -28,7 +28,7 @@ pub use
 
 pub type TheSink = Compat01As03Sink<TokSplitSink<Framed<WsStream, MulServTokioCodec<MS>>>, MS> ;
 pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>                                 ;
-pub type MyPeer  = Peer<TheSink, MS>                                                           ;
+pub type MyPeer  = Peer<MS>                                                                    ;
 
 
 #[ derive( Serialize, Deserialize ) ]
@@ -65,7 +65,6 @@ impl Handler<Ping> for MyActor
 service_map!
 (
 	namespace:     remotes ;
-	peer_type:     MyPeer  ;
 	multi_service: MS      ;
 	services     : Ping    ;
 );
