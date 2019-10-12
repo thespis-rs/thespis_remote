@@ -403,4 +403,10 @@ impl<MS> ServiceProvider<MS> for Peer<MS> where MS: BoundsMS
 
 
 
-
+impl<MS> fmt::Debug for Peer<MS> where MS: BoundsMS
+{
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
+	{
+		write!( f, "Peer" )
+	}
+}
