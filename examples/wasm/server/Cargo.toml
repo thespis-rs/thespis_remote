@@ -4,6 +4,7 @@ flexi_logger = "^0.14"
 futures_codec = "^0.3"
 log = "^0.4"
 tokio-tungstenite = "^0.9"
+ws_stream_tungstenite = "^0.1.0-alpha"
 
 [dependencies.async_runtime]
 package = "naja_async_runtime"
@@ -41,9 +42,6 @@ default-features = false
 features = ["rt-full", "codec"]
 package = "tokio"
 version = "^0.1"
-
-[dependencies.ws_stream_tungstenite]
-path = "../../../../../ws_stream_tungstenite"
 
 [package]
 authors = ["Naja Melan <najamelan@autistici.org>"]

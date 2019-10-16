@@ -1,127 +1,34 @@
-use crate :: { import::*, color::*, document };
+use crate :: { import::*, color::*, get_id, document, user::* };
 
 
-pub struct User
-{
-	sid   : usize                ,
-	nick  : String               ,
-	color : Color                ,
-	p     : HtmlParagraphElement ,
-	indom : bool                 ,
-}
-
-
-impl User
-{
-	pub fn new( sid: usize, nick: String ) -> Self
-	{
-		Self
-		{
-			nick  ,
-			sid   ,
-			color: Color::random().light(),
-			p    : document().create_element( "p" ).expect( "create user p" ).unchecked_into(),
-			indom: false,
-		}
-	}
-
-
-	pub fn render( &mut self, parent: &HtmlElement )
-	{
-		self.p.set_inner_text( &self.nick );
-
-		self.p.style().set_property( "color", &self.color.to_css() ).expect_throw( "set color" );
-		self.p.set_id( &format!( "user_{}", &self.sid ) );
-
-		parent.append_child( &self.p ).expect_throw( "append user to div" );
-
-		self.indom = true;
-	}
-
-
-	pub fn change_nick( &mut self, new: String )
-	{
-		self.nick = new;
-
-		if self.indom { self.render( &self.p.parent_node().expect_throw( "get user parent node" ).unchecked_into() ) }
-	}
-}
-
-
-
-impl Drop for User
-{
-	fn drop( &mut self )
-	{
-		debug!( "removing user from dom" );
-		self.p.remove();
-	}
-}
-
-
-
+#[ derive( Actor ) ]
+//
 pub struct UserList
 {
-	users: HashMap<usize, User>,
-	div  : HtmlDivElement      ,
-	indom: bool                ,
+	users: HashMap<usize, Addr<User>>,
+	div  : HtmlDivElement            ,
+	indom: bool                      ,
+	parent: HtmlElement              ,
 }
+
+// Unfortunately thespis requires Send right now, and HtmlElement isn't Send.
+// When WASM gains threads we need to fix this.
+//
+unsafe impl Send for UserList {}
 
 
 
 impl UserList
 {
-	pub fn new() -> Self
+	pub fn new( parent: &str ) -> Self
 	{
 		Self
 		{
 			users: HashMap::new() ,
-			div  : document().create_element( "div" ).expect( "create userlist div" ).unchecked_into() ,
+			div  : document().create_element( "div" ).expect_throw( "create userlist div" ).unchecked_into() ,
 			indom: false,
+			parent: get_id( parent ).unchecked_into(),
 		}
-	}
-
-
-	pub fn insert( &mut self, sid: usize, nick: String )
-	{
-		let mut render = false;
-
-		let user = self.users.entry( sid )
-
-			// TODO: Get rid of clone
-			// existing users know if they are in the dom, so we don't call render on them.
-			//
-			.and_modify( |usr| usr.change_nick( nick.clone() ) )
-
-			.or_insert_with ( ||
-			{
-				render = true;
-				User::new( sid, nick )
-			})
-
-		;
-
-		if render { user.render( &self.div ); }
-	}
-
-
-	pub fn remove( &mut self, sid: usize )
-	{
-		self.users.remove( &sid );
-	}
-
-
-
-	pub fn render( &mut self, parent: &HtmlElement )
-	{
-		for ref mut user in self.users.values_mut()
-		{
-			user.render( &self.div );
-		}
-
-		parent.append_child( &self.div ).expect_throw( "add udiv to dom" );
-
-		self.indom = true;
 	}
 }
 
@@ -139,3 +46,125 @@ impl Drop for UserList
 
 	}
 }
+
+
+
+
+
+pub struct Insert
+{
+	pub sid : usize ,
+	pub nick: String,
+}
+
+
+impl Message for Insert { type Return = Addr<User>; }
+
+
+impl Handler< Insert > for UserList
+{
+	fn handle( &mut self, msg: Insert ) -> Return< Addr<User> > { Box::pin( async move
+	{
+		let _render = false;
+
+		let users = &mut self.users;
+
+		if let Some( user ) = users.get_mut( &msg.sid )
+		{
+			user.send( ChangeNick(msg.nick.clone()) ).await.expect_throw( "send" );
+
+			return user.clone();
+		}
+
+		else
+		{
+			let user = User::new( msg.sid, msg.nick, self.div.clone().unchecked_into() );
+			let mut addr = Addr::try_from( user ).expect_throw( "Failed to create address" );
+
+			addr.send( Render{} ).await.expect_throw( "send" );
+
+			self.users.insert( msg.sid, addr.clone() );
+
+			addr
+		}
+	})}
+}
+
+
+
+pub struct Remove { pub sid: usize }
+
+impl Message for Remove { type Return = (); }
+
+
+impl Handler< Remove > for UserList
+{
+	fn handle( &mut self, msg: Remove ) -> Return<()> { Box::pin( async move
+	{
+		self.users.remove( &msg.sid );
+	})}
+}
+
+
+
+pub struct Clear {}
+
+impl Message for Clear { type Return = (); }
+
+
+impl Handler< Clear > for UserList
+{
+	fn handle( &mut self, _: Clear ) -> Return<()> { Box::pin( async move
+	{
+		self.users.clear();
+	})}
+}
+
+
+
+
+pub struct Render {}
+
+impl Message for Render { type Return = (); }
+
+
+impl Handler< Render > for UserList
+{
+	fn handle( &mut self, _: Render ) -> Return<()> { Box::pin( async move
+	{
+		for user in self.users.values_mut()
+		{
+			user.send( Render{} ).await.expect_throw( "send" );
+		}
+
+		if !self.indom
+		{
+			self.parent.append_child( &self.div ).expect_throw( "add udiv to dom" );
+
+			self.indom = true;
+		}
+
+	})}
+}
+
+
+
+
+pub struct GetUser { pub sid: usize }
+
+impl Message for GetUser { type Return = Addr<User>; }
+
+
+impl Handler< GetUser > for UserList
+{
+	fn handle( &mut self, msg: GetUser ) -> Return< Addr<User> > { Box::pin( async move
+	{
+		// TODO: get rid of expect
+		//
+		self.users.get( &msg.sid ).expect_throw( "user" ).clone()
+
+	})}
+}
+
+
+

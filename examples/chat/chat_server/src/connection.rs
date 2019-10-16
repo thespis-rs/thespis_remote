@@ -3,7 +3,7 @@ use crate::import::*;
 pub struct Connection
 {
 	// tx: UnboundedSender<ServerMsg> ,
-	pub peer_addr: SocketAddr           ,
+	pub peer_addr: SocketAddr,
 	pub msgs     : FramedRead <WsStream<WarpWebSocket>, Codec<ClientMsg, ServerMsg>>,
 	pub out      : FramedWrite<WsStream<WarpWebSocket>, Codec<ClientMsg, ServerMsg>>,
 

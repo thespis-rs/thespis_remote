@@ -11,7 +11,7 @@ pub struct Server
 
 impl Server
 {
-	const WELCOME : &'static str = "Welcome to the ws_stream Chat Server!" ;
+	const WELCOME : &'static str = "Welcome to the thespis Chat Server!" ;
 
 	pub fn new() -> Self
 	{
@@ -101,6 +101,10 @@ impl Handler< UserData > for Server
 				self.broadcast( joined ).await;
 
 
+				let user_data = UserData{ addr: new_user.addr, nick: new_user.nick, peer_addr: new_user.peer_addr };
+
+				let opt = self.users.insert( id, user_data );
+
 
 				let welcome = Welcome
 				{
@@ -109,11 +113,6 @@ impl Handler< UserData > for Server
 					users: self.users.values().map( |ud| (ud.addr.id(), ud.nick.clone()) ).collect(),
 					time : Utc::now().timestamp(),
 				};
-
-
-				let user_data = UserData{ addr: new_user.addr, nick: new_user.nick, peer_addr: new_user.peer_addr };
-
-				let opt = self.users.insert( id, user_data );
 
 				// A connection shouldn't try to create 2 users, so we verify it didn't exist yet,
 				// since this is a programmer error in this very app, just panic

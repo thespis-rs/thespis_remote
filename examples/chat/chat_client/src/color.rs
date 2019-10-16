@@ -4,6 +4,8 @@ use crate::import::*;
 
 
 
+#[ derive( Debug, Copy, Clone ) ]
+//
 pub struct Color
 {
 	r: u8,

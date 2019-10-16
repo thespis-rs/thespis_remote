@@ -10,6 +10,10 @@ regex = "^1"
 tokio-tungstenite = "^0.9"
 ws_stream_tungstenite = "^0.1.0-alpha"
 
+[dependencies.async_runtime]
+package = "naja_async_runtime"
+version = "^0.3"
+
 [dependencies.bytes]
 version = "^0.4"
 
@@ -62,3 +66,8 @@ edition = "2018"
 name = "chat_server"
 repository = "https::/github.com/najamelan/ws_stream"
 version = "0.1.0"
+
+[patch]
+[patch.crates-io]
+[patch.crates-io.futures_codec]
+path = "../../../../../futures-codec"

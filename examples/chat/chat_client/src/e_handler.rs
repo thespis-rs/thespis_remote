@@ -28,7 +28,7 @@ impl EHandler
 		//
 		let _listener = EventListener::new_with_options( &target, event, options, move |event|
 		{
-			sender.unbounded_send(event.clone()).unwrap_throw();
+			sender.unbounded_send( event.clone() ).expect_throw( "send event" );
 		});
 
 		Self

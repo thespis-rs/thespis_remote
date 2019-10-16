@@ -1,26 +1,23 @@
 # Auto-generated from "Cargo.yml"
 [dependencies]
 console_error_panic_hook = "^0.1"
-futures_cbor_codec = "^0.1"
-futures_codec = "^0.2"
+futures_codec = "^0.3"
 js-sys = "^0.3"
 log = "^0.4"
-pharos = "^0.2"
+pharos = "^0.4"
 pin-utils = "^0.1.0-alpha"
 regex = "^1"
 wasm-bindgen = "^0.2"
 wasm-logger = "^0.1"
-ws_stream_wasm = "^0.2"
 
 [dependencies.chat_format]
 path = "../chat_format"
 
 [dependencies.futures-preview]
-features = ["async-await", "nightly"]
+features = ["async-await"]
 version = "^0.3.0-alpha"
 
 [dependencies.getrandom]
-default-features = false
 features = ["wasm-bindgen"]
 version = "^0.1"
 
@@ -45,12 +42,15 @@ path = "../../../../thespis_impl_remote"
 path = "../../../../thespis_iface_remote"
 
 [dependencies.wasm-bindgen-futures]
-features = ["futures_0_3"]
-version = "^0.3"
+version = "^0.4"
 
 [dependencies.web-sys]
 features = ["console", "CssStyleDeclaration", "Document", "Element", "HtmlDivElement", "HtmlElement", "HtmlFormElement", "HtmlInputElement", "HtmlParagraphElement", "HtmlTextAreaElement", "KeyboardEvent", "Node", "Window"]
 version = "^0.3"
+
+[dependencies.ws_stream_wasm]
+path = "../../../../../ws_stream_wasm"
+version = "^0.5"
 
 [lib]
 crate-type = ["cdylib"]

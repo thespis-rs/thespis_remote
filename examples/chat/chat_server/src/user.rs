@@ -32,6 +32,8 @@ impl Handler< Join > for User
 {
 	fn handle( &mut self, msg: Join ) -> Return< Result<Welcome, ChatErr> > { Box::pin( async move
 	{
+		debug!( "received Join" );
+
 		// You can only join once
 		//
 		if self.addr.is_none() || self.peer_addr.is_none()
@@ -70,9 +72,9 @@ impl Handler< SetNick > for User
 
 
 
-impl Handler< ChatMsg > for User
+impl Handler< NewChatMsg > for User
 {
-	fn handle( &mut self, msg: ChatMsg ) -> Return<()> { Box::pin( async move
+	fn handle( &mut self, msg: NewChatMsg ) -> Return<()> { Box::pin( async move
 	{
 		let smsg = ChatMsgIn { sid: self.id, txt: msg.0 };
 

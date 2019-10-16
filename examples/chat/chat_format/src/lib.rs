@@ -2,12 +2,12 @@ pub mod import
 {
 	pub use
 	{
-		thespis             :: { *                    } ,
-		thespis_remote      :: { *                    } ,
-		thespis_impl_remote :: { *, service_map, peer } ,
-		futures_codec       :: { Framed                  } ,
-		bytes               :: { Bytes, BytesMut      } ,
-		serde               ::{ Serialize, Deserialize } ,
+		thespis             :: { *                      } ,
+		thespis_remote      :: { *                      } ,
+		thespis_impl_remote :: { *, service_map, peer   } ,
+		futures_codec       :: { Framed                 } ,
+		bytes               :: { Bytes, BytesMut        } ,
+		serde               :: { Serialize, Deserialize } ,
 
 		std::
 		{
@@ -41,14 +41,13 @@ pub type MS = MultiServiceImpl<ServiceID, ConnID, Codecs>;
 
 /// Services exposed by the server
 //
-#[ derive( Serialize, Deserialize, Debug, Clone ) ] pub struct ChatMsg( pub String );
-#[ derive( Serialize, Deserialize, Debug, Clone ) ] pub struct SetNick{ pub nick: String }
-#[ derive( Serialize, Deserialize, Debug, Clone ) ] pub struct Join   { pub nick: String }
+#[ derive( Serialize, Deserialize, Debug, Clone ) ] pub struct NewChatMsg( pub String );
+#[ derive( Serialize, Deserialize, Debug, Clone ) ] pub struct SetNick   { pub nick: String }
+#[ derive( Serialize, Deserialize, Debug, Clone ) ] pub struct Join      { pub nick: String }
 
-impl Message for Join    { type Return = Result<Welcome, ChatErr> ; }
-impl Message for SetNick { type Return = Result<()   , ChatErr>   ; }
-impl Message for ChatMsg { type Return = ()                       ; }
-
+impl Message for Join       { type Return = Result<Welcome, ChatErr> ; }
+impl Message for SetNick    { type Return = Result<()     , ChatErr> ; }
+impl Message for NewChatMsg { type Return = ()                       ; }
 
 /// Services exposed by clients
 //
@@ -77,6 +76,8 @@ pub struct Welcome
 	pub txt  : String
 }
 
+impl Message for Welcome { type Return = (); }
+
 
 
 service_map!
@@ -89,8 +90,8 @@ service_map!
 
 service_map!
 (
-	namespace    : server_map             ;
-	multi_service: MS                     ;
-	services     : Join, SetNick, ChatMsg ;
+	namespace    : server_map                ;
+	multi_service: MS                        ;
+	services     : Join, SetNick, NewChatMsg ;
 );
 

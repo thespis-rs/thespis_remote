@@ -34,3 +34,11 @@ dependencies:
 
   tokio01               : { version: ^0.1 , default-features: false, features: [ rt-full, codec ], package: tokio }
   futures01             : { version: ^0.1 , default-features: false, package: futures }
+
+  async_runtime         : { version: ^0.3, package: naja_async_runtime }
+
+patch:
+
+  crates-io:
+
+    futures_codec: { path: ../../../../../futures-codec }

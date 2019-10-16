@@ -7,6 +7,7 @@
 	--chat-input-bg  : black;
 	--chat-input-fg  : light-grey;
 	--border-color   : aliceblue;
+	--conn-form-bg   : darkslategray;;
 }
 
 p
@@ -111,6 +112,7 @@ body
 	border-radius: 1rem;
 	max-width: 40rem;
 	padding: 2rem;
+	background: var( --conn-form-bg );
 }
 
 #connect_form_content label

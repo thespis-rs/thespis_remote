@@ -40,7 +40,7 @@ pub mod import
 			prelude :: { Stream as TokStream, stream::{ SplitStream as TokSplitStream, SplitSink as TokSplitSink } } ,
 		},
 
-		futures_codec :: { Decoder, Framed, FramedWrite        } ,
+		futures_codec :: { Decoder, Framed, FramedWrite } ,
 		romio::tcp    :: { TcpStream, TcpListener } ,
 
 		pretty_assertions::{ assert_eq, assert_ne }
