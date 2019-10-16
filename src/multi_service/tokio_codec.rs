@@ -1,9 +1,11 @@
+//! The codec to frame the connection with our wire format.
+//
 use crate::{ import::* };
-
-
 
 /// The tokio codec to frame AsyncRead/Write streams.
 /// TODO: test max_length
+//
+#[ derive( Debug ) ]
 //
 pub struct MulServTokioCodec<MS> where MS: MultiService
 {

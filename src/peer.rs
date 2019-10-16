@@ -1,3 +1,6 @@
+//! The peer module holds everything that deals with managing a remote connection over which
+//! actor messages can be sent and received.
+//
 use crate :: { import::*, Codecs };
 
 
@@ -18,9 +21,17 @@ pub use register_relay    :: RegisterRelay    ;
 
 // Reduce trait bound boilerplate, since we have to repeat them all over
 //
+/// Trait bounds for the stream of incoming messages
+//
 pub trait BoundsIn <MS: BoundsMS>: 'static + Stream< Item = Result<MS, ThesRemoteErr> > + Unpin + Send {}
+
+/// Trait bounds for the Sink of outgoing messages.
+//
 pub trait BoundsOut<MS: BoundsMS>: 'static + Sink<MS, Error=ThesRemoteErr > + Unpin + Send {}
-pub trait BoundsMS               : 'static + Message<Return=()> + MultiService<CodecAlg=Codecs> + Send + fmt::Debug {}
+
+/// Trait bounds for the MultiService message format. This is the wire format for thespis_remote.
+//
+pub trait BoundsMS: 'static + Message<Return=()> + MultiService<CodecAlg=Codecs> + Send + fmt::Debug {}
 
 impl<T, MS> BoundsIn<MS> for T
 
@@ -310,7 +321,10 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 
 
 
-	// serialize a ConnectionError to be sent across the wire.
+	// serialize a ConnectionError to be sent across the wire. Public because used in
+	// sevice_map macro.
+	//
+	#[ doc( hidden ) ]
 	//
 	pub fn prep_error( cid: <MS as MultiService>::ConnID, err: &ConnectionError ) -> MS
 	{
@@ -342,7 +356,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 //
 impl<MS> Handler<MS> for Peer<MS> where MS: BoundsMS,
 {
-	fn handle( &mut self, msg: MS ) -> Return<()>
+	fn handle( &mut self, msg: MS ) -> Return<'_, ()>
 	{
 		Box::pin( async move
 		{

@@ -1,3 +1,5 @@
+//! Implementation of the MultiService wire format.
+//
 mod service_id;
 mod conn_id;
 mod codecs;

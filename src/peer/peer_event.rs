@@ -11,11 +11,29 @@ use crate::{ import::*, * };
 //
 pub enum PeerEvent
 {
-	Closed                         ,
-	ClosedByRemote                 ,
-	RelayDisappeared(usize)        ,
-	Error      ( ConnectionError ) ,
-	RemoteError( ConnectionError ) ,
+	/// The connection is closed. It can no longer be used.
+	//
+	Closed,
+
+	/// The remote endpoint closed the connection. It can no longer be used.
+	//
+	ClosedByRemote,
+
+	/// A remote endpoint to which we relayed messages is no longer reachable.
+	//
+	RelayDisappeared(usize),
+
+	/// An error happened while handling messages on the connection. These are
+	/// generally errors that cannot be bubbled up because they are triggered when
+	/// handling incoming messages, and thus are not triggered by a method call from
+	/// client code. They are returned here out of band.
+	//
+	Error( ConnectionError ),
+
+	/// The remote endpoint signals that they encountered an error while handling one of
+	/// our messages.
+	//
+	RemoteError( ConnectionError ),
 }
 
 
@@ -23,8 +41,8 @@ pub enum PeerEvent
 //
 pub(super) struct RelayEvent
 {
-	pub id : usize    ,
-	pub evt: PeerEvent,
+	pub(super) id : usize    ,
+	pub(super) evt: PeerEvent,
 }
 
 
@@ -40,7 +58,7 @@ impl Message for RelayEvent
 //
 impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
 {
-	fn handle( &mut self, re: RelayEvent ) -> Return< <RelayEvent as Message>::Return >
+	fn handle( &mut self, re: RelayEvent ) -> Return< '_, <RelayEvent as Message>::Return >
 	{
 		let id = <Addr<Self> as Recipient<RelayEvent>>::actor_id( &self.addr.clone().unwrap() );
 

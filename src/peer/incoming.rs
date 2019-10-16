@@ -4,7 +4,7 @@ use crate::{ import::*, * };
 //
 pub(super) struct Incoming<MS: 'static + MultiService>
 {
-	pub msg: Result<MS, ThesRemoteErr>
+	pub(crate) msg: Result<MS, ThesRemoteErr>
 }
 
 impl<MS: 'static + MultiService> Message for Incoming<MS>
@@ -17,7 +17,7 @@ impl<MS: 'static + MultiService> Message for Incoming<MS>
 //
 impl<MS> Handler<Incoming<MS>> for Peer<MS> where MS: BoundsMS,
 {
-fn handle( &mut self, incoming: Incoming<MS> ) -> Return<()>
+fn handle( &mut self, incoming: Incoming<MS> ) -> Return<'_, ()>
 {
 
 async move

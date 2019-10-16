@@ -7,22 +7,21 @@
 #![deny(bare_trait_objects)]
 #![forbid(unsafe_code)]
 
-#![ feature
+#![ warn
 (
-	arbitrary_self_types   ,
-	box_into_pin           ,
-	box_patterns           ,
-	box_syntax             ,
-	core_intrinsics        ,
-	decl_macro             ,
-	never_type             ,
-	optin_builtin_traits   ,
-	re_rebalance_coherence ,
-	specialization         ,
-	trait_alias            ,
-	try_trait              ,
-	unboxed_closures       ,
+	missing_debug_implementations ,
+	missing_docs                  ,
+	nonstandard_style             ,
+	rust_2018_idioms              ,
+	trivial_casts                 ,
+	trivial_numeric_casts         ,
+	unused_extern_crates          ,
+	unused_qualifications         ,
+	single_use_lifetimes          ,
+	unreachable_pub               ,
+	variant_size_differences      ,
 )]
+
 
 pub mod peer              ;
 pub mod multi_service     ;
@@ -37,6 +36,8 @@ pub use
 
 
 // needed for macro
+//
+#[ doc( hidden ) ]
 //
 pub mod external_deps
 {
@@ -53,7 +54,8 @@ pub mod external_deps
 }
 
 
-// Don't know exactly where to put this yet. It's useful for debugging.
+/// Print the contents of a buffer as a hex string.
+/// Don't know exactly where to put this yet. It's useful for debugging.
 //
 pub fn ashex( buf: &[u8] ) -> String
 {
@@ -75,57 +77,43 @@ pub fn ashex( buf: &[u8] ) -> String
 //
 mod import
 {
-	pub use
+	pub(crate) use
 	{
-		async_runtime  :: { rt                                                                        } ,
-		failure        :: { Fail, bail, err_msg, AsFail, Context as FailContext, Backtrace, ResultExt } ,
-		thespis        :: { *                                                                         } ,
-		thespis_remote :: { *                                                                         } ,
-		thespis_impl   :: { Addr, Receiver                                                            } ,
-		log            :: { *                                                                         } ,
-		once_cell      :: { unsync::OnceCell, unsync::Lazy                                            } ,
-		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt                                 } ,
-		bytes          :: { Bytes, BytesMut, Buf, BufMut, IntoBuf                                     } ,
-		num_traits     :: { FromPrimitive, ToPrimitive                                                } ,
-		num_derive     :: { FromPrimitive, ToPrimitive                                                } ,
-		rand           :: { Rng                                                                       } ,
-		std            :: { hash::{ BuildHasher, Hasher }, io::Cursor, any::Any                       } ,
-		twox_hash      :: { RandomXxHashBuilder, XxHash                                               } ,
-		futures        :: { future::RemoteHandle                                                      } ,
-		pharos         :: { Pharos, Observable, ObserveConfig, Events                                 } ,
-		serde          :: { Serialize, Deserialize, de::DeserializeOwned                              } ,
+		async_runtime  :: { rt                                                  } ,
+		failure        :: { ResultExt                                           } ,
+		thespis        :: { *                                                   } ,
+		thespis_remote :: { *                                                   } ,
+		thespis_impl   :: { Addr                                                } ,
+		log            :: { *                                                   } ,
+		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt           } ,
+		bytes          :: { Bytes, BytesMut, BufMut                             } ,
+		num_traits     :: { FromPrimitive, ToPrimitive                          } ,
+		num_derive     :: { FromPrimitive, ToPrimitive                          } ,
+		rand           :: { Rng                                                 } ,
+		std            :: { hash::{ BuildHasher, Hasher }, io::Cursor, any::Any } ,
+		twox_hash      :: { RandomXxHashBuilder, XxHash                         } ,
+		futures        :: { future::RemoteHandle                                } ,
+		pharos         :: { Pharos, Observable, ObserveConfig, Events           } ,
+		serde          :: { Serialize, Deserialize                              } ,
 
 		std ::
 		{
-			fmt                                                       ,
-			any         :: { TypeId                                 } ,
-			convert     :: { TryFrom, TryInto                       } ,
-			future      :: { Future                                 } ,
-			marker      :: { PhantomData                            } ,
-			ops         :: { Try, DerefMut                          } ,
-			pin         :: { Pin                                    } ,
-			rc          :: { Rc                                     } ,
-			sync        :: { Arc, atomic::{ AtomicUsize, Ordering } } ,
-			collections :: { HashMap                                } ,
+			fmt                            ,
+			any         :: { TypeId      } ,
+			convert     :: { TryFrom     } ,
+			marker      :: { PhantomData } ,
+			collections :: { HashMap     } ,
 
 		},
 
 
 		futures ::
 		{
-			prelude :: { Stream, Sink                                                             } ,
-			channel :: { oneshot, mpsc                                                            } ,
-			future  :: { FutureExt, TryFutureExt                                                  } ,
-			task    :: { Spawn, SpawnExt, LocalSpawn, LocalSpawnExt, Context as TaskContext, Poll } ,
-			sink    :: { SinkExt                                                                  } ,
-			stream  :: { StreamExt                                                                } ,
-
-			executor::
-			{
-				LocalPool    as LocalPool03    ,
-				LocalSpawner as LocalSpawner03 ,
-				ThreadPool   as ThreadPool03   ,
-			},
+			prelude :: { Stream, Sink } ,
+			channel :: { oneshot      } ,
+			future  :: { FutureExt    } ,
+			sink    :: { SinkExt      } ,
+			stream  :: { StreamExt    } ,
 		},
 	};
 
@@ -141,15 +129,15 @@ mod import
 
 	#[ cfg(not( feature = "tokio" )) ]
 	//
-	pub use
+	pub(crate) use
 	{
-		futures_codec :: { Encoder, Decoder, Framed, FramedRead, FramedWrite } ,
+		futures_codec :: { Encoder, Decoder } ,
 	};
 
 
 	#[ cfg(test) ]
 	//
-	pub use
+	pub(crate) use
 	{
 		pretty_assertions::{ assert_eq, assert_ne } ,
 	};

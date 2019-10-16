@@ -17,6 +17,8 @@ use { crate :: { peer::* }};
 ///
 /// If the remote closes the connection, all of this will happen automatically.
 //
+#[ derive( Debug ) ]
+//
 pub struct CloseConnection
 {
 	/// informs the peer whether the connection was closed remotely. If you close
@@ -30,7 +32,7 @@ impl Message for CloseConnection { type Return = (); }
 
 impl<MS> Handler<CloseConnection> for Peer<MS> where MS: BoundsMS
 {
-	fn handle( &mut self, msg: CloseConnection ) -> Return<()>
+	fn handle( &mut self, msg: CloseConnection ) -> Return<'_, ()>
 	{
 		Box::pin( async move
 		{

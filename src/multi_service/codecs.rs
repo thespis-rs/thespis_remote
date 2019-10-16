@@ -9,7 +9,12 @@ use crate::{ import::* };
 //
 pub enum Codecs
 {
+	/// Specify that payload is encoded as CBOR.
+	//
 	CBOR = 0x51  ,
+
+	/// Specify that the payload is a UTF string.
+	//
 	UTF8 = 0x4000, // not in multicodecs for now
 }
 
@@ -18,7 +23,7 @@ impl CodecAlg for Codecs {}
 
 impl fmt::Display for Codecs
 {
-	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
 		match self
 		{

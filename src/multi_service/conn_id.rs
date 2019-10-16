@@ -78,7 +78,7 @@ impl TryFrom< Bytes > for ConnID
 
 impl fmt::Display for ConnID
 {
-	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
 		write!( f, "{:?}", self )
 	}
@@ -88,7 +88,7 @@ impl fmt::Display for ConnID
 
 impl fmt::Debug for ConnID
 {
-	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
 		for byte in &self.bytes
 		{

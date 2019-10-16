@@ -9,6 +9,8 @@ use crate::{ import::*, * };
 /// Normally you don't use this directly, but use the recipient a service map gives you to call
 /// remote services.
 //
+#[ derive( Debug ) ]
+//
 pub struct Call<MS: MultiService>
 {
 	mesg: MS,
@@ -21,6 +23,8 @@ impl<MS: 'static +  MultiService + Send> Message for Call<MS>
 
 impl<MS: MultiService> Call<MS>
 {
+	/// Create a new Call to send an outgoing message over the peer.
+	//
 	pub fn new( mesg: MS ) -> Self
 	{
 		Self{ mesg }
@@ -39,7 +43,7 @@ impl<MS: MultiService> Call<MS>
 //
 impl<MS> Handler<Call<MS>> for Peer<MS> where MS: BoundsMS,
 {
-	fn handle( &mut self, call: Call<MS> ) -> Return< <Call<MS> as Message>::Return >
+	fn handle( &mut self, call: Call<MS> ) -> Return< '_, <Call<MS> as Message>::Return >
 	{
 		trace!( "peer: starting Handler<Call<MS>>" );
 
