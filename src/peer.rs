@@ -132,7 +132,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 {
 	/// Create a new peer to represent a connection to some remote.
 	//
-	pub fn new( addr: Addr<Self>, incoming: impl BoundsIn<MS>, outgoing: impl BoundsOut<MS> ) -> Result< Self, ThesRemoteErr >
+	pub fn new( addr: Addr<Self>, mut incoming: impl BoundsIn<MS>, outgoing: impl BoundsOut<MS> ) -> Result< Self, ThesRemoteErr >
 	{
 		trace!( "create peer" );
 
@@ -142,13 +142,6 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 
 		let listen = async move
 		{
-			// We need to map this to a custom type, since we had to impl Message for it.
-			//
-			let stream = &mut incoming.map( |msg|
-			{
-				Incoming{ msg }
-			});
-
 			// This can fail if:
 			// - channel is full (TODO: currently we use unbounded, so that won't happen, but it might
 			//   use unbounded amounts of memory.)
@@ -157,7 +150,11 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 			//
 			// So, I think we can unwrap for now.
 			//
-			addr2.send_all( stream ).await.expect( "peer send to self");
+			while let Some(msg) = incoming.next().await
+			{
+				trace!( "incoming message" );
+				addr2.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" )
+			}
 
 			// Same as above.
 			//
@@ -408,5 +405,21 @@ impl<MS> fmt::Debug for Peer<MS> where MS: BoundsMS
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
 		write!( f, "Peer" )
+	}
+}
+
+
+impl<MS> Drop for Peer<MS> where MS: BoundsMS
+{
+	fn drop( &mut self )
+	{
+		let mut id = String::new();
+
+		if let Some( ref addr ) = self.addr
+		{
+			id = format!( ": {:?}", addr );
+		}
+
+		trace!( "Drop peer{:?}", id );
 	}
 }

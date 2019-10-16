@@ -21,7 +21,7 @@ version = "^0.4"
 [dependencies.futures-preview]
 default-features = false
 features = ["std", "compat"]
-version = "=0.3.0-alpha.19"
+version = "^0.3.0-alpha"
 
 [dependencies.num-derive]
 version = "^0.2"
@@ -74,11 +74,6 @@ romio = "^0.3.0-alpha"
 [dev-dependencies.criterion]
 features = ["real_blackbox"]
 version = "^0.3"
-
-[dev-dependencies.futures-preview]
-default-features = false
-features = ["std", "compat"]
-version = "=0.3.0-alpha.19"
 
 [dev-dependencies.tokio]
 default-features = false
