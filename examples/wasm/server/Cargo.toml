@@ -1,0 +1,59 @@
+# Auto-generated from "Cargo.yml"
+[dependencies]
+flexi_logger = "^0.14"
+futures_codec = "^0.3"
+log = "^0.4"
+tokio-tungstenite = "^0.9"
+
+[dependencies.async_runtime]
+package = "naja_async_runtime"
+version = "^0.3"
+
+[dependencies.futures-preview]
+features = ["async-await"]
+version = "^0.3.0-alpha"
+
+[dependencies.futures01]
+default-features = false
+package = "futures"
+version = "^0.1"
+
+[dependencies.pharos]
+version = "^0.4"
+
+[dependencies.thespis]
+path = "../../../../thespis_iface"
+
+[dependencies.thespis_impl]
+path = "../../../../thespis_impl"
+
+[dependencies.thespis_impl_remote]
+path = "../../../../thespis_impl_remote"
+
+[dependencies.thespis_remote]
+path = "../../../../thespis_iface_remote"
+
+[dependencies.thespis_remote_wasm_example_common]
+path = "../common"
+
+[dependencies.tokio01]
+default-features = false
+features = ["rt-full", "codec"]
+package = "tokio"
+version = "^0.1"
+
+[dependencies.ws_stream_tungstenite]
+path = "../../../../../ws_stream_tungstenite"
+
+[package]
+authors = ["Naja Melan <najamelan@autistici.org>"]
+description = "An example for using websockets in rust WASM."
+edition = "2018"
+name = "thespis_remote_wasm_example_server"
+repository = "https::/github.com/najamelan/ws_stream"
+version = "0.1.0"
+
+[patch]
+[patch.crates-io]
+[patch.crates-io.futures_codec]
+path = "../../../../../futures-codec"

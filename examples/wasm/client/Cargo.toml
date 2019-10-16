@@ -1,0 +1,60 @@
+# Auto-generated from "Cargo.yml"
+[dependencies]
+futures-preview = "0.3.0-alpha.19"
+futures_codec = "^0.3"
+log = "^0.4"
+tokio-serde-cbor = "^0.3"
+wasm-bindgen = "^0.2"
+wasm-logger = "^0.1"
+
+[dependencies.async_runtime]
+default-features = false
+package = "naja_async_runtime"
+version = "^0.3"
+
+[dependencies.getrandom]
+features = ["wasm-bindgen"]
+version = "^0.1"
+
+[dependencies.pharos]
+version = "^0.4"
+
+[dependencies.serde]
+features = ["derive"]
+version = "^1"
+
+[dependencies.thespis]
+path = "../../../../thespis_iface"
+
+[dependencies.thespis_impl]
+path = "../../../../thespis_impl"
+
+[dependencies.thespis_impl_remote]
+default-features = false
+path = "../../../../thespis_impl_remote"
+
+[dependencies.thespis_remote]
+path = "../../../../thespis_iface_remote"
+
+[dependencies.thespis_remote_wasm_example_common]
+path = "../common"
+
+[dependencies.wasm-bindgen-futures]
+version = "^0.4"
+
+[dependencies.web-sys]
+features = ["console", "Document", "Element", "HtmlElement", "Node", "Window"]
+version = "^0.3"
+
+[dependencies.ws_stream_wasm]
+path = "../../../../../ws_stream_wasm"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/entrypoint.rs"
+
+[package]
+authors = ["Naja Melan <najamelan@autistici.org>"]
+edition = "2018"
+name = "thespis_remote_wasm_example_client"
+version = "0.1.0"
