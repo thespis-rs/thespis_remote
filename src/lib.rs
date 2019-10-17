@@ -58,21 +58,6 @@ pub mod external_deps
 }
 
 
-/// Print the contents of a buffer as a hex string.
-/// Don't know exactly where to put this yet. It's useful for debugging.
-//
-pub fn ashex( buf: &[u8] ) -> String
-{
-	let mut f = String::new();
-
-	for byte in buf
-	{
-		std::fmt::write( &mut f, format_args!( "{:02x}", byte ) ).expect( "Create hex string from slice" )
-	}
-
-	f
-}
-
 
 
 // Import module. Avoid * imports here. These are all the foreign names that exist throughout
@@ -143,6 +128,7 @@ mod import
 	//
 	pub(crate) use
 	{
-		pretty_assertions::{ assert_eq, assert_ne } ,
+		hex               :: { encode as ashex      } ,
+		pretty_assertions :: { assert_eq, assert_ne } ,
 	};
 }

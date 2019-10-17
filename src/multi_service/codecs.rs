@@ -83,7 +83,6 @@ mod tests
 	// 1. to bytes and back
 	// 2. content of binary form is correct
 	//
-	use crate::ashex;
 	use super::{ *, assert_eq };
 
 
