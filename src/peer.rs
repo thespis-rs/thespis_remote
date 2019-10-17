@@ -217,7 +217,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 			Some( self_addr ) => self_addr.clone() ,
 			None              =>
 
-				Err( ThesRemoteErrKind::ConnectionClosed( "register_relayed_services".to_string() ))?,
+				return Err( ThesRemoteErrKind::ConnectionClosed( "register_relayed_services".to_string() ).into() ),
 		};
 
 		let peer_id = < Addr<Self> as Recipient<RelayEvent> >::actor_id( &peer );
@@ -282,7 +282,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 
 			None =>
 			{
-				Err( ThesRemoteErrKind::ConnectionClosed( "send MultiService over network".to_string() ))?
+				Err( ThesRemoteErrKind::ConnectionClosed( "send MultiService over network".to_string() ).into() )
 			}
 		}
 	}
@@ -294,9 +294,9 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 	//
 	async fn send_err<'a>
 	(
-		&'a mut self                                ,
+		&'a mut self                             ,
 		     cid  : <MS as MultiService>::ConnID ,
-		     err  : &'a ConnectionError             ,
+		     err  : &'a ConnectionError          ,
 
 		     // whether the connection should be closed (eg stream corrupted)
 		     //
@@ -331,11 +331,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 		let serialized   = serde_cbor::to_vec( err ).expect( "serialize response" );
 		let codec: Bytes = Codecs::CBOR.into();
 
-		let codec2 = match <MS as MultiService>::CodecAlg::try_from( codec )
-		{
-			Ok ( c ) => c,
-			Err( _ ) => panic!( "Failed to create codec from bytes" ),
-		};
+		let codec2 = <MS as MultiService>::CodecAlg::try_from( codec ).expect( "create codec from bytes" );
 
 		// sid null is the marker that this is an error message.
 		//

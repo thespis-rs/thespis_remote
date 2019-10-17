@@ -61,11 +61,11 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 		//
 		if len > self.max_length
 		{
-			Err( ThesRemoteErrKind::MessageSizeExceeded
+			return Err( ThesRemoteErrKind::MessageSizeExceeded
 			(
 				format!( "Tokio Codec Decoder: max_length={:?} bytes, message={:?} bytes", self.max_length, len )
 
-			))?
+			).into())
 		}
 
 		dbg!( buf.len() < len );
@@ -106,11 +106,11 @@ impl<MS> Encoder for MulServTokioCodec<MS>
 		//
 		if item.len() > self.max_length
 		{
-			Err( ThesRemoteErrKind::MessageSizeExceeded
+			return Err( ThesRemoteErrKind::MessageSizeExceeded
 			(
 				format!( "Tokio Codec Encoder: max_length={:?} bytes, message={:?} bytes", self.max_length, item.len() )
 
-			))?
+			).into() )
 		}
 
 

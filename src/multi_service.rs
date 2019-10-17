@@ -212,7 +212,7 @@ impl<SID, CID, Codec> TryFrom< Bytes > for MultiServiceImpl<SID, CID, Codec>
 		//
 		if bytes.len() < HEADER_LEN + 1
 		{
-			Err( ThesRemoteErrKind::Deserialize( "MultiServiceImpl: not enough bytes".into() ) )?;
+			return Err( ThesRemoteErrKind::Deserialize( "MultiServiceImpl: not enough bytes".into() ).into() );
 		}
 
 		Ok( Self { bytes, p1: PhantomData, p2: PhantomData, p3: PhantomData } )

@@ -4,8 +4,12 @@
 //!
 //! - tokio: makes the tokio executor available. enabled by default.
 
-#![deny(bare_trait_objects)]
-#![forbid(unsafe_code)]
+
+
+#![ doc    ( html_root_url = "https://docs.rs/thespis_impl_remote" ) ]
+#![ deny   ( missing_docs, bare_trait_objects                      ) ]
+#![ forbid ( unsafe_code                                           ) ]
+#![ allow  ( clippy::suspicious_else_formatting                    ) ]
 
 #![ warn
 (
