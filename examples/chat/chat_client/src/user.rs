@@ -55,7 +55,7 @@ impl Drop for User
 {
 	fn drop( &mut self )
 	{
-		debug!( "removing user from dom" );
+		warn!( "removing user {:?} from dom", self.nick );
 		self.p.remove();
 	}
 }

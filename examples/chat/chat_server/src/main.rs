@@ -56,7 +56,7 @@ pub type MS         = MultiServiceImpl<ServiceID, ConnID, Codecs>               
 
 fn main()
 {
-	flexi_logger::Logger::with_str( "trace, tungstenite=warn, mio=warn, ws_stream_tungstenite=warn, hyper=warn, tokio=warn" ).start().unwrap();
+	flexi_logger::Logger::with_str( "warn, tungstenite=warn, mio=warn, ws_stream_tungstenite=warn, hyper=warn, tokio=warn" ).start().unwrap();
 
 	rt::spawn( accept_ws() ).expect( "spawn accept_ws" );
 

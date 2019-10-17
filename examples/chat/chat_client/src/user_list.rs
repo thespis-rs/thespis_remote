@@ -1,14 +1,15 @@
-use crate :: { import::*, color::*, get_id, document, user::* };
+use crate :: { import::*, * };
 
 
 #[ derive( Actor ) ]
 //
 pub struct UserList
 {
-	users: HashMap<usize, Addr<User>>,
-	div  : HtmlDivElement            ,
-	indom: bool                      ,
-	parent: HtmlElement              ,
+	users       : HashMap<usize, Addr<User>>,
+	div         : HtmlDivElement            ,
+	indom       : bool                      ,
+	parent      : HtmlElement               ,
+	chat_window : Addr< ChatWindow >        ,
 }
 
 // Unfortunately thespis requires Send right now, and HtmlElement isn't Send.
@@ -20,10 +21,11 @@ unsafe impl Send for UserList {}
 
 impl UserList
 {
-	pub fn new( parent: &str ) -> Self
+	pub fn new( parent: &str, chat_window: Addr< ChatWindow > ) -> Self
 	{
 		Self
 		{
+			chat_window,
 			users: HashMap::new() ,
 			div  : document().create_element( "div" ).expect_throw( "create userlist div" ).unchecked_into() ,
 			indom: false,
@@ -53,8 +55,9 @@ impl Drop for UserList
 
 pub struct Insert
 {
-	pub sid : usize ,
-	pub nick: String,
+	pub sid : usize  ,
+	pub nick: String ,
+	pub time: f64    ,
 }
 
 
@@ -78,12 +81,22 @@ impl Handler< Insert > for UserList
 
 		else
 		{
-			let user = User::new( msg.sid, msg.nick, self.div.clone().unchecked_into() );
+			let user = User::new( msg.sid, msg.nick.clone(), self.div.clone().unchecked_into() );
 			let mut addr = Addr::try_from( user ).expect_throw( "Failed to create address" );
 
 			addr.send( Render{} ).await.expect_throw( "send" );
 
 			self.users.insert( msg.sid, addr.clone() );
+
+			let new_user = NewUser
+			{
+				time: msg.time     ,
+				nick: msg.nick     ,
+				sid : msg.sid      ,
+				addr: addr.clone() ,
+			};
+
+			self.chat_window.send( new_user ).await.expect_throw( "send" );
 
 			addr
 		}

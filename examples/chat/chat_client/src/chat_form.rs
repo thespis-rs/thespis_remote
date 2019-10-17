@@ -38,6 +38,20 @@ impl Handler< ChatSubmitEvt > for ChatForm
 
 		Box::pin( async move
 		{
+			// We also trigger this if the user types Enter.
+			// Shift+Enter let's the user create a new line in the message.
+			//
+			if msg.e.has_type::<KeyboardEvent>()
+			{
+				let evt: KeyboardEvent = msg.e.clone().unchecked_into();
+
+				if  evt.code() != "Enter"  ||  evt.shift_key()
+				{
+					return;
+				}
+			}
+
+
 			msg.e.prevent_default();
 
 			let nickre   = Regex::new( r"^/nick (\w{1,15})" ).unwrap();
@@ -100,7 +114,6 @@ impl Handler< ChatSubmitEvt > for ChatForm
 }
 
 
-
 // Disconnect button
 //
 pub struct ChatResetEvt { pub e: Event }
@@ -119,5 +132,8 @@ impl Handler< ChatResetEvt > for ChatForm
 	{
 		msg.e.prevent_default();
 
+		self.app.send( Disconnect {} ).await.expect_throw( "send disconnect" );
 	})}
 }
+
+

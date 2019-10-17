@@ -4,15 +4,14 @@ use crate :: { import::*, * };
 //
 pub struct ConnectForm
 {
-	server      : Addr< App        >,
-	chat_window : Addr< ChatWindow >,
-	form        : HtmlElement       ,
+	server: Addr< App > ,
+	form  : HtmlElement ,
 }
 
 
 impl ConnectForm
 {
-	pub fn new( server: Addr< App >, chat_window: Addr< ChatWindow > ) -> Self
+	pub fn new( server: Addr< App > ) -> Self
 	{
 		let cnick: HtmlInputElement = get_id( "connect_nick" ).unchecked_into();
 		cnick.set_value( random_name() );
@@ -21,7 +20,7 @@ impl ConnectForm
 		//
 		let form : HtmlElement = get_id( "connect_form" ).unchecked_into();
 
-		Self { server, chat_window, form  }
+		Self { server, form  }
 	}
 
 
@@ -134,8 +133,6 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 			{
 				Ok( welcome ) =>
 				{
-					let w2 = welcome.clone();
-
 					self.form.style().set_property( "display", "none" ).expect_throw( "set cform display none" );
 
 					// Outgoing messages
@@ -148,12 +145,11 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 						peer_addr       ,
 						set_nick_addr   ,
 						new_msg_addr    ,
-						welcome: w2     ,
+						welcome         ,
 						ws              ,
 					};
 
-					self.server     .call( connection ).await.expect_throw( "call" );
-					self.chat_window.call( welcome    ).await.expect_throw( "call" );
+					self.server.call( connection ).await.expect_throw( "call" );
 				}
 
 				Err(e) =>
@@ -214,10 +210,14 @@ impl Handler< ConnResetEvt > for ConnectForm
 	{
 		msg.e.prevent_default();
 
-		let cnick: HtmlInputElement = get_id( "connect_nick" ).unchecked_into();
-		let curl : HtmlInputElement = get_id( "connect_url"  ).unchecked_into();
+		let cnick : HtmlInputElement = get_id( "connect_nick" ).unchecked_into();
+		let curl  : HtmlInputElement = get_id( "connect_url"  ).unchecked_into();
+		let cerror: HtmlElement      = get_id( "connect_error" ).unchecked_into();
 
 		cnick.set_value( random_name()         );
 		curl .set_value( "ws://127.0.0.1:3012" );
+
+		cerror.style().set_property( "display", "none" ).expect_throw( "set display none on cerror" );
+		cerror.set_inner_text( "" );
 	})}
 }

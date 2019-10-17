@@ -19,8 +19,8 @@ impl App
 {
 	pub fn new( addr: Addr<Self> ) -> Self
 	{
-		let users       = Addr::try_from_local( UserList   ::new( "users" ) ).expect_throw( "spawn userlist" );
-		let chat_window = Addr::try_from_local( ChatWindow ::new( "chat"  ) ).expect_throw( "spawn cwindow"  );
+		let chat_window = Addr::try_from_local( ChatWindow ::new( "chat"                       ) ).expect_throw( "spawn cwindow"  );
+		let users       = Addr::try_from_local( UserList   ::new( "users", chat_window.clone() ) ).expect_throw( "spawn userlist" );
 
 		let app = Self
 		{
@@ -35,24 +35,11 @@ impl App
 	}
 
 
-	fn show_connect_form()
-	{
-		// show the connect form
-		//
-		let cform: HtmlElement = get_id( "connect_form" ).unchecked_into();
-
-		cform.style().set_property( "display", "flex" ).expect_throw( "set cform display none" );
-
-		get_id( "users" ).set_inner_html( "" );
-		get_id( "chat"  ).set_inner_html( "" );
-	}
-
-
 	// Link submit and reset buttons to the Actors that will handle the events
 	//
 	fn setup_forms( &self )
 	{
-		let conn_form = Addr::try_from_local( ConnectForm::new( self.addr.clone(), self.chat_window.clone() ) )
+		let conn_form = Addr::try_from_local( ConnectForm::new( self.addr.clone() ) )
 
 			.expect_throw( "spawn conn_form" )
 		;
@@ -62,17 +49,22 @@ impl App
 			.expect_throw( "spawn chat_form" )
 		;
 
-		let conn_form2  = conn_form.clone();
-		let chat_form2  = chat_form.clone();
+		let conn_form2 = conn_form.clone();
+		let chat_form2 = chat_form.clone();
+		let chat_form3 = chat_form.clone();
 
-		let conn_form_elem = get_id( "connect_form" );
-		let chat_form_elem = get_id( "chat_form"    );
+		let chat_input_elem = get_id( "chat_input"   );
+		let conn_form_elem  = get_id( "connect_form" );
+		let chat_form_elem  = get_id( "chat_form"    );
 
 		let conn_submit_evts = EHandler::new( &conn_form_elem, "submit", false );
 		let conn_reset_evts  = EHandler::new( &conn_form_elem, "reset" , false );
 
 		let chat_submit_evts = EHandler::new( &chat_form_elem, "submit", false );
 		let chat_reset_evts  = EHandler::new( &chat_form_elem, "reset" , false );
+
+		let enter_evts       = EHandler::new( &chat_input_elem, "keypress", false );
+
 
 		// Connect the events from the connect form to the actor handling them. (submit and reset).
 		//
@@ -118,9 +110,20 @@ impl App
 			;
 		};
 
+		let chat_enter_task = async move
+		{
+			enter_evts
+
+				.map( |e| Ok(ChatSubmitEvt{e}) )
+				.forward( chat_form3 ).await
+				.expect_throw( "forward csubmit" )
+			;
+		};
+
 		spawn_local( conn_submit_task );
 		spawn_local( conn_reset_task  );
 
+		spawn_local( chat_enter_task  );
 		spawn_local( chat_submit_task );
 		spawn_local( chat_reset_task  );
 	}
@@ -153,11 +156,18 @@ impl Handler<Connected> for App
 		self.users.call( Clear{} ).await.expect_throw( "clear userlist" );
 
 		let new_users = std::mem::replace( &mut msg.welcome.users, Vec::new() );
-		let inserts   = new_users.into_iter().map( |(sid, nick)| Insert{ sid, nick } );
+
+		// A time of 0.0 means that the user joined before us, so we don't print an annoucnement.
+		//
+		let inserts = new_users.into_iter().map( |(sid, nick)| Insert{ time: 0.0, sid, nick } );
+
+		warn!( "{:?}", &inserts );
 
 		self.users.send_all( &mut futures::stream::iter(inserts) ).await.expect_throw( "new users" );
 
 		self.users.send( Render{} ).await.expect_throw( "render userlist" );
+
+		self.chat_window.call( msg.welcome.clone() ).await.expect_throw( "call" );
 
 		self.connection = Some( msg );
 
@@ -182,11 +192,12 @@ impl Handler<ServerMsg> for App
 			// Add the user to the userlist
 			// Give the chat window this users Addr
 			//
-			ServerMsg::UserJoined{ time, sid, nick }   =>
+			ServerMsg::UserJoined{ time, sid, nick } =>
 			{
-				let addr = self.users.call( Insert{ sid, nick } ).await.expect_throw( "add new user to user list" );
+				self.users.send( Insert{ time: time as f64, sid, nick } ).await
 
-				self.chat_window.send( NewUser{ time: time as f64, sid, addr } ).await.expect_throw( "announce new user" );
+					.expect_throw( "add new user to user list" )
+				;
 			}
 
 			// Remove the user to the userlist
@@ -289,7 +300,16 @@ impl Handler<Disconnect> for App
 
 		self.connection = None;
 
-		Self::show_connect_form();
+		// show the connect form
+		//
+		let cform: HtmlElement = get_id( "connect_form" ).unchecked_into();
+
+		cform.style().set_property( "display", "flex" ).expect_throw( "set cform display none" );
+
+		self.users.send( Clear {} ).await.expect_throw( "clear  userlist" );
+		self.users.send( Render{} ).await.expect_throw( "render userlist" );
+
+		self.chat_window.send( Disconnect{} ).await.expect_throw( "clear  userlist" );
 
 	})}
 

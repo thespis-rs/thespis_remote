@@ -1,4 +1,4 @@
-use crate::{ import::*, get_id, document, Color, user::{ User, UserInfo } };
+use crate::{ import::*, * };
 
 const HELP: &str = "Available commands:
 /nick NEWNAME # change nick (must be between 1 and 15 word characters)
@@ -94,6 +94,18 @@ impl Handler<Welcome> for ChatWindow
 }
 
 
+impl Handler< Disconnect > for ChatWindow
+{
+	fn handle( &mut self, _: Disconnect ) -> Return<()>
+	{
+		self.div.set_inner_html( "" );
+		self.users.clear();
+
+		ready(()).boxed()
+	}
+}
+
+
 
 
 pub struct ChatMsg
@@ -116,7 +128,7 @@ impl Handler<ChatMsg> for ChatWindow
 
 		let (nick, color) = user.call( UserInfo{} ).await.expect_throw( "call user" );
 
-		self.append_line( msg.time as f64, &nick, &msg.txt, &color, false );
+		self.append_line( msg.time, &nick, &msg.txt, &color, false );
 
 	})}
 
@@ -129,11 +141,15 @@ impl Handler<ChatMsg> for ChatWindow
 
 
 
+/// A user that joined after we are connected
+/// We will print a message to announce the user.
+//
 pub struct NewUser
 {
-	pub sid: usize,
-	pub addr: Addr<User>,
-	pub time: f64
+	pub sid     : usize      ,
+	pub nick    : String     ,
+	pub addr    : Addr<User> ,
+	pub time    : f64        ,
 }
 
 impl Message for NewUser { type Return = (); }
@@ -143,6 +159,13 @@ impl Handler<NewUser> for ChatWindow
 	fn handle( &mut self, msg: NewUser ) -> Return<()>
 	{
 		self.users.insert( msg.sid, msg.addr );
+
+		if msg.time != 0.0
+		{
+			let color = self.srv_color;
+
+			self.append_line( msg.time, "Server", &format!( "We welcome a new user, {}!", &msg.nick ), &color, true );
+		}
 
 		ready(()).boxed()
 	}
@@ -156,11 +179,26 @@ impl Message for UserLeft { type Return = (); }
 
 impl Handler<UserLeft> for ChatWindow
 {
-	fn handle( &mut self, msg: UserLeft ) -> Return<()>
+	fn handle_local( &mut self, msg: UserLeft ) -> ReturnNoSend<()> { Box::pin( async move
 	{
+		// TODO: get rid of expect
+		//
+		let user = self.users.get_mut( &msg.sid ).expect_throw( "Couldn't find user" );
+
+		let (nick, _) = user.call( UserInfo{} ).await.expect_throw( "call user" );
+
 		self.users.remove( &msg.sid );
 
-		ready(()).boxed()
+		let color = self.srv_color;
+
+		self.append_line( msg.time, "Server", &format!( "Sadly, {} left us.", &nick ), &color, true );
+
+	})}
+
+
+	fn handle( &mut self, _: UserLeft ) -> Return<()>
+	{
+		unreachable!( "Cannot be spawned on a threadpool" );
 	}
 }
 

@@ -13,9 +13,9 @@ use
 {
 	connect_form :: { ConnectForm, ConnSubmitEvt, ConnResetEvt                        } ,
 	chat_form    :: { ChatForm, ChatSubmitEvt, ChatResetEvt                           } ,
-	app          :: { App, Connected                                                  } ,
+	app          :: { App, Connected, Disconnect                                      } ,
 	chat_window  :: { ChatWindow, NewUser, UserLeft, AnnounceNick, ChatMsg, PrintHelp } ,
-	user         :: { ChangeNick, UserInfo                                            } ,
+	user         :: { ChangeNick, UserInfo, User                                      } ,
 };
 
 mod import
@@ -68,15 +68,12 @@ pub fn main() -> Result<(), JsValue>
 	//
 	#[ cfg( debug_assertions ) ]
 	//
-	wasm_logger::init( wasm_logger::Config::new(Level::Trace).message_on_new_line() );
+	wasm_logger::init( wasm_logger::Config::new(Level::Info).message_on_new_line() );
 
 	let program = async
 	{
-		// let tarea = get_id( "chat_input"   );
 		// let chat  = get_id( "chat_form"    );
 
-
-		// let _enter_evts   = EHandler::new( &tarea, "keypress", false );
 
 		// let _reset_evts   = EHandler::new( &chat , "reset"   , false );
 
@@ -220,30 +217,7 @@ async fn on_msg( mut stream: impl Stream<Item=Result<ServerMsg, CodecError>> + U
 }
 
 
-// When the user presses the Enter key in the textarea we submit, rather than adding a new line
-// for newline, the user can use shift+Enter.
-//
-// We use the click effect on the Send button, because form.submit() wont let our on_submit handler run.
-//
-async fn on_key
-(
-	mut keys: impl Stream< Item=Event > + Unpin ,
-)
-{
-	let send: HtmlElement = get_id( "chat_submit" ).unchecked_into();
 
-
-	while let Some( evt ) = keys.next().await
-	{
-		let evt: KeyboardEvent = evt.unchecked_into();
-
-		if  evt.code() == "Enter"  &&  !evt.shift_key()
-		{
-			send.click();
-			evt.prevent_default();
-		}
-	};
-}
 
 
 
