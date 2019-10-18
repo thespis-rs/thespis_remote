@@ -29,17 +29,17 @@ default-features = false
 version = "^0.3"
 
 [dependencies.thespis]
-path = "../../../../thespis_iface"
+path = "../../../../thespis"
 
 [dependencies.thespis_impl]
 path = "../../../../thespis_impl"
 
-[dependencies.thespis_impl_remote]
+[dependencies.thespis_remote_impl]
 default-features = false
-path = "../../../../thespis_impl_remote"
+path = "../../../../thespis_remote_impl"
 
 [dependencies.thespis_remote]
-path = "../../../../thespis_iface_remote"
+path = "../../../../thespis_remote"
 
 [dependencies.wasm-bindgen-futures]
 version = "^0.4"

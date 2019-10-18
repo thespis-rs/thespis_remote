@@ -127,7 +127,7 @@ fn close_connection_call()
 //
 fn header_unknown_service_error()
 {
-	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=trace, thespis_impl_remote=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=trace, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let nodea = async
 	{
@@ -190,7 +190,7 @@ fn header_unknown_service_error()
 //
 fn header_deserialize()
 {
-	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=debug, thespis_impl_remote=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=debug, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let nodea = async
 	{
@@ -259,7 +259,7 @@ fn header_deserialize()
 //
 fn invalid_codec()
 {
-	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=debug, thespis_impl_remote=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=debug, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let nodea = async
 	{
@@ -329,7 +329,7 @@ fn invalid_codec()
 //
 fn sm_deserialize_error()
 {
-	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=trace, thespis_impl_remote=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=trace, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let nodea = async
 	{

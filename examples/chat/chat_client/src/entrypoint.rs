@@ -42,7 +42,7 @@ mod import
 		chat_format         :: { * } ,
 		thespis             :: { MailboxLocal, Message, Actor, Handler, Recipient, BoxRecipient, Return, ReturnNoSend, Address } ,
 		thespis_impl        :: { Addr, Inbox, Receiver } ,
-		thespis_impl_remote :: { MulServTokioCodec, PeerEvent, Peer } ,
+		thespis_remote_impl :: { MulServTokioCodec, PeerEvent, Peer } ,
 		thespis_remote      :: { ServiceMap } ,
 		pharos              :: { Observable, ObserveConfig, Events                                        } ,
 	};

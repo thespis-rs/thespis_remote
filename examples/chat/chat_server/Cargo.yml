@@ -27,10 +27,10 @@ dependencies:
   warp                  : { version: ^0.1, default-features: false, features: [ websocket] }
   ws_stream_tungstenite : ^0.1.0-alpha
 
-  thespis               : { path: ../../../../thespis_iface        }
-  thespis_remote        : { path: ../../../../thespis_iface_remote }
+  thespis               : { path: ../../../../thespis              }
+  thespis_remote        : { path: ../../../../thespis_remote       }
   thespis_impl          : { path: ../../../../thespis_impl         }
-  thespis_impl_remote   : { path: ../../../../thespis_impl_remote  }
+  thespis_remote_impl   : { path: ../../../../thespis_remote_impl  }
 
   tokio01               : { version: ^0.1 , default-features: false, features: [ rt-full, codec ], package: tokio }
   futures01             : { version: ^0.1 , default-features: false, package: futures }

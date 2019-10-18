@@ -3,7 +3,7 @@ use
 	thespis_remote_wasm_example_common :: *,
 	thespis               :: { *               } ,
 	thespis_impl          :: { *               } ,
-	thespis_impl_remote   :: { *               } ,
+	thespis_remote_impl   :: { *               } ,
 	wasm_bindgen::prelude :: { *               } ,
 	futures_codec        :: { *                } ,
 	log::*,

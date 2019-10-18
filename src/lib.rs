@@ -6,7 +6,7 @@
 
 
 
-#![ doc    ( html_root_url = "https://docs.rs/thespis_impl_remote" ) ]
+#![ doc    ( html_root_url = "https://docs.rs/thespis_remote_impl" ) ]
 #![ deny   ( missing_docs, bare_trait_objects                      ) ]
 #![ forbid ( unsafe_code                                           ) ]
 #![ allow  ( clippy::suspicious_else_formatting                    ) ]

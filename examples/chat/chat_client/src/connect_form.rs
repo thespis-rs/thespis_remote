@@ -104,7 +104,7 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 			let mut addr_join = server_map::Services::recipient::<Join>( peer_addr.clone() );
 
 			// Create a service map.
-			// A service map is a helper object created by a beefy macro included with thespis_impl_remote. It is responsible
+			// A service map is a helper object created by a beefy macro included with thespis_remote_impl. It is responsible
 			// for deserializing and delivering the message to the correct handler.
 			//
 			let mut sm = client_map::Services::new();

@@ -68,10 +68,6 @@ async move
 	//
 	// sid null      -> ConnectionError
 	//
-	//
-	// TODO: Refactor!!!
-
-
 	// I think these should never fail, because they accept random data in the current implementation.
 	// However, since it's implementation dependant, and we are generic, we can't know that. It's probably
 	// safer to assume that if these do fail we close the connection because all bet's are off for following

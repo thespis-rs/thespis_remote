@@ -1,6 +1,6 @@
 # Thespis Wasm Example
 
-Just showing that thespis works in WASM. This is without remote functionality. The repository thespis_impl_remote will have a remote WASM example.
+Just showing that thespis works in WASM. This is without remote functionality. The repository thespis_remote_impl will have a remote WASM example.
 
 ## Dependencies
 

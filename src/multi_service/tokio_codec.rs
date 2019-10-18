@@ -18,7 +18,7 @@ pub struct MulServTokioCodec<MS> where MS: MultiService
 impl<MS> MulServTokioCodec<MS> where MS: MultiService
 {
 	/// Create a new codec, with the max length of a single message in bytes. Note that this includes the
-	/// header of the wireformat. For [`thespis_impl_remote::MultiServiceImpl`] the header is 36 bytes.
+	/// header of the wireformat. For [`thespis_remote_impl::MultiServiceImpl`] the header is 36 bytes.
 	///
 	/// Setting a value to high might lead to more memory usage and could enable OOM/DDOS attacks.
 	//

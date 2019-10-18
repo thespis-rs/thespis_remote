@@ -10,11 +10,11 @@ package:
 
 dependencies:
 
-  serde                : { version: ^1, features: [ derive ]      }
-  thespis              : { path: ../../../../thespis_iface        }
-  thespis_remote       : { path: ../../../../thespis_iface_remote }
-  thespis_impl_remote  : { path: ../../../../thespis_impl_remote, default-features: false }
-  bytes                : { version: ^0.4                                                 }
+  serde                : { version: ^1, features: [ derive ]                                         }
+  thespis              : { path: ../../../../thespis                                                 }
+  thespis_remote       : { path: ../../../../thespis_remote                                          }
+  thespis_remote_impl  : { path: ../../../../thespis_remote_impl, default-features: false            }
+  bytes                : { version: ^0.4                                                             }
   futures-preview      : { version: ^0.3.0-alpha, default-features: false, features: [ std, compat ] }
   futures_codec        : ^0.3
 

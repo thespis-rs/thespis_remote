@@ -1,4 +1,11 @@
 # Auto-generated from "Cargo.yml"
+[badges]
+[badges.maintenance]
+status = "actively-developed"
+
+[badges.travis-ci]
+repository = "thespis-rs/thespis_remote_impl"
+
 [dependencies]
 failure = "^0.1"
 futures_cbor_codec = "^0.1"
@@ -49,13 +56,13 @@ version = "^1"
 version = "^0.10"
 
 [dependencies.thespis]
-path = "../thespis_iface"
+path = "../thespis"
 
 [dependencies.thespis_impl]
 path = "../thespis_impl"
 
 [dependencies.thespis_remote]
-path = "../thespis_iface_remote"
+path = "../thespis_remote"
 
 [dependencies.tokio]
 default-features = false
@@ -83,19 +90,29 @@ version = "^0.1"
 
 [features]
 default = []
+external_doc = []
 
 [lib]
 bench = false
 
 [package]
 authors = ["Naja Melan <najamelan@autistici.org>"]
+categories = ["Asynchronous", "Concurrency", "network-programming"]
+description = "Reference implementation for thespis remote actors"
+documentation = "https://docs.rs/thespis_remote_impl"
 edition = "2018"
-name = "thespis_impl_remote"
+homepage = "https://github.com/thespis-rs/thespis_remote_impl"
+keywords = ["async", "futures", "actor", "thespis"]
+license = "Unlicense"
+name = "thespis_remote_impl"
+readme = "README.md"
+repository = "https://github.com/thespis-rs/thespis_remote_impl"
 version = "0.1.0"
 
 [package.metadata]
-[package.metadata."docs.rs"]
-all-features = true
+[package.metadata.docs]
+[package.metadata.docs.rs]
+features = ["external_doc"]
 
 [profile]
 [profile.release]

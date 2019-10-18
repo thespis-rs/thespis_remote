@@ -148,7 +148,7 @@ fn relay_once()
 //
 fn relay_multi()
 {
-	// flexi_logger::Logger::with_str( "relay=trace, thespis_impl=info, thespis_impl_remote=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let provider = async
 	{
@@ -217,7 +217,7 @@ fn relay_multi()
 //
 fn relay_unknown_service()
 {
-	// flexi_logger::Logger::with_str( "relay=trace, thespis_impl=info, thespis_impl_remote=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let provider = async
 	{
@@ -302,7 +302,7 @@ fn relay_unknown_service()
 //
 fn relay_disappeared()
 {
-	// flexi_logger::Logger::with_str( "pharos=trace, relay=trace, thespis_impl=info, thespis_impl_remote=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "pharos=trace, relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let provider = async
 	{
@@ -413,7 +413,7 @@ fn relay_disappeared()
 //
 fn relay_disappeared_multi()
 {
-	// flexi_logger::Logger::with_str( "pharos=trace, relay=trace, thespis_impl=info, thespis_impl_remote=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "pharos=trace, relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let provider = async
 	{

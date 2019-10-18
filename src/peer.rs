@@ -30,6 +30,7 @@ pub trait BoundsIn <MS: BoundsMS>: 'static + Stream< Item = Result<MS, ThesRemot
 pub trait BoundsOut<MS: BoundsMS>: 'static + Sink<MS, Error=ThesRemoteErr > + Unpin + Send {}
 
 /// Trait bounds for the MultiService message format. This is the wire format for thespis_remote.
+/// Requires Message so that we can send it to the Peer which will just send it out.
 //
 pub trait BoundsMS: 'static + Message<Return=()> + MultiService<CodecAlg=Codecs> + Send + fmt::Debug {}
 
@@ -391,7 +392,7 @@ impl<MS> Observable<PeerEvent> for Peer<MS> where MS: BoundsMS
 impl<MS> ServiceProvider<MS> for Peer<MS> where MS: BoundsMS
 {
 	/// Register a service map as the handler for service ids that come in over the network. Normally you should
-	/// not call this directly, but use [´thespis_iface_remote::ServiceMap::register_with_peer´].
+	/// not call this directly, but use [´thespis_remote::ServiceMap::register_with_peer´].
 	//
 	fn register_services( &mut self, services: &[&'static <MS as MultiService>::ServiceID], sm: BoxServiceMap<MS> )
 	{

@@ -19,8 +19,8 @@ mod import
 		tokio_tungstenite     :: { WebSocketStream, accept_async                                    } ,
 		thespis               :: { Message, Actor, Handler, Return, Address, Mailbox     } ,
 		thespis_impl          :: { Addr, Inbox, Receiver                                            } ,
-		thespis_impl_remote   :: { MulServTokioCodec, MultiServiceImpl                   } ,
-		thespis_impl_remote   :: { peer::Peer, ConnID, ServiceID, Codecs                            } ,
+		thespis_remote_impl   :: { MulServTokioCodec, MultiServiceImpl                   } ,
+		thespis_remote_impl   :: { peer::Peer, ConnID, ServiceID, Codecs                            } ,
 		thespis_remote        :: { ServiceMap                                                       } ,
 		tokio01               :: { net::{ TcpListener, TcpStream }                                  } ,
 		futures01             :: { future::{ Future as Future01, ok }                               } ,
@@ -111,7 +111,7 @@ async fn handle_conn( socket: WebSocketStream<TcpStream>, peer_addr: SocketAddr 
 	let my_act = MyActor { count: 5 };
 
 	// Create a service map.
-	// A service map is a helper object created by a beefy macro included with thespis_impl_remote. It is responsible
+	// A service map is a helper object created by a beefy macro included with thespis_remote_impl. It is responsible
 	// for deserializing and delivering the message to the correct handler.
 	//
 	let mut sm = remotes::Services::new();

@@ -4,7 +4,7 @@ pub mod import
 	{
 		thespis             :: { *                      } ,
 		thespis_remote      :: { *                      } ,
-		thespis_impl_remote :: { *, service_map, peer   } ,
+		thespis_remote_impl :: { *, service_map, peer   } ,
 		futures_codec       :: { Framed                 } ,
 		bytes               :: { Bytes, BytesMut        } ,
 		serde               :: { Serialize, Deserialize } ,

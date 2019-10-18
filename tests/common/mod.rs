@@ -11,7 +11,7 @@ pub mod import
 		thespis             :: { *                                 } ,
 		thespis_remote      :: { *                                 } ,
 		thespis_impl        :: { *                                 } ,
-		thespis_impl_remote :: { *, service_map, peer              } ,
+		thespis_remote_impl :: { *, service_map, peer              } ,
 		log                 :: { *                                 } ,
 
 		bytes               :: { Bytes, BytesMut                   } ,

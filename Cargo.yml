@@ -1,30 +1,56 @@
 package:
 
-  name   : thespis_impl_remote
-  version: 0.1.0
-  authors: [ Naja Melan <najamelan@autistici.org> ]
-  edition: '2018'
+  # When releasing to crates.io:
+  #
+  # - Update CHANGELOG.md.
+  # - Update version numbers in Cargo.yml, Cargo.toml, install section of readme.
+  # - verify CI result
+  # - test dependent crates
+  # - cargo publish
+  # - merge dev branch into master
+  # - create git tag
+  #
+  version       : 0.1.0
+  name          : thespis_remote_impl
+  edition       : '2018'
+  authors       : [ Naja Melan <najamelan@autistici.org> ]
+  description   : Reference implementation for thespis remote actors
+  license       : Unlicense
+  homepage      : https://github.com/thespis-rs/thespis_remote_impl
+  repository    : https://github.com/thespis-rs/thespis_remote_impl
+  documentation : https://docs.rs/thespis_remote_impl
+  readme        : README.md
+  keywords      : [ async, futures, actor, thespis ]
+  categories    : [ Asynchronous, Concurrency, network-programming ]
 
   metadata:
-    docs.rs:
-      all-features: true
+    docs:
+      rs:
+        features: [ external_doc ]
+
+badges:
+
+  maintenance : { status     : actively-developed             }
+  travis-ci   : { repository : thespis-rs/thespis_remote_impl }
+
+features:
+
+  default: []
+
+  # only used internally, don't use
+  #
+  external_doc: []
 
 lib:
 
   bench: false
 
 
-features:
-
-  default: []
-
-
-
 dependencies:
 
-  thespis             : { path: ../thespis_iface        }
-  thespis_impl        : { path: ../thespis_impl         }
-  thespis_remote      : { path: ../thespis_iface_remote }
+  thespis             : { path: ../thespis        }
+  thespis_impl        : { path: ../thespis_impl   }
+  thespis_remote      : { path: ../thespis_remote }
   async_runtime       : { version: ^0.3, default-features: false, package: naja_async_runtime }
   failure             : ^0.1
   futures-preview     : { version: ^0.3.0-alpha, features: [ std, compat ], default-features: false }
@@ -60,7 +86,7 @@ dependencies:
 dev-dependencies:
 
   romio             : ^0.3.0-alpha
-  criterion         : { version: ^0.3        , features: [ real_blackbox ]                }
+  criterion         : { version: ^0.3 , features: [ real_blackbox ]                       }
   tokio             : { version: ^0.1 , default-features: false, features: [ tcp, codec ] }
 
   pretty_assertions : ^0.6

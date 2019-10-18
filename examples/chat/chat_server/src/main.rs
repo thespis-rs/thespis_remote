@@ -29,8 +29,8 @@ mod import
 		tokio_tungstenite     :: { WebSocketStream, accept_async                                    } ,
 		thespis               :: { Mailbox, Message, Actor, Handler, Recipient, Return, Address     } ,
 		thespis_impl          :: { Addr, Inbox, Receiver                                            } ,
-		thespis_impl_remote   :: { MulServTokioCodec, MultiServiceImpl, PeerEvent                   } ,
-		thespis_impl_remote   :: { peer::Peer, ConnID, ServiceID, Codecs                            } ,
+		thespis_remote_impl   :: { MulServTokioCodec, MultiServiceImpl, PeerEvent                   } ,
+		thespis_remote_impl   :: { peer::Peer, ConnID, ServiceID, Codecs                            } ,
 		thespis_remote        :: { ServiceMap                                                       } ,
 		pharos                :: { Observable, Filter                                               } ,
 		tokio01               :: { net::{ TcpListener, TcpStream }                                  } ,
@@ -138,7 +138,7 @@ async fn handle_conn( socket: WebSocketStream<TcpStream>, peer_addr: SocketAddr,
 
 
 	// Create a service map.
-	// A service map is a helper object created by a beefy macro included with thespis_impl_remote. It is responsible
+	// A service map is a helper object created by a beefy macro included with thespis_remote_impl. It is responsible
 	// for deserializing and delivering the message to the correct handler.
 	//
 	let mut sm = server_map::Services::new();

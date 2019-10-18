@@ -32,10 +32,10 @@ dependencies:
   ws_stream_wasm          : { version: ^0.5, path: ../../../../../ws_stream_wasm }
 
   pharos               : ^0.4
-  thespis              : { path: ../../../../thespis_iface        }
-  thespis_remote       : { path: ../../../../thespis_iface_remote }
-  thespis_impl         : { path: ../../../../thespis_impl         }
-  thespis_impl_remote  : { path: ../../../../thespis_impl_remote, default-features: false }
+  thespis              : { path: ../../../../thespis                                      }
+  thespis_remote       : { path: ../../../../thespis_remote                               }
+  thespis_impl         : { path: ../../../../thespis_impl                                 }
+  thespis_remote_impl  : { path: ../../../../thespis_remote_impl, default-features: false }
 
   getrandom            : { version: ^0.1, features: [ wasm-bindgen ] }
 
