@@ -52,8 +52,7 @@ dependencies:
   thespis_impl        : { path: ../thespis_impl   }
   thespis_remote      : { path: ../thespis_remote }
   async_runtime       : { version: ^0.3, default-features: false, package: naja_async_runtime }
-  failure             : ^0.1
-  futures-preview     : { version: ^0.3.0-alpha, features: [ std, compat ], default-features: false }
+  futures             : { version: ^0.3, features: [ std, compat ], default-features: false }
   log                 : ^0.4
   simple_logger       : ^1
   regex               : { version: ^1, features: [ pattern ] }
@@ -85,7 +84,6 @@ dependencies:
 
 dev-dependencies:
 
-  romio             : ^0.3.0-alpha
   criterion         : { version: ^0.3 , features: [ real_blackbox ]                       }
   tokio             : { version: ^0.1 , default-features: false, features: [ tcp, codec ] }
 
@@ -93,6 +91,10 @@ dev-dependencies:
   flexi_logger      : ^0.14
   hex               : ^0.4
 
+  async_executors   : { path: ../../async_executors, features: [ localpool, threadpool, async_std ] }
+  futures_ringbuf   : ^0.1
+  futures_ringbuf   : { path: ../../futures_ringbuf }
+  async_runtime       : { version: ^0.3, package: naja_async_runtime }
 
 
 profile:
@@ -104,4 +106,3 @@ profile:
 
     lto          : false
     debug        : true
-

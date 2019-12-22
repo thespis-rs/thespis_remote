@@ -300,9 +300,9 @@ async fn incoming_send<MS>
 		{
 			error!( "Failed to send message to handler for service [{:?}]: {:?}", sid, e );
 
-			match e.kind()
+			match e
 			{
-				ThesRemoteErrKind::Deserialize(..) =>
+				ThesRemoteErr::Deserialize(..) =>
 				{
 					peer.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
 
@@ -312,8 +312,8 @@ async fn incoming_send<MS>
 				},
 
 
-				  ThesRemoteErrKind::ThesErr (..) // This is a spawn error
-				| ThesRemoteErrKind::Downcast(..) =>
+				  ThesRemoteErr::ThesErr (..) // This is a spawn error
+				| ThesRemoteErr::Downcast(..) =>
 				{
 					peer.pharos.send( PeerEvent::Error( ConnectionError::InternalServerError ) ).await
 
@@ -326,7 +326,7 @@ async fn incoming_send<MS>
 				},
 
 
-				ThesRemoteErrKind::UnknownService(..) =>
+				ThesRemoteErr::UnknownService(..) =>
 				{
 					let err = ConnectionError::UnknownService( sid.into().to_vec() );
 
@@ -427,9 +427,9 @@ async fn incoming_call<MS>
 			{
 				error!( "Failed to call handler for service [{:?}]: {:?}", sid, e );
 
-				match e.kind()
+				match e
 				{
-					ThesRemoteErrKind::Deserialize(..) =>
+					ThesRemoteErr::Deserialize(..) =>
 					{
 						peer.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
 
@@ -439,7 +439,7 @@ async fn incoming_call<MS>
 					},
 
 
-					ThesRemoteErrKind::UnknownService(..) =>
+					ThesRemoteErr::UnknownService(..) =>
 					{
 						let err = ConnectionError::UnknownService(sid.into().to_vec());
 
@@ -451,8 +451,8 @@ async fn incoming_call<MS>
 					},
 
 
-					  ThesRemoteErrKind::ThesErr (..) // This is a spawn error
-					| ThesRemoteErrKind::Downcast(..) =>
+					  ThesRemoteErr::ThesErr (..) // This is a spawn error
+					| ThesRemoteErr::Downcast(..) =>
 					{
 						peer.pharos.send( PeerEvent::Error( ConnectionError::InternalServerError ) ).await
 

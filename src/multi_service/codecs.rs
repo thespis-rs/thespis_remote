@@ -68,7 +68,7 @@ impl TryFrom< Bytes > for Codecs
 
 		let num = rdr.read_u32::<LittleEndian>().expect( "Read Codec from Bytes" );
 
-		Codecs::from_u32( num ).ok_or_else( || ThesRemoteErrKind::Deserialize( "Codecs".into() ).into() )
+		Codecs::from_u32( num ).ok_or_else( || ThesRemoteErr::Deserialize( "Codecs".into() ).into() )
 	}
 }
 

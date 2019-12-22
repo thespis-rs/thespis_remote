@@ -180,7 +180,13 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 		// our address, and we won't be dropped as long as there are adresses around.
 		//
 		let (remote, handle) = listen.remote_handle();
-		rt::spawn( remote ).context( ThesRemoteErrKind::ThesErr( "Incoming stream for peer".into() ))?;
+
+		rt::spawn( remote ).map_err( |_| -> ThesRemoteErr
+		{
+			ThesErr::Spawn{ actor: "Incoming stream for peer".to_string() }.into()
+
+		})?;
+
 
 		Ok( Self
 		{
@@ -297,7 +303,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 
 			None =>
 			{
-				Err( ThesRemoteErrKind::ConnectionClosed( "send MultiService over network".to_string() ).into() )
+				Err( ThesRemoteErr::ConnectionClosed( "send MultiService over network".to_string() ).into() )
 			}
 		}
 	}

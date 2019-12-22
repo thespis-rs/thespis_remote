@@ -51,7 +51,7 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 
 			.as_ref()
 			.read_u64::<LittleEndian>()
-			.context( ThesRemoteErrKind::Deserialize( "Tokio codec: Length".to_string() ))?
+			.map_err( |_| ThesRemoteErr::Deserialize( "Tokio codec: Length".to_string() ))?
 
 			as usize
 		;
@@ -61,7 +61,7 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 		//
 		if len > self.max_length
 		{
-			return Err( ThesRemoteErrKind::MessageSizeExceeded
+			return Err( ThesRemoteErr::MessageSizeExceeded
 			(
 				format!( "Tokio Codec Decoder: max_length={:?} bytes, message={:?} bytes", self.max_length, len )
 
@@ -105,7 +105,7 @@ impl<MS> Encoder for MulServTokioCodec<MS>
 		//
 		if item.len() > self.max_length
 		{
-			return Err( ThesRemoteErrKind::MessageSizeExceeded
+			return Err( ThesRemoteErr::MessageSizeExceeded
 			(
 				format!( "Tokio Codec Encoder: max_length={:?} bytes, message={:?} bytes", self.max_length, item.len() )
 

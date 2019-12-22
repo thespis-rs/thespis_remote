@@ -108,9 +108,9 @@ use
 	// we should not have a leading comma before the next item, but if the comma is after the closing
 	// parenthesis, it will not output a trailing comma, which will be needed to separate from the next item.
 	//
-	super :: { $( $services, )+ Peer, $ms_type       } ,
-	$crate:: { *                                     } ,
-	std   :: { pin::Pin, collections::HashMap, fmt   } ,
+	super :: { $( $services, )+ Peer, $ms_type               } ,
+	$crate:: { *                                             } ,
+	std   :: { pin::Pin, collections::HashMap, fmt, any::Any } ,
 
 	$crate::external_deps::
 	{
@@ -119,10 +119,9 @@ use
 		futures         :: { future::FutureExt, task::{ Context, Poll }   } ,
 		thespis         :: { *                                            } ,
 		thespis_remote  :: { *                                            } ,
-		thespis_impl    :: { Addr, Receiver                               } ,
+		thespis_impl    :: { Addr, Receiver, ThesErr, ThesRes             } ,
 		serde_cbor      :: { self, from_slice as des                      } ,
 		serde           :: { Serialize, Deserialize, de::DeserializeOwned } ,
-		failure         :: { Fail, ResultExt                              } ,
 		log             :: { error                                        } ,
 	},
 };
@@ -171,7 +170,7 @@ $(
 //
 pub struct Services
 {
-	handlers: HashMap< &'static ServiceID, BoxAny >
+	handlers: HashMap< &'static ServiceID, Box< dyn Any + Send + Sync > >
 }
 
 
@@ -240,7 +239,7 @@ impl Clone for Services
 {
 	fn clone( &self ) -> Self
 	{
-		let mut map: HashMap<&'static ServiceID, BoxAny> = HashMap::new();
+		let mut map: HashMap<&'static ServiceID, Box< dyn Any + Send + Sync >> = HashMap::new();
 
 
 		for (k, v) in &self.handlers
@@ -284,13 +283,13 @@ impl Services
 	/// Creates a recipient to a Service type for a remote actor, which can be used in exactly the
 	/// same way as if the actor was local.
 	//
-	pub fn recipient<S>( peer: Addr<Peer<$ms_type>> ) -> impl Recipient<S>
+	pub fn recipient<S>( peer: Addr<Peer<$ms_type>> ) -> RemoteAddr
 
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
-		ServicesRecipient::new( peer )
+		RemoteAddr::new( peer )
 	}
 
 
@@ -308,7 +307,7 @@ impl Services
 
 	// Helper function for send_service below
 	//
-	fn send_service_gen<S>( msg: $ms_type, receiver: &BoxAny ) -> ThesRemoteRes<()>
+	fn send_service_gen<S>( msg: $ms_type, receiver: &Box< dyn Any + Send + Sync > ) -> ThesRemoteRes<()>
 
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -316,13 +315,13 @@ impl Services
 	{
 		let backup: &Receiver<S> = receiver.downcast_ref()
 
-			.ok_or( ThesRemoteErrKind::Downcast( "Receiver in service_macro".into() ))?
+			.ok_or( ThesRemoteErr::Downcast( "Receiver in service_macro".into() ))?
 		;
 
 
 		let message: S = des( &msg.mesg() )
 
-			.context( ThesRemoteErrKind::Deserialize( "Deserialize incoming remote message".into() ))?
+			.map_err( |_| ThesRemoteErr::Deserialize( "Deserialize incoming remote message".into() ))?
 		;
 
 
@@ -337,7 +336,11 @@ impl Services
 
 			if res.is_err() { error!( "Failed to deliver remote message to actor: {:?}", &rec ); }
 
-		}).context( ThesRemoteErrKind::ThesErr( "Spawn task for sending to the local Service".into() ))?;
+		}).map_err( |_| -> ThesRemoteErr
+		{
+			ThesErr::Spawn{ actor: "Task for sending to the local Service".to_string() }.into()
+
+		})?;
 
 		Ok(())
 	}
@@ -348,9 +351,9 @@ impl Services
 	//
 	fn call_service_gen<S>
 	(
-		    msg        :  $ms_type               ,
-		    receiver   : &BoxAny                 ,
-		mut return_addr:  BoxRecipient<$ms_type> ,
+		    msg        :  $ms_type                        ,
+		    receiver   : &Box< dyn Any + Send + Sync >                          ,
+		mut return_addr:  BoxRecipient<$ms_type, ThesErr> ,
 
 	) -> ThesRemoteRes<()>
 
@@ -362,12 +365,12 @@ impl Services
 		//
 		let backup: &Receiver<S> = receiver.downcast_ref()
 
-			.ok_or( ThesRemoteErrKind::Downcast( "Receiver in service_macro".into() ))?
+			.ok_or( ThesRemoteErr::Downcast( "Receiver in service_macro".into() ))?
 		;
 
 		let message: S = des( &msg.mesg() )
 
-			.context( ThesRemoteErrKind::Deserialize( "Deserialize incoming remote message".into() ))?
+			.map_err( |_| ThesRemoteErr::Deserialize( "Deserialize incoming remote message".into() ))?
 		;
 
 		let mut rec  = backup.clone_box() ;
@@ -427,7 +430,11 @@ impl Services
 
 			).await;
 
-		}).context( ThesRemoteErrKind::ThesErr( "Spawn task for calling the local Service".into() ))?;
+		}).map_err( |_| -> ThesRemoteErr
+		{
+			ThesErr::Spawn{ actor: "Task for calling the local Service".to_string() }.into()
+
+		})?;
 
 		Ok(())
 	}
@@ -440,9 +447,9 @@ impl Services
 	//
 	async fn handle_err<'a, T>
 	(
-		peer: &'a mut BoxRecipient<$ms_type> ,
-		cid : &'a ConnID                     ,
-		res : Result<T, ConnectionError>     ,
+		peer: &'a mut BoxRecipient<$ms_type, ThesErr> ,
+		cid : &'a ConnID                              ,
+		res : Result<T, ConnectionError>              ,
 
 	) -> Result<T, ConnectionError>
 	{
@@ -504,10 +511,10 @@ impl ServiceMap<$ms_type> for Services
 	/// Will match the type of the service id to deserialize the message and send it to the handling actor.
 	///
 	/// This can return the following errors:
-	/// - ThesRemoteErrKind::Downcast
-	/// - ThesRemoteErrKind::UnknownService
-	/// - ThesRemoteErrKind::Deserialize
-	/// - ThesRemoteErrKind::ThesErr -> Spawn error
+	/// - ThesRemoteErr::Downcast
+	/// - ThesRemoteErr::UnknownService
+	/// - ThesRemoteErr::Deserialize
+	/// - ThesRemoteErr::ThesErr -> Spawn error
 	///
 	/// # Panics
 	/// For the moment this can panic if the downcast to Receiver fails. It should never happen unless there
@@ -526,14 +533,14 @@ impl ServiceMap<$ms_type> for Services
 				{
 					let receiver = self.handlers.get( &sid ).ok_or
 					(
-						ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", sid ))
+						ThesRemoteErr::UnknownService( format!( "sid: {:?}", sid ))
 					)?;
 
 					Self::send_service_gen::<$services>( msg, receiver )?
 				},
 			)+
 
-			_ => Err( ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", sid )) )?,
+			_ => Err( ThesRemoteErr::UnknownService( format!( "sid: {:?}", sid )) )?,
 		};
 
 		Ok(())
@@ -544,10 +551,10 @@ impl ServiceMap<$ms_type> for Services
 	/// Will match the type of the service id to deserialize the message and call the handling actor.
 	///
 	/// This can return the following errors:
-	/// - ThesRemoteErrKind::Downcast
-	/// - ThesRemoteErrKind::UnknownService
-	/// - ThesRemoteErrKind::Deserialize
-	/// - ThesRemoteErrKind::ThesErr -> Spawn error
+	/// - ThesRemoteErr::Downcast
+	/// - ThesRemoteErr::UnknownService
+	/// - ThesRemoteErr::Deserialize
+	/// - ThesRemoteErr::ThesErr -> Spawn error
 	///
 	/// # Panics
 	/// For the moment this can panic if the downcast to Receiver fails. It should never happen unless there
@@ -557,9 +564,9 @@ impl ServiceMap<$ms_type> for Services
 	//
 	fn call_service
 	(
-		&self                                 ,
-		msg        :  $ms_type               ,
-		return_addr:  BoxRecipient<$ms_type> ,
+		&self                                         ,
+		msg        :  $ms_type                        ,
+		return_addr:  BoxRecipient<$ms_type, ThesErr> ,
 
 	) -> ThesRemoteRes<()>
 
@@ -573,7 +580,7 @@ impl ServiceMap<$ms_type> for Services
 				{
 					let receiver = self.handlers.get( &sid ).ok_or
 					(
-						ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", sid ))
+						ThesRemoteErr::UnknownService( format!( "sid: {:?}", sid ))
 					)?;
 
 					Self::call_service_gen::<$services>( msg, receiver, return_addr )?
@@ -581,7 +588,7 @@ impl ServiceMap<$ms_type> for Services
 			)+
 
 
-			_ => Err( ThesRemoteErrKind::UnknownService( format!( "sid: {:?}", sid )) )?,
+			_ => Err( ThesRemoteErr::UnknownService( format!( "sid: {:?}", sid )) )?,
 		};
 
 		Ok(())
@@ -594,13 +601,15 @@ impl ServiceMap<$ms_type> for Services
 //
 #[ derive( Clone, Debug ) ]
 //
-pub struct ServicesRecipient
+pub struct RemoteAddr
 {
+	// TODO: get rid of boxing
+	//
 	peer: Pin<Box< Addr<Peer<$ms_type>> >>
 }
 
 
-impl ServicesRecipient
+impl RemoteAddr
 {
 	pub fn new( peer: Addr<Peer<$ms_type>> ) -> Self
 	{
@@ -610,7 +619,7 @@ impl ServicesRecipient
 
 	/// Take the raw message and turn it into a MultiService
 	//
-	fn build_ms<S>( msg: S, cid: ConnID ) -> ThesRes< $ms_type >
+	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< $ms_type, ThesRemoteErr >
 
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -620,7 +629,7 @@ impl ServicesRecipient
 
 		let serialized: Vec<u8> = serde_cbor::to_vec( &msg )
 
-			.context( ThesErrKind::Serialize{ what: format!( "Service: {:?}", sid ) } )?.into();
+			.map_err( |_| ThesRemoteErr::Serialize( format!( "Service: {:?}", sid ) ) )?;
 
 
 		Ok( <$ms_type>::create( sid, cid, Codecs::CBOR, serialized.into() ) )
@@ -630,13 +639,19 @@ impl ServicesRecipient
 
 	// Actual impl for send
 	//
-	async fn send_gen<S>( &mut self, msg: S ) -> ThesRes<()>
+	async fn send_gen<S>( &mut self, msg: S ) -> Result<(), ThesRemoteErr>
 
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
-		self.peer.send( Self::build_ms( msg, ConnID::null() )? ).await
+		// build_ms errs if serialization fails.
+		//
+		let serialized = Self::build_ms( msg, ConnID::null() )?;
+
+		// Addr<Peer> send can err if the channel is closed.
+		//
+		self.peer.send( serialized ).await.map_err( Into::into )
 	}
 
 
@@ -644,7 +659,7 @@ impl ServicesRecipient
 	// potential errors:
 	// 1. serialization of the outgoing message
 	// 2.
-	async fn call_gen<S>( &mut self, msg: S ) -> ThesRes<<S as Message>::Return>
+	async fn call_gen<S>( &mut self, msg: S ) -> Result< <S as Message>::Return, ThesRemoteErr >
 
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -657,37 +672,11 @@ impl ServicesRecipient
 		// Call can fail (normally only if the thread in which the mailbox lives craches), or TODO: when we will
 		// use bounded channels.
 		//
-		let re = match self.peer.call( call ).await?
-		{
-			           // Channel can be canceled
-			           //
-			Ok (rx) => rx.await.context( ThesErrKind::MailboxClosedBeforeResponse{ actor: "Peer".into() } )?,
+		let rx = self.peer.call( call ).await??;
 
-			// Errors that happen when trying to send out:
-			// - connection has been closed
-			// - failed to deserialize the connection id from the message we send out
-			//
-			Err(e ) => match e.kind()
-			{
-				ThesRemoteErrKind::ConnectionClosed{..} =>
-				{
-					Err( e.kind().clone().context
-					(
-						ThesErrKind::MailboxClosed{ actor: format!( "{:?}", self.peer ) }
-					))?
-				},
-
-				ThesRemoteErrKind::Deserialize{..} =>
-				{
-					Err( e.kind().clone().context
-					(
-						ThesErrKind::Deserialize{ what : format!( "{:?}", self.peer ) }
-					))?
-				},
-
-				_ => unreachable!(),
-			}
-		};
+		// Channel can be canceled
+		//
+		let re = rx.await.map_err( |e| ThesErr::MailboxClosedBeforeResponse{ actor: "Peer".into() } )?;
 
 
 		// A response came back from the other side.
@@ -699,14 +688,16 @@ impl ServicesRecipient
 				// deserialize the payload and return it to the caller.
 				// Deserialization can fail.
 				//
-				return Ok( des( &resp.mesg() ).context( ThesErrKind::Deserialize{ what: "response from remote actor".into() } )? )
+				Ok( des( &resp.mesg() )
+
+					.map_err( |_| ThesRemoteErr::Deserialize( "response from remote actor".into() ) )? )
 			},
 
 			// The remote returned an error
 			//
 			Err( err ) =>
 			{
-				Err( ThesErrKind::Connection { what: format!( "Remote could not process our call correctly: {:?}", err ) } )?
+				Err( ThesRemoteErr::Connection ( format!( "Remote could not process our call correctly: {:?}", err ) ) )
 			},
 		}
 	}
@@ -715,7 +706,7 @@ impl ServicesRecipient
 
 
 
-impl<S> Recipient<S> for ServicesRecipient
+impl<S> Recipient<S> for RemoteAddr
 
 	where  S: MarkServices                                           ,
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -723,7 +714,7 @@ impl<S> Recipient<S> for ServicesRecipient
 {
 	/// Call a remote actor.
 	//
-	fn call( &mut self, msg: S ) -> Return< ThesRes<<S as Message>::Return> >
+	fn call( &mut self, msg: S ) -> Return<Result< <S as Message>::Return, ThesRemoteErr >>
 	{
 		Box::pin( self.call_gen( msg ) )
 	}
@@ -731,7 +722,7 @@ impl<S> Recipient<S> for ServicesRecipient
 
 	/// Obtain a clone of this recipient as a trait object.
 	//
-	fn clone_box( &self ) -> BoxRecipient<S>
+	fn clone_box( &self ) -> BoxRecipient<S, ThesRemoteErr>
 	{
 		Box::new( Self { peer: self.peer.clone() } )
 	}
@@ -748,31 +739,31 @@ impl<S> Recipient<S> for ServicesRecipient
 
 
 
-impl<S> Sink<S> for ServicesRecipient
+impl<S> Sink<S> for RemoteAddr
 
 	where  S: MarkServices                                           ,
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 
 {
-	type Error = ThesErr;
+	type Error = ThesRemoteErr;
 
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::poll_ready( self.peer.as_mut(), cx )
+		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::poll_ready( self.peer.as_mut(), cx ).map_err( Into::into )
 	}
 
 
 	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
-		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? )
+		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? ).map_err( Into::into )
 	}
 
 
 	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::poll_flush( self.peer.as_mut(), cx )
+		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::poll_flush( self.peer.as_mut(), cx ).map_err( Into::into )
 	}
 
 

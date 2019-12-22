@@ -46,7 +46,6 @@ pub use
 pub mod external_deps
 {
 	pub use async_runtime  ;
-	pub use failure        ;
 	pub use futures        ;
 	pub use log            ;
 	pub use once_cell      ;
@@ -69,10 +68,9 @@ mod import
 	pub(crate) use
 	{
 		async_runtime  :: { rt                                                  } ,
-		failure        :: { ResultExt                                           } ,
 		thespis        :: { *                                                   } ,
 		thespis_remote :: { *                                                   } ,
-		thespis_impl   :: { Addr                                                } ,
+		thespis_impl   :: { Addr, ThesErr                                       } ,
 		log            :: { *                                                   } ,
 		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt           } ,
 		bytes          :: { Bytes, BytesMut, BufMut                             } ,
@@ -128,7 +126,7 @@ mod import
 	//
 	pub(crate) use
 	{
-		hex               :: { encode as ashex      } ,
-		pretty_assertions :: { assert_eq, assert_ne } ,
+		hex               :: { encode as ashex } ,
+		pretty_assertions :: { assert_eq,      } ,
 	};
 }

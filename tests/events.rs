@@ -1,7 +1,3 @@
-#![ feature( box_syntax ) ]
-
-
-
 // This currently combines testing error handling and peer events, because often the events are the way
 // to be notified of errors.
 //
@@ -31,11 +27,18 @@ use common::import::{ *, assert_eq };
 //
 fn close_connection()
 {
-	let nodea = async
+	let (server, client) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+
+
+	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -46,13 +49,13 @@ fn close_connection()
 
 		// get a framed connection
 		//
-		let _ = listen_tcp( "127.0.0.1:20003", sm ).await;
+		let _ = peer_listen( server, sm, &ex1 );
 	};
 
 
-	let nodeb = async
+	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20003" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
 
 		// Close the connection and check the event
 		//
@@ -65,10 +68,10 @@ fn close_connection()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	rt::spawn( nodea  ).expect( "Spawn peera"  );
-	rt::spawn( nodeb  ).expect( "Spawn peerb"  );
+	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	rt::run();
+	block_on( join( a_handle, b_handle ) );
 }
 
 
@@ -79,11 +82,18 @@ fn close_connection()
 //
 fn close_connection_call()
 {
-	let nodea = async
+	let (server, client) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+
+
+	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -94,13 +104,13 @@ fn close_connection_call()
 
 		// get a framed connection
 		//
-		let _ = listen_tcp( "127.0.0.1:20006", sm ).await;
+		let _ = peer_listen( server, sm, &ex1 );
 	};
 
 
-	let nodeb = async
+	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20006" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
 
 		// Close the connection and check the event
 		//
@@ -113,10 +123,10 @@ fn close_connection_call()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	rt::spawn( nodea  ).expect( "Spawn peera"  );
-	rt::spawn( nodeb  ).expect( "Spawn peerb"  );
+	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	rt::run();
+	block_on( join( a_handle, b_handle ) );
 }
 
 
@@ -129,11 +139,18 @@ fn header_unknown_service_error()
 {
 	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=trace, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
-	let nodea = async
+	let (server, client) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+
+
+	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -142,15 +159,15 @@ fn header_unknown_service_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = listen_tcp( "127.0.0.1:20004", sm ).await;
+		let (_, mut evts) = peer_listen( server, sm, &ex1 );
 
 		assert_eq!( PeerEvent::Error(ConnectionError::UnknownService( vec![3;16] )),  evts.next().await.unwrap() );
 	};
 
 
-	let nodeb = async
+	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20004" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -175,10 +192,10 @@ fn header_unknown_service_error()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	rt::spawn( nodea  ).expect( "Spawn peera"  );
-	rt::spawn( nodeb  ).expect( "Spawn peerb"  );
+	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	rt::run();
+	block_on( join( a_handle, b_handle ) );
 }
 
 
@@ -191,12 +208,18 @@ fn header_unknown_service_error()
 fn header_deserialize()
 {
 	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=debug, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
+	//
+	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let nodea = async
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+
+	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -205,15 +228,15 @@ fn header_deserialize()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = listen_tcp( "127.0.0.1:20007", sm ).await;
+		let (_, mut evts) = peer_listen( server, sm, &ex1 );
 
 		assert_eq!( PeerEvent::Error(ConnectionError::Deserialize),  evts.next().await.unwrap() );
 	};
 
 
-	let nodeb = async
+	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20007" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -244,10 +267,10 @@ fn header_deserialize()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	rt::spawn( nodea  ).expect( "Spawn peera"  );
-	rt::spawn( nodeb  ).expect( "Spawn peerb"  );
+	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	rt::run();
+	block_on( join( a_handle, b_handle ) );
 }
 
 
@@ -261,11 +284,18 @@ fn invalid_codec()
 {
 	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=debug, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
-	let nodea = async
+	let (server, client) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+
+
+	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -274,16 +304,16 @@ fn invalid_codec()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = listen_tcp( "127.0.0.1:20008", sm ).await;
+		let (_, mut evts) = peer_listen( server, sm, &ex1 );
 
 		let cod: Bytes = Codecs::UTF8.into();
 		assert_eq!( PeerEvent::Error(ConnectionError::UnsupportedCodec(cod.to_vec())),  evts.next().await.unwrap() );
 	};
 
 
-	let nodeb = async
+	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20008" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -315,10 +345,10 @@ fn invalid_codec()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	rt::spawn( nodea  ).expect( "Spawn peera"  );
-	rt::spawn( nodeb  ).expect( "Spawn peerb"  );
+	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	rt::run();
+	block_on( join( a_handle, b_handle ) );
 }
 
 
@@ -331,11 +361,17 @@ fn sm_deserialize_error()
 {
 	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=trace, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
-	let nodea = async
+	let (server, client) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+
+	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -344,15 +380,15 @@ fn sm_deserialize_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = listen_tcp( "127.0.0.1:20005", sm ).await;
+		let (_, mut evts) = peer_listen( server, sm, &ex1 );
 
 		assert_eq!( PeerEvent::Error(ConnectionError::Deserialize),  evts.next().await.unwrap() );
 	};
 
 
-	let nodeb = async
+	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20005" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -368,8 +404,8 @@ fn sm_deserialize_error()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	rt::spawn( nodea  ).expect( "Spawn peera"  );
-	rt::spawn( nodeb  ).expect( "Spawn peerb"  );
+	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	rt::run();
+	block_on( join( a_handle, b_handle ) );
 }

@@ -1,6 +1,3 @@
-#![ feature( box_syntax ) ]
-
-
 mod common;
 
 use common::*                       ;
@@ -21,11 +18,20 @@ use common::import::{ *, assert_eq };
 //
 fn remote()
 {
-	let peera = async
+	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
+
+	let (server, client) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+
+
+	let peera = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -37,13 +43,15 @@ fn remote()
 
 		// get a framed connection
 		//
-		let _ = listen_tcp( "127.0.0.1:8998", sm ).await;
+		let _ = peer_listen( server, sm, &ex1 );
+
+		trace!( "end of peera" );
 	};
 
 
-	let peerb = async
+	let peerb = async move
 	{
-		let (mut peera, _)  = connect_to_tcp( "127.0.0.1:8998" ).await;
+		let (mut peera, _)  = peer_connect( client, &ex2, "peer_b_to_peera" ).await;
 
 		// Call the service and receive the response
 		//
@@ -65,10 +73,7 @@ fn remote()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	rt::spawn( peera  ).expect( "Spawn peera"  );
-	rt::spawn( peerb  ).expect( "Spawn peerb"  );
-
-	rt::run();
+	block_on( join( peera, peerb ) );
 }
 
 
@@ -78,7 +83,7 @@ fn remote()
 //
 pub struct Parallel
 {
-	pub sum: Box< dyn Recipient<Show> >,
+	pub sum: Box< dyn Recipient<Show, Error=ThesRemoteErr> >,
 }
 
 
@@ -108,15 +113,24 @@ service_map!
 //
 fn parallel()
 {
-	let peera = async
+
+	let (server, client) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+
+	let peera = async move
 	{
+		let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
+
 		// get a framed connection
 		//
-		let (sink_a, stream_a) = listen_tcp_stream( "127.0.0.1:20001" ).await;
+		let (sink_a, stream_a) = Framed::new( server, codec ).split();
 
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer<MS>> = Inbox::new()                  ;
+		let mb_peer  : Inbox<Peer<MS>> = Inbox::new( "peera".into()  );
 		let peer_addr                  = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink
@@ -129,7 +143,7 @@ fn parallel()
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Parallel{ sum: box show } ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Parallel{ sum: Box::new( show ) }, &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -138,17 +152,17 @@ fn parallel()
 
 		sm.register_with_peer( &mut peer );
 
-		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
+		mb_peer.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
 	};
 
 
-	let peerb = async
+	let peerb = async move
 	{
-		let (sink_b, stream_b) = connect_return_stream( "127.0.0.1:20001" ).await;
+		let (sink_b, stream_b) = connect_return_stream( client ).await;
 
 		// Create mailbox for peer
 		//
-		let     mb_peer  : Inbox<Peer<MS>> = Inbox::new()                  ;
+		let     mb_peer  : Inbox<Peer<MS>> = Inbox::new( "peer_b".into()  );
 		let mut peer_addr                  = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink
@@ -157,7 +171,7 @@ fn parallel()
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(19) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(19), &ex2 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -167,7 +181,7 @@ fn parallel()
 
 		sm.register_with_peer( &mut peer );
 
-		mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
+		mb_peer.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" );
 
 
 		// Create recipients
@@ -182,11 +196,7 @@ fn parallel()
 		peer_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
 	};
 
-
-	rt::spawn( peera  ).expect( "Spawn peera"  );
-	rt::spawn( peerb  ).expect( "Spawn peerb"  );
-
-	rt::run();
+	block_on( join( peera, peerb ) );
 }
 
 
@@ -198,33 +208,39 @@ fn parallel()
 //
 fn call_after_close_connection()
 {
-	let nodea = async
+	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
+
+	let (mut server, client) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+
+	let nodea = async move
 	{
-		// drop as soon as there is a connection
-		//
-		let _ = listen_tcp_stream( "127.0.0.1:20002" ).await;
+		server.close().await.expect( "close connection" );
 	};
 
 
-	let nodeb = async
+	let nodeb = async move
 	{
-		let (peera, mut peera_evts)  = connect_to_tcp( "127.0.0.1:20002" ).await;
+		let (peera, mut peera_evts) = peer_connect( client, &ex1, "nodeb_to_node_a" ).await;
 
 		// Call the service and receive the response
 		//
 		let mut add = remotes::Services::recipient::<Add>( peera.clone() );
 
-		assert_eq!( PeerEvent::ClosedByRemote,  peera_evts.next().await.unwrap() );
+		assert_eq!( PeerEvent::ClosedByRemote, peera_evts.next().await.unwrap() );
 
-		match  add.call( Add(5) ).await
+
+		match add.call( Add(5) ).await
 		{
 			Ok (_) => unreachable!(),
 			Err(e) =>
 			{
-				match e.kind()
+				match e
 				{
-					ThesErrKind::MailboxClosed{..} => assert!( true )                        ,
-					_                              => panic!( "wrong error: {:?}", e.kind() ),
+					ThesRemoteErr::ConnectionClosed(_) => assert!( true )                  ,
+					_                                  => panic!( "wrong error: {:?}", e ) ,
 				}
 			}
 		}
@@ -234,9 +250,6 @@ fn call_after_close_connection()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	rt::spawn( nodea  ).expect( "Spawn peera"  );
-	rt::spawn( nodeb  ).expect( "Spawn peerb"  );
-
-	rt::run();
+	block_on( join( nodea, nodeb ) );
 }
 

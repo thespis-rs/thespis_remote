@@ -7,16 +7,15 @@ pub mod import
 {
 	pub use
 	{
-		async_runtime       :: { rt                                } ,
-		thespis             :: { *                                 } ,
-		thespis_remote      :: { *                                 } ,
-		thespis_impl        :: { *                                 } ,
-		thespis_remote_impl :: { *, service_map, peer              } ,
-		log                 :: { *                                 } ,
-
-		bytes               :: { Bytes, BytesMut                   } ,
-		failure             :: { Fail                              } ,
-		pharos              :: { Observable, ObserveConfig, Events } ,
+		async_executors     :: { LocalPool, AsyncStd, ThreadPool, JoinHandle, SpawnHandle, LocalSpawnHandle } ,
+		futures_ringbuf     :: { Endpoint                                                                   } ,
+		thespis             :: { *                                                                          } ,
+		thespis_remote      :: { *                                                                          } ,
+		thespis_impl        :: { *                                                                          } ,
+		thespis_remote_impl :: { *, service_map, peer                                                       } ,
+		log                 :: { *                                                                          } ,
+		bytes               :: { Bytes, BytesMut                                                            } ,
+		pharos              :: { Observable, ObserveConfig, Events                                          } ,
 
 		std::
 		{
@@ -29,9 +28,12 @@ pub mod import
 		futures::
 		{
 			channel :: { mpsc                                                                    } ,
+			io      :: { AsyncWriteExt                                                           } ,
 			compat  :: { Compat01As03Sink, Stream01CompatExt, Sink01CompatExt, Future01CompatExt } ,
 			stream  :: { StreamExt, SplitSink, SplitStream                                       } ,
-			future  :: { FutureExt                                                               } ,
+			future  :: { FutureExt, join                                                         } ,
+			task    :: { SpawnExt, LocalSpawnExt, Spawn                                          } ,
+			executor:: { block_on                                                                } ,
 		},
 
 
@@ -40,8 +42,7 @@ pub mod import
 			prelude :: { Stream as TokStream, stream::{ SplitStream as TokSplitStream, SplitSink as TokSplitSink } } ,
 		},
 
-		futures_codec :: { Decoder, Framed, FramedWrite        } ,
-		romio::tcp    :: { TcpStream, TcpListener } ,
+		futures_codec :: { Decoder, Framed, FramedWrite } ,
 
 		pretty_assertions::{ assert_eq, assert_ne }
 	};
@@ -50,31 +51,20 @@ pub mod import
     use import::*;
 pub use actors::*;
 
-pub type TheSink = SplitSink< Framed< TcpStream, MulServTokioCodec<MS> >, MS> ;
-pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>                ;
+pub type TheSink = SplitSink< Framed< Endpoint, MulServTokioCodec<MS> >, MS> ;
+pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>               ;
 
 
-
-
-pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<Peer<MS>>, Events<PeerEvent>)
+pub fn peer_listen( socket: Endpoint, sm: impl ServiceMap<MS>, exec: &impl Spawn ) -> (Addr<Peer<MS>>, Events<PeerEvent>)
 {
-	// create tcp server
-	//
-	let     socket   = socket.parse::<SocketAddr>().unwrap();
-	let mut listener = TcpListener::bind( &socket ).expect( "bind address" );
-
 	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
 
-	let stream   = listener.incoming().take(1).into_future().await.0
-		.expect( "find one stream" )
-		.expect( "find one stream" );
-
-	let (sink, stream) = Framed::new( stream, codec ).split();
+	let (sink, stream) = Framed::new( socket, codec ).split();
 
 	// Create mailbox for peer
 	//
-	let mb_peer  : Inbox<Peer<MS>> = Inbox::new()                  ;
-	let peer_addr                = Addr ::new( mb_peer.sender() );
+	let mb_peer  : Inbox<Peer<MS>> = Inbox::default()              ;
+	let peer_addr                  = Addr ::new( mb_peer.sender() );
 
 	// create peer with stream/sink
 	//
@@ -86,52 +76,26 @@ pub async fn listen_tcp( socket: &str, sm: impl ServiceMap<MS> ) -> (Addr<Peer<M
 	//
 	sm.register_with_peer( &mut peer );
 
-	mb_peer.start( peer ).expect( "Failed to start mailbox of Peer" );
+	exec.spawn( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
 
 	(peer_addr, peer_evts)
 }
 
 
 
-pub async fn listen_tcp_stream( socket: &str ) ->
 
-	(SplitSink<Framed<TcpStream, MulServTokioCodec<MS>>, MS>, SplitStream<Framed<TcpStream, MulServTokioCodec<MS>>>)
-
+pub async fn peer_connect( socket: Endpoint, exec: &impl Spawn, name: &'static str ) -> (Addr<Peer<MS>>, Events<PeerEvent>)
 {
-	// create tcp server
-	//
-	let     socket   = socket.parse::<SocketAddr>().unwrap();
-	let mut listener = TcpListener::bind( &socket ).expect( "bind address" );
-
-	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
-
-	let stream   = listener.incoming().take(1).into_future().await.0
-		.expect( "find one stream" )
-		.expect( "find one stream" );
-
-	Framed::new( stream, codec ).split()
-}
-
-
-
-
-pub async fn connect_to_tcp( socket: &str ) -> (Addr<Peer<MS>>, Events<PeerEvent>)
-{
-	// Connect to tcp server
-	//
-	let socket = socket.parse::<SocketAddr>().unwrap();
-	let stream = TcpStream::connect( &socket ).await.expect( "connect address" );
-
 	// frame the connection with codec for multiservice
 	//
 	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
 
-	let (sink_a, stream_a) = Framed::new( stream, codec ).split();
+	let (sink_a, stream_a) = Framed::new( socket, codec ).split();
 
 	// Create mailbox for peer
 	//
-	let mb  : Inbox<Peer<MS>> = Inbox::new()             ;
-	let addr                = Addr ::new( mb.sender() );
+	let mb  : Inbox<Peer<MS>> = Inbox::new( name.into() );
+	let addr                  = Addr ::new( mb.sender() );
 
 	// create peer with stream/sink + service map
 	//
@@ -139,28 +103,25 @@ pub async fn connect_to_tcp( socket: &str ) -> (Addr<Peer<MS>>, Events<PeerEvent
 
 	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
-	mb.start( peer ).expect( "Failed to start mailbox" );
+	debug!( "start mailbox for [{}] in peer_connect", name );
+
+	exec.spawn( mb.start_fut(peer) ).expect( "start mailbox of Peer" );
 
 	(addr, evts)
 }
 
 
 
-pub async fn connect_return_stream( socket: &str ) ->
+pub async fn connect_return_stream( socket: Endpoint ) ->
 
-	(SplitSink<Framed<TcpStream, MulServTokioCodec<MS>>, MS>, SplitStream<Framed<TcpStream, MulServTokioCodec<MS>>>)
+	(SplitSink<Framed<Endpoint, MulServTokioCodec<MS>>, MS>, SplitStream<Framed<Endpoint, MulServTokioCodec<MS>>>)
 
 {
-	// Connect to tcp server
-	//
-	let socket = socket.parse::<SocketAddr>().unwrap();
-	let stream = TcpStream::connect( &socket ).await.expect( "connect address" );
-
 	// frame the connection with codec for multiservice
 	//
 	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
 
-	Framed::new( stream, codec ).split()
+	Framed::new( socket, codec ).split()
 }
 
 

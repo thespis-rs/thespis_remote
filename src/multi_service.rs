@@ -212,7 +212,7 @@ impl<SID, CID, Codec> TryFrom< Bytes > for MultiServiceImpl<SID, CID, Codec>
 		//
 		if bytes.len() < HEADER_LEN + 1
 		{
-			return Err( ThesRemoteErrKind::Deserialize( "MultiServiceImpl: not enough bytes".into() ).into() );
+			return Err( ThesRemoteErr::Deserialize( "MultiServiceImpl: not enough bytes".into() ).into() );
 		}
 
 		Ok( Self { bytes, p1: PhantomData, p2: PhantomData, p3: PhantomData } )
@@ -234,7 +234,7 @@ mod tests
 	// 1. try_from bytes, try something to small
 	//
 
-	use super::{ *, assert_ne };
+	use super::{ * };
 	use crate::{ multi_service::{ Codecs, ConnID, ServiceID } };
 
 	type MS = MultiServiceImpl<ServiceID, ConnID, Codecs>;
@@ -251,10 +251,10 @@ mod tests
 		{
 			Ok (_) => assert!( false, "MultiServiceImpl::try_from( Bytes ) should fail for data shorter than header" ),
 
-			Err(e) => match e.kind()
+			Err(e) => match e
 			{
-				ThesRemoteErrKind::Deserialize(..) => assert!( true ),
-				_                                  => assert_ne!( e.kind(), e.kind() ),
+				ThesRemoteErr::Deserialize(..) => assert!( true ),
+				_                              => assert!( false, "Wrong error type (should be Deserialize): {:?}", e ),
 			}
 		}
 	}

@@ -1,6 +1,3 @@
-#![ feature( box_syntax ) ]
-
-
 // Tested:
 //
 // - ✔ Verify that the same      service, in a   different namespace has different service id.
@@ -85,9 +82,11 @@ fn sid_same_for_same_ns()
 //
 fn clone()
 {
+	let exec = ThreadPool::new().expect( "create threadpool" );
+
 	// Create mailbox for our handler
 	//
-	let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+	let addr_handler = Addr::try_from( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
 	// Create a service map
 	//
@@ -115,9 +114,11 @@ fn clone()
 //
 fn debug()
 {
+	let exec = ThreadPool::new().expect( "create threadpool" );
+
 	// Create mailbox for our handler
 	//
-	let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+	let addr_handler = Addr::try_from( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
 	// Create a service map
 	//

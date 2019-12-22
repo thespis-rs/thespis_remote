@@ -1,7 +1,3 @@
-#![ feature( box_syntax ) ]
-
-
-
 // Tests:
 //
 // - ✔ Basic relaying
@@ -22,20 +18,29 @@ use common::import::{ *, assert_eq };
 
 // Helper method to create relays
 //
-async fn relay( connect: &'static str, listen: &'static str, next: Pin<Box< dyn Future<Output=()> + Send >>, relay_show: bool )
+async fn relay
+(
+	connect   : Endpoint,
+	listen    : Endpoint,
+	next      : Pin<Box< dyn Future<Output=()> + Send >>,
+	relay_show: bool,
+	exec      : impl Spawn
+)
 {
-	let (mut peera_addr, peera_evts) = connect_to_tcp( connect ).await;
-	let peera_addr2                  = peera_addr.clone();
+	debug!( "start mailbox for relay_to_provider" );
+
+	let (mut provider_addr, provider_evts) = peer_connect( connect, &exec, "relay_to_provider" ).await;
+	let provider_addr2                     = provider_addr.clone();
 
 	// Relay part ---------------------
 
 	let relay = async move
 	{
-		let (srv_sink, srv_stream) = listen_tcp_stream( listen ).await;
+		let (srv_sink, srv_stream) = connect_return_stream( listen ).await;
 
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer<MS>> = Inbox::new()                  ;
+		let mb_peer  : Inbox<Peer<MS>> = Inbox::new( "relay_to_consumer".into() );
 		let peer_addr                  = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink + service map
@@ -52,24 +57,28 @@ async fn relay( connect: &'static str, listen: &'static str, next: Pin<Box< dyn 
 
 		else { vec![ add ] };
 
-		peer.register_relayed_services( relayed, peera_addr2, peera_evts ).expect( "register relayed" );
+		peer.register_relayed_services( relayed, provider_addr2, provider_evts ).expect( "register relayed" );
 
+		debug!( "start mailbox for relay_to_consumer" );
 		mb_peer.start_fut( peer ).await;
+		warn!( "relay async block finished" );
 	};
 
 
 	let (relay_fut, relay_outcome) = relay.remote_handle();
-	rt::spawn( relay_fut ).expect( "failed to spawn server" );
+	exec.spawn( relay_fut ).expect( "failed to spawn server" );
 
 	// we need to spawn this after peerb, otherwise peerb is not listening yet when we try to connect.
 	//
-	rt::spawn( next ).expect( "Spawn next"  );
+	exec.spawn( next ).expect( "Spawn next" );
 
 
-	// If the nodec closes the connection, close our connection to peera.
+	// If the nodec closes the connection, close our connection to provider.
 	//
 	relay_outcome.await;
-	peera_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to provider" );
+	warn!( "relay finished, closing connection" );
+
+	provider_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to provider" );
 }
 
 
@@ -82,13 +91,23 @@ async fn relay( connect: &'static str, listen: &'static str, next: Pin<Box< dyn 
 //
 fn relay_once()
 {
-	// flexi_logger::Logger::with_str( "remotes=trace, thespis_impl=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
-	let provider = async
+	let (ab, ba) = Endpoint::pair( 64, 64 );
+	let (bc, cb) = Endpoint::pair( 64, 64 );
+
+	let exec = AsyncStd::default();
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+	let ex3  = exec.clone();
+
+
+	let provider = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		debug!( "start mailbox for handler" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -101,22 +120,26 @@ fn relay_once()
 
 		// get a framed connection
 		//
-		let _ = listen_tcp( "127.0.0.1:20000", sm ).await;
+		debug!( "start mailbox for provider" );
+		let (peer_addr, _peer_evts) = peer_listen( ab, sm, &ex1 );
 
+		drop( peer_addr );
 		trace!( "End of provider" );
 	};
 
 
 	// --------------------------------------
 
-	let consumer = async
+	let consumer = async move
 	{
-		let (mut relay, _)  = connect_to_tcp( "127.0.0.1:30000" ).await;
+		debug!( "start mailbox for consumer_to_relay" );
+
+		let (mut to_relay, _)  = peer_connect( cb, &ex2, "consumer_to_relay" ).await;
 
 		// Call the service and receive the response
 		//
-		let mut add  = remotes::Services::recipient::<Add >( relay.clone() );
-		let mut show = remotes::Services::recipient::<Show>( relay.clone() );
+		let mut add  = remotes::Services::recipient::<Add >( to_relay.clone() );
+		let mut show = remotes::Services::recipient::<Show>( to_relay.clone() );
 
 		let resp = add.call( Add(5) ).await.expect( "Call failed" );
 		assert_eq!( (), resp );
@@ -126,18 +149,21 @@ fn relay_once()
 		let resp = show.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 10, resp );
 
-		relay.send( CloseConnection{ remote: false } ).await.expect( "close connection to nodeb" );
+		warn!( "consumer end, telling relay to close connection" );
+
+		to_relay.call( CloseConnection{ remote: false } ).await.expect( "close connection to relay" );
+
+		warn!( "consumer end, relay processed CloseConnection" );
 	};
 
-	let relays = async
+	let relays = async move
 	{
-		relay( "127.0.0.1:20000", "127.0.0.1:30000", Box::pin( consumer ), true ).await;
+		relay( ba, bc, Box::pin( consumer ), true, &ex3 ).await;
+
+		warn!( "relays end" );
 	};
 
-	rt::spawn( provider  ).expect( "Spawn provider" );
-	rt::spawn( relays    ).expect( "Spawn relays"   );
-
-	rt::run();
+	block_on( join( provider, relays ) );
 }
 
 
@@ -150,11 +176,23 @@ fn relay_multi()
 {
 	// flexi_logger::Logger::with_str( "relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
-	let provider = async
+	let (ab, ba) = Endpoint::pair( 64, 64 );
+	let (bc, cb) = Endpoint::pair( 64, 64 );
+	let (cd, dc) = Endpoint::pair( 64, 64 );
+	let (de, ed) = Endpoint::pair( 64, 64 );
+	let (ef, fe) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+	let ex3  = exec.clone();
+
+
+	let provider = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -167,7 +205,7 @@ fn relay_multi()
 
 		// get a framed connection
 		//
-		let _ = listen_tcp( "127.0.0.1:30010", sm ).await;
+		let _ = peer_listen( ab, sm, &ex1 );
 
 		trace!( "End of provider" );
 	};
@@ -175,9 +213,9 @@ fn relay_multi()
 
 	// --------------------------------------
 
-	let consumer = async
+	let consumer = async move
 	{
-		let (mut relay, _)  = connect_to_tcp( "127.0.0.1:30014" ).await;
+		let (mut relay, _)  = peer_connect( fe, &ex2, "consumer_to_relay" ).await;
 
 		// Call the service and receive the response
 		//
@@ -195,18 +233,15 @@ fn relay_multi()
 		relay.send( CloseConnection{ remote: false } ).await.expect( "close connection to nodeb" );
 	};
 
-	let relays = async
+	let relays = async move
 	{
-		let  relay4 = relay( "127.0.0.1:30013", "127.0.0.1:30014", Box::pin( consumer ), true )      ;
-		let  relay3 = relay( "127.0.0.1:30012", "127.0.0.1:30013", Box::pin( relay4   ), true )      ;
-		let  relay2 = relay( "127.0.0.1:30011", "127.0.0.1:30012", Box::pin( relay3   ), true )      ;
-		let _relay1 = relay( "127.0.0.1:30010", "127.0.0.1:30011", Box::pin( relay2   ), true ).await;
+		let  relay4 = relay( ed, ef, Box::pin( consumer ), true, ex3.clone() )       ;
+		let  relay3 = relay( dc, de, Box::pin( relay4   ), true, ex3.clone() )       ;
+		let  relay2 = relay( cb, cd, Box::pin( relay3   ), true, ex3.clone() )       ;
+		let _relay1 = relay( ba, bc, Box::pin( relay2   ), true, ex3         ).await ;
 	};
 
-	rt::spawn( provider  ).expect( "Spawn provider" );
-	rt::spawn( relays    ).expect( "Spawn relays"   );
-
-	rt::run();
+	block_on( join( provider, relays ) );
 }
 
 
@@ -219,11 +254,19 @@ fn relay_unknown_service()
 {
 	// flexi_logger::Logger::with_str( "relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
-	let provider = async
+	let (ab, ba) = Endpoint::pair( 64, 64 );
+	let (bc, cb) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+	let ex3  = exec.clone();
+
+	let provider = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -235,7 +278,7 @@ fn relay_unknown_service()
 
 		// get a framed connection
 		//
-		let _ = listen_tcp( "127.0.0.1:30015", sm ).await;
+		let _ = peer_listen( ab, sm, &ex1 );
 
 
 		trace!( "End of provider" );
@@ -244,9 +287,9 @@ fn relay_unknown_service()
 
 	// --------------------------------------
 
-	let consumer = async
+	let consumer = async move
 	{
-		let (mut relay, _relay_evts) = connect_to_tcp( "127.0.0.1:30016" ).await;
+		let (mut relay, _relay_evts) = peer_connect( cb, &ex2, "consumer_to_relay" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -285,12 +328,12 @@ fn relay_unknown_service()
 	};
 
 
-	let relay = relay( "127.0.0.1:30015", "127.0.0.1:30016", Box::pin( consumer ), true );
+	let relay = relay( ba, bc, Box::pin( consumer ), true, ex3 );
 
-	rt::spawn( provider ).expect( "Spawn provider" );
-	rt::spawn( relay    ).expect( "Spawn relays"   );
+	let provi_handle = exec.spawn_handle( provider ).expect( "Spawn provider"  );
+	let relay_handle = exec.spawn_handle( relay    ).expect( "Spawn relays"  );
 
-	rt::run();
+	block_on( join( provi_handle, relay_handle ) );
 }
 
 
@@ -304,11 +347,20 @@ fn relay_disappeared()
 {
 	// flexi_logger::Logger::with_str( "pharos=trace, relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
-	let provider = async
+	let (ab, ba) = Endpoint::pair( 64, 64 );
+	let (bc, cb) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+	let ex3  = exec.clone();
+
+
+	let provider = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -319,7 +371,7 @@ fn relay_disappeared()
 
 		// get a framed connection
 		//
-		let _ = listen_tcp( "127.0.0.1:30017", sm ).await;
+		let _ = peer_listen( ab, sm, &ex1 );
 
 
 		trace!( "End of provider" );
@@ -328,9 +380,9 @@ fn relay_disappeared()
 
 	// --------------------------------------
 
-	let consumer = async
+	let consumer = async move
 	{
-		let (mut relay, mut relay_evts) = connect_to_tcp( "127.0.0.1:30018" ).await;
+		let (mut relay, mut relay_evts) = peer_connect( cb, &ex2, "consumer_to_relay" ).await;
 
 		let sid              = <Add as Service<remotes::Services>>::sid().clone();
 		let bytes_sid: Bytes = sid.clone().into();
@@ -358,7 +410,7 @@ fn relay_disappeared()
 		// assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::Deserialize) )                    , relay_evts.next().await );
 		// assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::ServiceGone(bytes_sid.to_vec())) ), relay_evts.next().await );
 
-		for _ in 0..2
+		for _ in 0..2usize
 		{
 			match relay_evts.next().await
 			{
@@ -396,12 +448,12 @@ fn relay_disappeared()
 	};
 
 
-	let relay = relay( "127.0.0.1:30017", "127.0.0.1:30018", Box::pin( consumer ), false );
+	let relay = relay( ba, bc, Box::pin( consumer ), false, ex3 );
 
-	rt::spawn( provider ).expect( "Spawn provider" );
-	rt::spawn( relay    ).expect( "Spawn relays"   );
+	let provi_handle = exec.spawn_handle( provider ).expect( "Spawn provider" );
+	let relay_handle = exec.spawn_handle( relay    ).expect( "Spawn relay"    );
 
-	rt::run();
+	block_on( join( provi_handle, relay_handle ) );
 }
 
 
@@ -415,11 +467,24 @@ fn relay_disappeared_multi()
 {
 	// flexi_logger::Logger::with_str( "pharos=trace, relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
-	let provider = async
+	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
+
+	let (ab, ba) = Endpoint::pair( 64, 64 );
+	let (bc, cb) = Endpoint::pair( 64, 64 );
+	let (cd, dc) = Endpoint::pair( 64, 64 );
+	let (de, ed) = Endpoint::pair( 64, 64 );
+	let (ef, fe) = Endpoint::pair( 64, 64 );
+
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	let ex1  = exec.clone();
+	let ex2  = exec.clone();
+	let ex3  = exec.clone();
+
+	let provider = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0) ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -430,7 +495,7 @@ fn relay_disappeared_multi()
 
 		// get a framed connection
 		//
-		let _ = listen_tcp( "127.0.0.1:30019", sm ).await;
+		let _ = peer_listen( ab, sm, &ex1 );
 
 
 		trace!( "End of provider" );
@@ -439,16 +504,15 @@ fn relay_disappeared_multi()
 
 	// --------------------------------------
 
-	let consumer = async
+	let consumer = async move
 	{
-		let (mut relay, mut relay_evts) = connect_to_tcp( "127.0.0.1:30023" ).await;
+		let (mut relay, mut relay_evts) = peer_connect( fe, &ex2, "consumer_to_relay" ).await;
 
 		let sid              = <Add as Service<remotes::Services>>::sid().clone();
 		let bytes_sid: Bytes = sid.clone().into();
 		let cid              = ConnID::default();
 		let cod              = Codecs::CBOR;
 		let msg              = Bytes::from( vec![ 5;5 ] );
-
 
 		let corrupt = MultiServiceImpl::create( sid, cid, cod, msg );
 
@@ -469,7 +533,7 @@ fn relay_disappeared_multi()
 		// assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::Deserialize) )                    , relay_evts.next().await );
 		// assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::ServiceGone(bytes_sid.to_vec())) ), relay_evts.next().await );
 
-		for _ in 0..2
+		for _ in 0..2usize
 		{
 			match relay_evts.next().await
 			{
@@ -498,24 +562,19 @@ fn relay_disappeared_multi()
 			rx.await.expect( "return error, don't drop connection" ).unwrap_err()
 		);
 
-
 		// End the program
 		//
 		relay.send( CloseConnection{ remote: false } ).await.expect( "close connection to nodeb" );
 	};
 
 
-	let relays = async
+	let relays = async move
 	{
-		let  relay4 = relay( "127.0.0.1:30022", "127.0.0.1:30023", Box::pin( consumer ), false )      ;
-		let  relay3 = relay( "127.0.0.1:30021", "127.0.0.1:30022", Box::pin( relay4   ), false )      ;
-		let  relay2 = relay( "127.0.0.1:30020", "127.0.0.1:30021", Box::pin( relay3   ), false )      ;
-		let _relay1 = relay( "127.0.0.1:30019", "127.0.0.1:30020", Box::pin( relay2   ), false ).await;
+		let  relay4 = relay( ed, ef, Box::pin( consumer ), false, ex3.clone() )       ;
+		let  relay3 = relay( dc, de, Box::pin( relay4   ), false, ex3.clone() )       ;
+		let  relay2 = relay( cb, cd, Box::pin( relay3   ), false, ex3.clone() )       ;
+		let _relay1 = relay( ba, bc, Box::pin( relay2   ), false, ex3         ).await ;
 	};
 
-
-	rt::spawn( provider ).expect( "Spawn provider" );
-	rt::spawn( relays   ).expect( "Spawn relays"   );
-
-	rt::run();
+	block_on( join( provider, relays ) );
 }
