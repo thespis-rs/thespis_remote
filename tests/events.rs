@@ -176,7 +176,7 @@ fn header_unknown_service_error()
 			.expect( "generate random sid" )
 		;
 
-		let ms  = MultiServiceImpl::create( sid, ConnID::null(), Codecs::CBOR, serde_cbor::to_vec( &Add(5) )
+		let ms  = MultiServiceImpl::create( sid, ConnID::null(), serde_cbor::to_vec( &Add(5) )
 
 			.expect( "serialize Add(5)" ).into() )
 		;
@@ -275,84 +275,6 @@ fn header_deserialize()
 
 
 
-
-// Test Invalid codec error.
-//
-#[test]
-//
-fn invalid_codec()
-{
-	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=debug, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
-
-	let (server, client) = Endpoint::pair( 64, 64 );
-
-	let exec = ThreadPool::new().expect( "create threadpool" );
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
-
-
-	let nodea = async move
-	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
-
-		// register Sum with peer as handler for Add and Show
-		//
-		let mut sm = remotes::Services::new();
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
-
-		// get a framed connection
-		//
-		let (_, mut evts) = peer_listen( server, sm, &ex1 );
-
-		let cod: Bytes = Codecs::UTF8.into();
-		assert_eq!( PeerEvent::Error(ConnectionError::UnsupportedCodec(cod.to_vec())),  evts.next().await.unwrap() );
-	};
-
-
-	let nodeb = async move
-	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
-
-		// Create some random data that shouldn't deserialize
-		//
-		let sid: Bytes = <Add as Service<remotes::Services>>::sid().clone().into();
-		let cid: Bytes = ConnID::null().into();
-		let msg: Bytes = serde_cbor::to_vec( &Add(5) ).unwrap().into();
-
-		// Only CBOR supported
-		//
-		let cod: Bytes = Codecs::UTF8.into();
-		let co2        = cod.clone();
-
-		let mut buf = BytesMut::new();
-
-		buf.extend( sid );
-		buf.extend( cid );
-		buf.extend( cod );
-		buf.extend( msg );
-
-		let ms = MultiServiceImpl::try_from( Bytes::from( buf ) ).expect( "serialize Add(5)" );
-
-		peera.call( ms ).await.expect( "send ms to peera" );
-		assert_eq!( PeerEvent::RemoteError(ConnectionError::UnsupportedCodec(co2.to_vec())), peera_evts.next().await.unwrap() );
-
-		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection" );
-	};
-
-
-	// As far as I can tell, execution order is not defined, so hmm, there is no
-	// guarantee that a is listening before b tries to connect, but it seems to work for now.
-	//
-	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
-	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
-
-	block_on( join( a_handle, b_handle ) );
-}
-
-
-
 // Test Service map Deserialization (Remote)Error.
 //
 #[test]
@@ -393,7 +315,7 @@ fn sm_deserialize_error()
 		// Create some random data that shouldn't deserialize
 		//
 		let sid = <Add as Service<remotes::Services>>::sid().clone();
-		let ms  = MultiServiceImpl::create( sid, ConnID::null(), Codecs::CBOR, Bytes::from( vec![3,3]));
+		let ms  = MultiServiceImpl::create( sid, ConnID::null(), Bytes::from( vec![3,3]));
 
 		peera.send( ms ).await.expect( "send ms to peera" );
 

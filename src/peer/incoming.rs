@@ -114,15 +114,6 @@ async move
 	};
 
 
-	// We only support CBOR for now. This is to verify that the stream is not corrupt and to
-	// future proof the api by obliging people to pass in a valid codec.
-	//
-	if self.verify_codec( &frame, cid_null.clone() ).await.is_err()
-	{
-		return;
-	}
-
-
 	// It's a connection error from the remote peer
 	//
 	if sid.is_null()
@@ -167,60 +158,6 @@ async move
 
 } // end of handle
 } // end of impl Handler
-
-
-
-impl<MS> Peer<MS> where MS: BoundsMS
-{
-	async fn verify_codec( &mut self, frame: &MS, cid_null: <MS as MultiService>::ConnID )
-
-		-> Result< Codecs, () >
-
-		where MS: BoundsMS
-	{
-		// We only support CBOR for now. This is to verify that the stream is not corrupt and to
-		// future proof the api by obliging people to pass in a valid codec.
-		//
-		match frame.encoding()
-		{
-			Ok ( codec ) =>
-			{
-				if codec != Codecs::CBOR
-				{
-					error!( "Invalid codec [{:?}], only CBOR supported", codec );
-
-					let b_codec: Bytes = codec.into();
-
-					let err = ConnectionError::UnsupportedCodec( b_codec.to_vec() );
-
-					// Send an error back to the remote peer and don't close the connection
-					//
-					self.send_err( cid_null, &err, false ).await;
-
-					let evt = PeerEvent::Error( err );
-					self.pharos.send( evt ).await.expect( "pharos not closed" );
-
-					return Err(())
-				}
-
-				Ok( codec )
-			},
-
-			Err( err ) =>
-			{
-				error!( "Fail to get codec from incoming frame: {}", err );
-
-				self.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
-
-				// Send an error back to the remote peer and close the connection
-				//
-				self.send_err( cid_null, &ConnectionError::Deserialize, true ).await;
-
-				Err(())
-			}
-		}
-	}
-}
 
 
 

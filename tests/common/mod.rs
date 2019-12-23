@@ -52,7 +52,7 @@ pub mod import
 pub use actors::*;
 
 pub type TheSink = SplitSink< Framed< Endpoint, MulServTokioCodec<MS> >, MS> ;
-pub type MS      = MultiServiceImpl<ServiceID, ConnID, Codecs>               ;
+pub type MS      = MultiServiceImpl<ServiceID, ConnID>                       ;
 
 
 pub fn peer_listen( socket: Endpoint, sm: impl ServiceMap<MS>, exec: &impl Spawn ) -> (Addr<Peer<MS>>, Events<PeerEvent>)

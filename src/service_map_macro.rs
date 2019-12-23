@@ -129,7 +129,7 @@ use
 
 type ConnID    = <$ms_type as MultiService>::ConnID    ;
 type ServiceID = <$ms_type as MultiService>::ServiceID ;
-// type Codecs    = <$ms_type as MultiService>::CodecAlg  ; // doesn't work as we use CBOR
+
 
 /// Mark the services part of this particular service map, so we can write generic impls only for them.
 //
@@ -415,9 +415,9 @@ impl Services
 
 			// Create a MultiService
 			//
-			let     sid          = <S as Service<Self>>::sid().clone()                                     ;
-			let     mul          = <$ms_type>::create( sid, cid.clone(), Codecs::CBOR, serialized.into() ) ;
-			let mut return_addr2 = return_addr.clone_box()                                                 ;
+			let     sid          = <S as Service<Self>>::sid().clone()                       ;
+			let     mul          = <$ms_type>::create( sid, cid.clone(), serialized.into() ) ;
+			let mut return_addr2 = return_addr.clone_box()                                   ;
 
 			// Send the MultiService out over the network.
 			// We're returning anyway, so there's nothing to do with the result.
@@ -632,7 +632,7 @@ impl RemoteAddr
 			.map_err( |_| ThesRemoteErr::Serialize( format!( "Service: {:?}", sid ) ) )?;
 
 
-		Ok( <$ms_type>::create( sid, cid, Codecs::CBOR, serialized.into() ) )
+		Ok( <$ms_type>::create( sid, cid, serialized.into() ) )
 	}
 
 

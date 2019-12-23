@@ -299,13 +299,10 @@ fn relay_unknown_service()
 
 		// This is the corrupt one that should trigger a deserialization error and close the connection
 		//
-		let cod: Bytes = Codecs::CBOR.into();
-
 		let mut buf = BytesMut::new();
 
 		buf.extend( sid );
 		buf.extend( cid );
-		buf.extend( cod );
 		buf.extend( msg );
 
 		let corrupt = MultiServiceImpl::try_from( Bytes::from( buf ) ).expect( "serialize Add(5)" );
@@ -387,11 +384,10 @@ fn relay_disappeared()
 		let sid              = <Add as Service<remotes::Services>>::sid().clone();
 		let bytes_sid: Bytes = sid.clone().into();
 		let cid              = ConnID::default();
-		let cod              = Codecs::CBOR;
 		let msg              = Bytes::from( vec![ 5;5 ] );
 
 
-		let corrupt = MultiServiceImpl::create( sid, cid, cod, msg );
+		let corrupt = MultiServiceImpl::create( sid, cid, msg );
 
 		let rx = relay.call( Call::new( corrupt.clone() ) ).await
 
@@ -511,10 +507,9 @@ fn relay_disappeared_multi()
 		let sid              = <Add as Service<remotes::Services>>::sid().clone();
 		let bytes_sid: Bytes = sid.clone().into();
 		let cid              = ConnID::default();
-		let cod              = Codecs::CBOR;
 		let msg              = Bytes::from( vec![ 5;5 ] );
 
-		let corrupt = MultiServiceImpl::create( sid, cid, cod, msg );
+		let corrupt = MultiServiceImpl::create( sid, cid, msg );
 
 		let rx = relay.call( Call::new( corrupt.clone() ) ).await
 

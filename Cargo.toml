@@ -29,12 +29,6 @@ default-features = false
 features = ["std", "compat"]
 version = "^0.3"
 
-[dependencies.num-derive]
-version = "^0.3"
-
-[dependencies.num-traits]
-version = "^0.2"
-
 [dependencies.pharos]
 version = "^0.4"
 

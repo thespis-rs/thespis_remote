@@ -1,7 +1,7 @@
 //! The peer module holds everything that deals with managing a remote connection over which
 //! actor messages can be sent and received.
 //
-use crate :: { import::*, Codecs };
+use crate :: { import::* };
 
 
 mod close_connection  ;
@@ -32,7 +32,7 @@ pub trait BoundsOut<MS: BoundsMS>: 'static + Sink<MS, Error=ThesRemoteErr > + Un
 /// Trait bounds for the MultiService message format. This is the wire format for thespis_remote.
 /// Requires Message so that we can send it to the Peer which will just send it out.
 //
-pub trait BoundsMS: 'static + Message<Return=()> + MultiService<CodecAlg=Codecs> + Send + fmt::Debug {}
+pub trait BoundsMS: 'static + Message<Return=()> + MultiService + Send + fmt::Debug {}
 
 impl<T, MS> BoundsIn<MS> for T
 
@@ -47,7 +47,7 @@ impl<T, MS> BoundsOut<MS> for T
 {}
 
 impl<T> BoundsMS for T
-where T: 'static + Message<Return=()> + MultiService<CodecAlg=Codecs> + Send + fmt::Debug {}
+where T: 'static + Message<Return=()> + MultiService + Send + fmt::Debug {}
 
 
 /// Represents a connection to another process over which you can send actor messages.
@@ -350,9 +350,6 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 	pub fn prep_error( cid: <MS as MultiService>::ConnID, err: &ConnectionError ) -> MS
 	{
 		let serialized   = serde_cbor::to_vec( err ).expect( "serialize response" );
-		let codec: Bytes = Codecs::CBOR.into();
-
-		let codec2 = <MS as MultiService>::CodecAlg::try_from( codec ).expect( "create codec from bytes" );
 
 		// sid null is the marker that this is an error message.
 		//
@@ -360,7 +357,6 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 		(
 			<MS as MultiService>::ServiceID::null() ,
 			cid                                     ,
-			codec2                                  ,
 			serialized.into()                       ,
 		)
 	}

@@ -1,6 +1,7 @@
 //! The codec to frame the connection with our wire format.
 //
 use crate::{ import::* };
+use super::HEADER_LEN;
 
 /// The tokio codec to frame AsyncRead/Write streams.
 /// TODO: test max_length
@@ -40,9 +41,9 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 	{
 		trace!( "Decoding incoming message: {:?}", &buf );
 
-		// Minimum length of an empty message is the u64 indicating the length
+		// Minimum length of an empty message is the u64 indicating the length + the header (sid/connid)
 		//
-		if buf.len() < 8  { return Ok( None ) }
+		if buf.len() < 8 + HEADER_LEN  { return Ok( None ) }
 
 
 		// parse the first 8 bytes to find out the total length of the message
@@ -58,6 +59,7 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 
 
 		// respect the max_length
+		// TODO: does max length include the HEADER? Document and make consistent with Encoder.
 		//
 		if len > self.max_length
 		{
@@ -68,6 +70,8 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 			).into())
 		}
 
+		// Message hasn't completely arrived yet
+		//
 		if buf.len() < len { return Ok( None ) }
 
 
@@ -142,7 +146,7 @@ mod tests
 	use super::{ *, assert_eq };
 
 
-	type MulServ = MultiServiceImpl<ServiceID, ConnID, Codecs>;
+	type MulServ = MultiServiceImpl<ServiceID, ConnID>;
 
 
 
@@ -152,7 +156,7 @@ mod tests
 		let mut buf = BytesMut::with_capacity( 1 );
 		buf.put( 0u8 );
 
-		let m = MultiServiceImpl::create( ServiceID::from_seed( b"Empty Message" ), ConnID::default(), Codecs::CBOR, buf.into() );
+		let m = MultiServiceImpl::create( ServiceID::from_seed( b"Empty Message" ), ConnID::default(), buf.into() );
 
 		m
 	}
@@ -162,7 +166,7 @@ mod tests
 		let mut buf = BytesMut::with_capacity( 5 );
 		buf.put( b"hello".to_vec() );
 
-		MultiServiceImpl::create( ServiceID::from_seed( b"Full Message" ), ConnID::default(), Codecs::CBOR, buf.into() )
+		MultiServiceImpl::create( ServiceID::from_seed( b"Full Message" ), ConnID::default(), buf.into() )
 	}
 
 
@@ -229,17 +233,14 @@ mod tests
 		let     full2  = full .clone();
 		let     full3  = full .clone();
 
-		codec.encode( empty, &mut buf ).expect( "Encoding empty" ); // 45 bytes
-		codec.encode( full , &mut buf ).expect( "Encoding full"  ); // 49 bytes
-		codec.encode( full2, &mut buf ).expect( "Encoding full"  ); // 49 bytes
+		codec.encode( empty, &mut buf ).expect( "Encoding empty" ); // 41 bytes
+		codec.encode( full , &mut buf ).expect( "Encoding full"  ); // 45 bytes
+		codec.encode( full2, &mut buf ).expect( "Encoding full"  ); // 45 bytes
 
-		// total is 143
-		// remove last byte
+		// total is 131
 		//
-		buf.truncate( 142 );
-
 		assert_eq!( empty2, codec.decode( &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
 		assert_eq!(  full3, codec.decode( &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
-		assert_eq!( 48, buf.len() ); // there should be exactly 48 bytes sitting there waiting for the last.
+		assert_eq!( 45, buf.len() ); // there should be exactly 48 bytes sitting there waiting for the last.
 	}
 }
