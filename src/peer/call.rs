@@ -11,21 +11,21 @@ use crate::{ import::*, * };
 //
 #[ derive( Debug ) ]
 //
-pub struct Call<MS: MultiService>
+pub struct Call
 {
-	mesg: MS,
+	mesg: MultiServiceImpl,
 }
 
-impl<MS: 'static +  MultiService + Send> Message for Call<MS>
+impl Message for Call
 {
-	type Return = ThesRemoteRes< oneshot::Receiver<Result<MS, ConnectionError>> >;
+	type Return = ThesRemoteRes< oneshot::Receiver<Result<MultiServiceImpl, ConnectionError>> >;
 }
 
-impl<MS: MultiService> Call<MS>
+impl Call
 {
 	/// Create a new Call to send an outgoing message over the peer.
 	//
-	pub fn new( mesg: MS ) -> Self
+	pub fn new( mesg: MultiServiceImpl ) -> Self
 	{
 		Self{ mesg }
 	}
@@ -41,15 +41,15 @@ impl<MS: MultiService> Call<MS>
 /// If the connection gets dropped before the answer comes, the onshot::Receiver will err with Cancelled.
 /// If the remote fails to process the message, you will get a ConnectionError out of the channel.
 //
-impl<MS> Handler<Call<MS>> for Peer<MS> where MS: BoundsMS,
+impl Handler<Call> for Peer
 {
-	fn handle( &mut self, call: Call<MS> ) -> Return< '_, <Call<MS> as Message>::Return >
+	fn handle( &mut self, call: Call ) -> Return< '_, <Call as Message>::Return >
 	{
-		trace!( "peer: starting Handler<Call<MS>>" );
+		trace!( "peer: starting Handler<Call>" );
 
 		Box::pin( async move
 		{
-			trace!( "peer: polled Handler<Call<MS>>" );
+			trace!( "peer: polled Handler<Call>" );
 
 			// Fallible operations first
 			// Can fail to deserialize connection id from the outgoing call.
@@ -59,7 +59,7 @@ impl<MS> Handler<Call<MS>> for Peer<MS> where MS: BoundsMS,
 
 			// If the above succeeded, store the other end of the channel
 			//
-			let (sender, receiver) = oneshot::channel::< Result<MS, ConnectionError> >() ;
+			let (sender, receiver) = oneshot::channel::< Result<MultiServiceImpl, ConnectionError> >() ;
 
 			self.responses.insert( conn_id, sender );
 

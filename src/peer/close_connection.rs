@@ -30,7 +30,7 @@ pub struct CloseConnection
 
 impl Message for CloseConnection { type Return = (); }
 
-impl<MS> Handler<CloseConnection> for Peer<MS> where MS: BoundsMS
+impl Handler<CloseConnection> for Peer
 {
 	fn handle( &mut self, msg: CloseConnection ) -> Return<'_, ()>
 	{

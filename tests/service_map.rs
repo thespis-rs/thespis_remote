@@ -20,7 +20,6 @@ mod a
 	service_map!
 	(
 		namespace:     remotes   ;
-		multi_service: MS        ;
 		services     : Add, Show ;
 	);
 
@@ -28,7 +27,6 @@ mod a
 	service_map!
 	(
 		namespace:     others  ;
-		multi_service: MS      ;
 		services     : Add     ;
 	);
 }
@@ -40,7 +38,6 @@ mod b
 	service_map!
 	(
 		namespace:     remotes ;
-		multi_service: MS      ;
 		services     : Add     ;
 	);
 }

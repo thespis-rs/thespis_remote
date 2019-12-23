@@ -1,7 +1,7 @@
 //! The peer module holds everything that deals with managing a remote connection over which
 //! actor messages can be sent and received.
 //
-use crate :: { import::* };
+use crate :: { import::*, MultiServiceImpl, ServiceID, ConnID, BoxServiceMap, ServiceProvider };
 
 
 mod close_connection  ;
@@ -23,31 +23,23 @@ pub use register_relay    :: RegisterRelay    ;
 //
 /// Trait bounds for the stream of incoming messages
 //
-pub trait BoundsIn <MS: BoundsMS>: 'static + Stream< Item = Result<MS, ThesRemoteErr> > + Unpin + Send {}
+pub trait BoundsIn : 'static + Stream< Item = Result<MultiServiceImpl, ThesRemoteErr> > + Unpin + Send {}
 
 /// Trait bounds for the Sink of outgoing messages.
 //
-pub trait BoundsOut<MS: BoundsMS>: 'static + Sink<MS, Error=ThesRemoteErr > + Unpin + Send {}
+pub trait BoundsOut: 'static + Sink<MultiServiceImpl, Error=ThesRemoteErr > + Unpin + Send {}
 
-/// Trait bounds for the MultiService message format. This is the wire format for thespis_remote.
-/// Requires Message so that we can send it to the Peer which will just send it out.
-//
-pub trait BoundsMS: 'static + Message<Return=()> + MultiService + Send + fmt::Debug {}
 
-impl<T, MS> BoundsIn<MS> for T
+impl<T> BoundsIn for T
 
-	where T : 'static + Stream< Item = Result<MS, ThesRemoteErr> > + Unpin + Send,
-   	   MS: BoundsMS
+	where T : 'static + Stream< Item = Result<MultiServiceImpl, ThesRemoteErr> > + Unpin + Send
 {}
 
-impl<T, MS> BoundsOut<MS> for T
+impl<T> BoundsOut for T
 
-	where T : 'static + Sink<MS, Error=ThesRemoteErr > + Unpin + Send,
-	      MS: BoundsMS
+	where T : 'static + Sink<MultiServiceImpl, Error=ThesRemoteErr > + Unpin + Send
 {}
 
-impl<T> BoundsMS for T
-where T: 'static + Message<Return=()> + MultiService + Send + fmt::Debug {}
 
 
 /// Represents a connection to another process over which you can send actor messages.
@@ -88,11 +80,11 @@ where T: 'static + Message<Return=()> + MultiService + Send + fmt::Debug {}
 //
 #[ derive( Actor ) ]
 //
-pub struct Peer<MS> where MS: BoundsMS
+pub struct Peer
 {
 	/// The sink
 	//
-	outgoing      : Option< Box<dyn BoundsOut<MS> > >,
+	outgoing      : Option< Box<dyn BoundsOut > >,
 
 	/// This is needed so that the loop listening to the incoming stream can send messages to this actor.
 	/// The loop runs in parallel of the rest of the actor, yet processing incoming messages need mutable
@@ -114,8 +106,8 @@ pub struct Peer<MS> where MS: BoundsMS
 	// to `Servicemap::call_service`. TODO: In principle we should be generic over recipient type, but for now
 	// I have put ThesErr, because it's getting to complex.
 	//
-	services      : HashMap<&'static <MS as MultiService>::ServiceID, TypeId>,
-	service_maps  : HashMap<TypeId, BoxServiceMap<MS> >,
+	services      : HashMap<&'static ServiceID, TypeId>,
+	service_maps  : HashMap<TypeId, BoxServiceMap >,
 
 	/// All services that we relay to another peer. It has to be of the same type for now since there is
 	/// no trait for peers.
@@ -126,12 +118,12 @@ pub struct Peer<MS> where MS: BoundsMS
 	/// These two fields should be kept in sync. Eg, we call unwrap on the get_mut on relays if
 	/// we found the id in relayed.
 	//
-	relayed       : HashMap< &'static <MS as MultiService>::ServiceID, usize >,
+	relayed       : HashMap< &'static ServiceID, usize >,
 	relays        : HashMap< usize, (Addr<Self>, oneshot::Sender<()>)        >,
 
 	/// We use onshot channels to give clients a future that will resolve to their response.
 	//
-	responses     : HashMap< <MS as MultiService>::ConnID, oneshot::Sender<Result<MS, ConnectionError>> >,
+	responses     : HashMap< ConnID, oneshot::Sender<Result<MultiServiceImpl, ConnectionError>> >,
 
 	/// The pharos allows us to have observers.
 	//
@@ -140,12 +132,12 @@ pub struct Peer<MS> where MS: BoundsMS
 
 
 
-impl<MS> Peer<MS> where MS : BoundsMS,
+impl Peer
 {
 	/// Create a new peer to represent a connection to some remote.
 	/// `addr` is the actor address for this actor.
 	//
-	pub fn new( addr: Addr<Self>, mut incoming: impl BoundsIn<MS>, outgoing: impl BoundsOut<MS> ) -> Result< Self, ThesRemoteErr >
+	pub fn new( addr: Addr<Self>, mut incoming: impl BoundsIn, outgoing: impl BoundsOut ) -> Result< Self, ThesRemoteErr >
 	{
 		trace!( "create peer" );
 
@@ -211,7 +203,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 	pub fn register_relayed_services
 	(
 		&mut self                                                        ,
-		     services    : Vec<&'static <MS as MultiService>::ServiceID> ,
+		     services    : Vec<&'static ServiceID> ,
 
 		     // TODO: provider might be a different type then Self?
 		     //
@@ -221,7 +213,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 	) -> Result<(), ThesRemoteErr>
 
 	{
-		trace!( "peer: starting Handler<RegisterRelay<MS>>" );
+		trace!( "peer: starting Handler<RegisterRelay>" );
 
 		// When called from a RegisterRelay message, it's possible that in the mean time
 		// the connection closed. We should immediately return a ConnectionClosed error.
@@ -295,7 +287,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 
 	// actually send the message accross the wire
 	//
-	async fn send_msg( &mut self, msg: MS ) -> Result<(), ThesRemoteErr>
+	async fn send_msg( &mut self, msg: MultiServiceImpl ) -> Result<(), ThesRemoteErr>
 	{
 		match &mut self.outgoing
 		{
@@ -316,7 +308,7 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 	async fn send_err<'a>
 	(
 		&'a mut self                             ,
-		     cid  : <MS as MultiService>::ConnID ,
+		     cid  : ConnID ,
 		     err  : &'a ConnectionError          ,
 
 		     // whether the connection should be closed (eg stream corrupted)
@@ -347,15 +339,15 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 	//
 	#[ doc( hidden ) ]
 	//
-	pub fn prep_error( cid: <MS as MultiService>::ConnID, err: &ConnectionError ) -> MS
+	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> MultiServiceImpl
 	{
 		let serialized   = serde_cbor::to_vec( err ).expect( "serialize response" );
 
 		// sid null is the marker that this is an error message.
 		//
-		MS::create
+		MultiServiceImpl::create
 		(
-			<MS as MultiService>::ServiceID::null() ,
+			ServiceID::null() ,
 			cid                                     ,
 			serialized.into()                       ,
 		)
@@ -367,9 +359,9 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 // Put an outgoing multiservice message on the wire.
 // TODO: why do we not return the error?
 //
-impl<MS> Handler<MS> for Peer<MS> where MS: BoundsMS,
+impl Handler<MultiServiceImpl> for Peer
 {
-	fn handle( &mut self, msg: MS ) -> Return<'_, ()>
+	fn handle( &mut self, msg: MultiServiceImpl ) -> Return<'_, ()>
 	{
 		Box::pin( async move
 		{
@@ -385,7 +377,7 @@ impl<MS> Handler<MS> for Peer<MS> where MS: BoundsMS,
 
 // Pharos, shine!
 //
-impl<MS> Observable<PeerEvent> for Peer<MS> where MS: BoundsMS
+impl Observable<PeerEvent> for Peer
 {
 	type Error = pharos::Error;
 
@@ -405,12 +397,12 @@ impl<MS> Observable<PeerEvent> for Peer<MS> where MS: BoundsMS
 	}
 }
 
-impl<MS> ServiceProvider<MS> for Peer<MS> where MS: BoundsMS
+impl ServiceProvider for Peer
 {
 	/// Register a service map as the handler for service ids that come in over the network. Normally you should
 	/// not call this directly, but use [´thespis_remote::ServiceMap::register_with_peer´].
 	//
-	fn register_services( &mut self, services: &[&'static <MS as MultiService>::ServiceID], sm: BoxServiceMap<MS> )
+	fn register_services( &mut self, services: &[&'static ServiceID], sm: BoxServiceMap )
 	{
 		let id = sm.type_id();
 
@@ -427,7 +419,7 @@ impl<MS> ServiceProvider<MS> for Peer<MS> where MS: BoundsMS
 
 
 
-impl<MS> fmt::Debug for Peer<MS> where MS: BoundsMS
+impl fmt::Debug for Peer
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
@@ -436,7 +428,7 @@ impl<MS> fmt::Debug for Peer<MS> where MS: BoundsMS
 }
 
 
-impl<MS> Drop for Peer<MS> where MS: BoundsMS
+impl Drop for Peer
 {
 	// TODO: only do processing if logging is on.
 	//

@@ -30,13 +30,22 @@
 pub mod peer              ;
 pub mod multi_service     ;
     mod service_map_macro ;
+    mod service_map       ;
+    mod service_provider  ;
 
 pub use
 {
 	peer              :: * ,
 	multi_service     :: * ,
+	service_map       :: * ,
 	service_map_macro :: * ,
+	service_provider  :: * ,
 };
+
+
+/// A boxed servicemap that is `Send` and `Sync`.
+//
+pub type BoxServiceMap = Box< dyn ServiceMap + Send + Sync > ;
 
 
 // needed for macro
@@ -67,26 +76,25 @@ mod import
 {
 	pub(crate) use
 	{
-		async_runtime  :: { rt                                                  } ,
-		thespis        :: { *                                                   } ,
-		thespis_remote :: { *                                                   } ,
-		thespis_impl   :: { Addr, ThesErr                                       } ,
-		log            :: { *                                                   } ,
-		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt           } ,
-		bytes          :: { Bytes, BytesMut, BufMut                             } ,
-		rand           :: { Rng                                                 } ,
-		std            :: { hash::{ BuildHasher, Hasher }, any::Any             } ,
-		twox_hash      :: { RandomXxHashBuilder, XxHash                         } ,
-		futures        :: { future::RemoteHandle                                } ,
-		pharos         :: { Pharos, Observable, ObserveConfig, Events           } ,
-		serde          :: { Serialize, Deserialize                              } ,
+		async_runtime  :: { rt                                        } ,
+		thespis        :: { *                                         } ,
+		thespis_remote :: { *                                         } ,
+		thespis_impl   :: { Addr, ThesErr                             } ,
+		log            :: { *                                         } ,
+		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt } ,
+		bytes          :: { Bytes, BytesMut, BufMut                   } ,
+		rand           :: { Rng                                       } ,
+		std            :: { hash::{ Hasher }, any::Any                } ,
+		twox_hash      :: { XxHash                                    } ,
+		futures        :: { future::RemoteHandle                      } ,
+		pharos         :: { Pharos, Observable, ObserveConfig, Events } ,
+		serde          :: { Serialize, Deserialize                    } ,
 
 		std ::
 		{
 			fmt                            ,
 			any         :: { TypeId      } ,
 			convert     :: { TryFrom     } ,
-			marker      :: { PhantomData } ,
 			collections :: { HashMap     } ,
 
 		},
@@ -124,7 +132,6 @@ mod import
 	//
 	pub(crate) use
 	{
-		hex               :: { encode as ashex } ,
-		pretty_assertions :: { assert_eq,      } ,
+		pretty_assertions :: { assert_eq } ,
 	};
 }

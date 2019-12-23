@@ -87,7 +87,6 @@ dev-dependencies:
 
   pretty_assertions : ^0.6
   flexi_logger      : ^0.14
-  hex               : ^0.4
 
   async_executors   : { path: ../../async_executors, features: [ localpool, threadpool, async_std ] }
   futures_ringbuf   : ^0.1

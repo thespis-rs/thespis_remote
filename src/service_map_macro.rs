@@ -16,13 +16,10 @@
 /// Types created by this macro, for the following invocation:
 ///
 /// ```ignore
-/// type MySink = SplitSink<...>;
-/// type MyPeer = Peer<MultiServiceImpl, MySink>;
+///
 /// service_map!
 /// (
-///    namespace: myns                 ;
-///    peer_type: MyPeer               ;
-///    multi_service: MultiServiceImpl ;
+///    namespace: myns;
 ///
 ///    services:
 ///
@@ -52,7 +49,7 @@
 ///       /// same way as if the actor was local. This is for the process that wants to use the services
 ///       /// not the one that provides them. For it to work, they must use the same namespace.
 ///       //
-///       pub fn recipient<S>( peer: Addr<MyPeer> ) -> impl Recipient<S> {...}
+///       pub fn recipient<S>( peer: Addr<Peer> ) -> impl Recipient<S> {...}
 ///
 ///       ...
 ///     }
@@ -61,13 +58,12 @@
 ///     // register actors that handle incoming services, and call register_with_peer to tell the
 ///     // service map to register all services for which it has handlers with a peer.
 ///     //
-///     impl ServiceMap<MultiServiceImpl> for Services {...}
+///     impl ServiceMap for Services {...}
 ///
 ///     // Some types to make the impl Recipient<S> in Services::recipient above.
 /// }
 /// ```
 ///
-/// TODO: - this is not generic right now, cbor is hardcoded
 //
 #[ macro_export ]
 //
@@ -88,10 +84,6 @@ macro_rules! service_map
 	//
 	namespace: $ns: ident;
 
-	/// The type you want to use that implements [thespis::MultiService] (the wire format).
-	//
-	multi_service: $ms_type: path;
-
 	/// Comma separated list of Services you want to include. They must be in scope.
 	//
 	services: $($services: path),+ $(,)? $(;)?
@@ -108,7 +100,7 @@ use
 	// we should not have a leading comma before the next item, but if the comma is after the closing
 	// parenthesis, it will not output a trailing comma, which will be needed to separate from the next item.
 	//
-	super :: { $( $services, )+ Peer, $ms_type               } ,
+	super :: { $( $services, )+ Peer                         } ,
 	$crate:: { *                                             } ,
 	std   :: { pin::Pin, collections::HashMap, fmt, any::Any } ,
 
@@ -126,9 +118,6 @@ use
 	},
 };
 
-
-type ConnID    = <$ms_type as MultiService>::ConnID    ;
-type ServiceID = <$ms_type as MultiService>::ServiceID ;
 
 
 /// Mark the services part of this particular service map, so we can write generic impls only for them.
@@ -283,7 +272,7 @@ impl Services
 	/// Creates a recipient to a Service type for a remote actor, which can be used in exactly the
 	/// same way as if the actor was local.
 	//
-	pub fn recipient<S>( peer: Addr<Peer<$ms_type>> ) -> RemoteAddr
+	pub fn recipient<S>( peer: Addr<Peer> ) -> RemoteAddr
 
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -307,7 +296,7 @@ impl Services
 
 	// Helper function for send_service below
 	//
-	fn send_service_gen<S>( msg: $ms_type, receiver: &Box< dyn Any + Send + Sync > ) -> ThesRemoteRes<()>
+	fn send_service_gen<S>( msg: MultiServiceImpl, receiver: &Box< dyn Any + Send + Sync > ) -> ThesRemoteRes<()>
 
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -351,9 +340,9 @@ impl Services
 	//
 	fn call_service_gen<S>
 	(
-		    msg        :  $ms_type                        ,
-		    receiver   : &Box< dyn Any + Send + Sync >                          ,
-		mut return_addr:  BoxRecipient<$ms_type, ThesErr> ,
+		    msg        :  MultiServiceImpl                        ,
+		    receiver   : &Box< dyn Any + Send + Sync >            ,
+		mut return_addr:  BoxRecipient<MultiServiceImpl, ThesErr> ,
 
 	) -> ThesRemoteRes<()>
 
@@ -415,9 +404,9 @@ impl Services
 
 			// Create a MultiService
 			//
-			let     sid          = <S as Service<Self>>::sid().clone()                       ;
-			let     mul          = <$ms_type>::create( sid, cid.clone(), serialized.into() ) ;
-			let mut return_addr2 = return_addr.clone_box()                                   ;
+			let     sid          = <S as Service<Self>>::sid().clone()                             ;
+			let     mul          = MultiServiceImpl::create( sid, cid.clone(), serialized.into() ) ;
+			let mut return_addr2 = return_addr.clone_box()                                         ;
 
 			// Send the MultiService out over the network.
 			// We're returning anyway, so there's nothing to do with the result.
@@ -447,9 +436,9 @@ impl Services
 	//
 	async fn handle_err<'a, T>
 	(
-		peer: &'a mut BoxRecipient<$ms_type, ThesErr> ,
-		cid : &'a ConnID                              ,
-		res : Result<T, ConnectionError>              ,
+		peer: &'a mut BoxRecipient<MultiServiceImpl, ThesErr> ,
+		cid : &'a ConnID                                      ,
+		res : Result<T, ConnectionError>                      ,
 
 	) -> Result<T, ConnectionError>
 	{
@@ -458,7 +447,7 @@ impl Services
 			Ok (t) => Ok(t),
 			Err(e) =>
 			{
-				let ms  = <Peer<$ms_type>>::prep_error( cid.clone(), &e );
+				let ms  = <Peer>::prep_error( cid.clone(), &e );
 				let res = peer.send( ms ).await;
 
 				if let Err( ref err ) = res { error!( "Failed to send error back to remote: {:?}", err ) };
@@ -481,11 +470,11 @@ impl Services
 
 
 
-impl ServiceMap<$ms_type> for Services
+impl ServiceMap for Services
 {
 	// TODO: why do we have this? is this being used at all
 	//
-	fn boxed() -> BoxServiceMap<$ms_type>
+	fn boxed() -> BoxServiceMap
 	{
 		Box::new( Self{ handlers: HashMap::new() } )
 	}
@@ -494,7 +483,7 @@ impl ServiceMap<$ms_type> for Services
 	/// Register all the services for which we have handlers with peer, so that we
 	/// can start receiving incoming messages for those handlers over this connection.
 	//
-	fn register_with_peer( self, peer: &mut dyn ServiceProvider<$ms_type> )
+	fn register_with_peer( self, peer: &mut dyn ServiceProvider )
 	{
 		let mut s: Vec<&'static ServiceID> = Vec::with_capacity( self.handlers.len() );
 
@@ -522,7 +511,7 @@ impl ServiceMap<$ms_type> for Services
 	/// the expect in there. See if anyone manages to trigger it, we can take it from there.
 	///
 	//
-	fn send_service( &self, msg: $ms_type ) -> ThesRemoteRes<()>
+	fn send_service( &self, msg: MultiServiceImpl ) -> ThesRemoteRes<()>
 	{
 		let sid = msg.service().expect( "get service" );
 
@@ -564,9 +553,9 @@ impl ServiceMap<$ms_type> for Services
 	//
 	fn call_service
 	(
-		&self                                         ,
-		msg        :  $ms_type                        ,
-		return_addr:  BoxRecipient<$ms_type, ThesErr> ,
+		&self                                                 ,
+		msg        :  MultiServiceImpl                        ,
+		return_addr:  BoxRecipient<MultiServiceImpl, ThesErr> ,
 
 	) -> ThesRemoteRes<()>
 
@@ -605,13 +594,13 @@ pub struct RemoteAddr
 {
 	// TODO: get rid of boxing
 	//
-	peer: Pin<Box< Addr<Peer<$ms_type>> >>
+	peer: Pin<Box< Addr<Peer> >>
 }
 
 
 impl RemoteAddr
 {
-	pub fn new( peer: Addr<Peer<$ms_type>> ) -> Self
+	pub fn new( peer: Addr<Peer> ) -> Self
 	{
 		Self { peer: Box::pin( peer ) }
 	}
@@ -619,7 +608,7 @@ impl RemoteAddr
 
 	/// Take the raw message and turn it into a MultiService
 	//
-	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< $ms_type, ThesRemoteErr >
+	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< MultiServiceImpl, ThesRemoteErr >
 
 		where  S: MarkServices                                           ,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -632,7 +621,7 @@ impl RemoteAddr
 			.map_err( |_| ThesRemoteErr::Serialize( format!( "Service: {:?}", sid ) ) )?;
 
 
-		Ok( <$ms_type>::create( sid, cid, serialized.into() ) )
+		Ok( MultiServiceImpl::create( sid, cid, serialized.into() ) )
 	}
 
 
@@ -667,7 +656,7 @@ impl RemoteAddr
 	{
 		// Serialization can fail
 		//
-		let call = Call::new( Self::build_ms( msg, ConnID::default() )? );
+		let call = Call::new( Self::build_ms( msg, ConnID::random() )? );
 
 		// Call can fail (normally only if the thread in which the mailbox lives craches), or TODO: when we will
 		// use bounded channels.
@@ -732,7 +721,7 @@ impl<S> Recipient<S> for RemoteAddr
 	//
 	fn actor_id( &self ) -> usize
 	{
-		< Addr<Peer<$ms_type>> as Recipient<$ms_type> >::actor_id( &self.peer )
+		< Addr<Peer> as Recipient<MultiServiceImpl> >::actor_id( &self.peer )
 	}
 }
 
@@ -751,19 +740,19 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::poll_ready( self.peer.as_mut(), cx ).map_err( Into::into )
+		< Addr<Peer> as Sink<MultiServiceImpl> >::poll_ready( self.peer.as_mut(), cx ).map_err( Into::into )
 	}
 
 
 	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
-		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? ).map_err( Into::into )
+		< Addr<Peer> as Sink<MultiServiceImpl> >::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? ).map_err( Into::into )
 	}
 
 
 	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		<Addr<Peer<$ms_type>> as Sink<$ms_type>>::poll_flush( self.peer.as_mut(), cx ).map_err( Into::into )
+		< Addr<Peer> as Sink<MultiServiceImpl> >::poll_flush( self.peer.as_mut(), cx ).map_err( Into::into )
 	}
 
 

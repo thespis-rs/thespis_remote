@@ -1,6 +1,6 @@
 //! The codec to frame the connection with our wire format.
 //
-use crate::{ import::* };
+use crate::{ import::*, MultiServiceImpl };
 use super::HEADER_LEN;
 
 /// The tokio codec to frame AsyncRead/Write streams.
@@ -8,15 +8,14 @@ use super::HEADER_LEN;
 //
 #[ derive( Debug ) ]
 //
-pub struct MulServTokioCodec<MS> where MS: MultiService
+pub struct MulServTokioCodec
 {
-	_p: PhantomData<MS>,
 	max_length: usize  , // in bytes
 
 }
 
 
-impl<MS> MulServTokioCodec<MS> where MS: MultiService
+impl MulServTokioCodec
 {
 	/// Create a new codec, with the max length of a single message in bytes. Note that this includes the
 	/// header of the wireformat. For [`thespis_remote_impl::MultiServiceImpl`] the header is 36 bytes.
@@ -25,17 +24,15 @@ impl<MS> MulServTokioCodec<MS> where MS: MultiService
 	//
 	pub fn new( max_length: usize ) -> Self
 	{
-		Self{ max_length, _p: PhantomData }
+		Self{ max_length }
 	}
 }
 
 
-impl<MS> Decoder for MulServTokioCodec<MS>
-
-	where MS: MultiService,
+impl Decoder for MulServTokioCodec
 {
-	type Item  = MS            ;
-	type Error = ThesRemoteErr ;
+	type Item  = MultiServiceImpl ;
+	type Error = ThesRemoteErr    ;
 
 	fn decode( &mut self, buf: &mut BytesMut ) -> Result< Option<Self::Item>, Self::Error >
 	{
@@ -87,7 +84,7 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 
 		// Convert
 		//
-		Ok( Some( MS::try_from( Bytes::from( buf ) )? ) )
+		Ok( Some( MultiServiceImpl::try_from( Bytes::from( buf ) )? ) )
 	}
 }
 
@@ -96,12 +93,10 @@ impl<MS> Decoder for MulServTokioCodec<MS>
 // In principle we would like to not have to serialize the inner message
 // before having access to this buffer.
 //
-impl<MS> Encoder for MulServTokioCodec<MS>
-
-	where MS: MultiService
+impl Encoder for MulServTokioCodec
 {
-	type Item  = MS            ;
-	type Error = ThesRemoteErr ;
+	type Item  = MultiServiceImpl ;
+	type Error = ThesRemoteErr    ;
 
 	fn encode( &mut self, item: Self::Item, buf: &mut BytesMut ) -> Result<(), Self::Error>
 	{
@@ -123,8 +118,8 @@ impl<MS> Encoder for MulServTokioCodec<MS>
 		let mut wtr = vec![];
 		wtr.write_u64::<LittleEndian>( len as u64 ).expect( "Tokio codec encode: Write u64 to vec" );
 
-		buf.put( wtr         );
-		buf.put( item.into() );
+		buf.put( wtr                         );
+		buf.put( Into::<Bytes>::into( item ) );
 
 		Ok(())
 	}
@@ -146,27 +141,23 @@ mod tests
 	use super::{ *, assert_eq };
 
 
-	type MulServ = MultiServiceImpl<ServiceID, ConnID>;
 
-
-
-
-	fn empty_data() -> MulServ
+	fn empty_data() -> MultiServiceImpl
 	{
 		let mut buf = BytesMut::with_capacity( 1 );
 		buf.put( 0u8 );
 
-		let m = MultiServiceImpl::create( ServiceID::from_seed( b"Empty Message" ), ConnID::default(), buf.into() );
+		let m = MultiServiceImpl::create( ServiceID::from_seed( b"Empty Message" ), ConnID::random(), buf.into() );
 
 		m
 	}
 
-	fn full_data() -> MulServ
+	fn full_data() -> MultiServiceImpl
 	{
 		let mut buf = BytesMut::with_capacity( 5 );
 		buf.put( b"hello".to_vec() );
 
-		MultiServiceImpl::create( ServiceID::from_seed( b"Full Message" ), ConnID::default(), buf.into() )
+		MultiServiceImpl::create( ServiceID::from_seed( b"Full Message" ), ConnID::random(), buf.into() )
 	}
 
 
@@ -174,8 +165,7 @@ mod tests
 	//
 	fn empty()
 	{
-		let mut codec: MulServTokioCodec<MulServ> = MulServTokioCodec::new( 1024 );
-
+		let mut codec = MulServTokioCodec::new( 1024 );
 		let mut buf   = BytesMut::new();
 		let     data  = empty_data();
 		let     data2 = data.clone();
@@ -198,8 +188,7 @@ mod tests
 	//
 	fn full()
 	{
-		let mut codec: MulServTokioCodec<MulServ> = MulServTokioCodec::new(1024);
-
+		let mut codec = MulServTokioCodec::new(1024);
 		let mut buf   = BytesMut::new();
 		let     data  = full_data();
 		let     data2 = data.clone();
@@ -222,7 +211,7 @@ mod tests
 	//
 	fn partials()
 	{
-		let mut codec: MulServTokioCodec<MulServ> = MulServTokioCodec ::new(1024);
+		let mut codec: MulServTokioCodec = MulServTokioCodec ::new(1024);
 
 		let mut buf = BytesMut::new();
 

@@ -40,8 +40,8 @@ async fn relay
 
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer<MS>> = Inbox::new( "relay_to_consumer".into() );
-		let peer_addr                  = Addr ::new( mb_peer.sender() );
+		let mb_peer  : Inbox<Peer> = Inbox::new( "relay_to_consumer".into() );
+		let peer_addr              = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink + service map
 		//
@@ -383,7 +383,7 @@ fn relay_disappeared()
 
 		let sid              = <Add as Service<remotes::Services>>::sid().clone();
 		let bytes_sid: Bytes = sid.clone().into();
-		let cid              = ConnID::default();
+		let cid              = ConnID::random();
 		let msg              = Bytes::from( vec![ 5;5 ] );
 
 
@@ -506,7 +506,7 @@ fn relay_disappeared_multi()
 
 		let sid              = <Add as Service<remotes::Services>>::sid().clone();
 		let bytes_sid: Bytes = sid.clone().into();
-		let cid              = ConnID::default();
+		let cid              = ConnID::random();
 		let msg              = Bytes::from( vec![ 5;5 ] );
 
 		let corrupt = MultiServiceImpl::create( sid, cid, msg );

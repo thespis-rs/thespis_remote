@@ -56,7 +56,7 @@ impl Message for RelayEvent
 /// Handler for events from provider connections.
 /// If we notice Closed or ClosedByRemote on relays, we will stop relaying their services.
 //
-impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
+impl Handler<RelayEvent> for Peer
 {
 	fn handle( &mut self, re: RelayEvent ) -> Return< '_, <RelayEvent as Message>::Return >
 	{
@@ -80,12 +80,12 @@ impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
 				| PeerEvent::ClosedByRemote =>
 				{
 					trace!( "Removing relay because it's connection is closed" );
-					let cid_null = <MS as MultiService>::ConnID::null();
+					let cid_null = ConnID::null();
 
 
 					// Remove all the relayed services from our relayed map.
 					//
-					let mut gone: Vec<<MS as MultiService>::ServiceID> = Vec::new();
+					let mut gone: Vec<ServiceID> = Vec::new();
 
 					self.relayed.retain( |sid, peer|
 					{
@@ -100,7 +100,7 @@ impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
 					//
 					for sid in gone
 					{
-						let err = ConnectionError::ServiceGone( sid.into().to_vec() );
+						let err = ConnectionError::ServiceGone( Into::<Bytes>::into( sid ).to_vec() );
 						self.send_err( cid_null.clone(), &err, false ).await;
 					}
 
@@ -119,9 +119,9 @@ impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
 				//
 				PeerEvent::RemoteError( ConnectionError::ServiceGone(sidvec) ) =>
 				{
-					let cid_null = <MS as MultiService>::ConnID::null();
+					let cid_null = ConnID::null();
 
-					match <MS as MultiService>::ServiceID::try_from( Bytes::from( sidvec ) )
+					match ServiceID::try_from( Bytes::from( sidvec ) )
 					{
 						Err(_) => {},
 
@@ -134,7 +134,7 @@ impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
 
 							// Warn our remote that we are no longer providing these services
 							//
-							let err = ConnectionError::ServiceGone( sid.into().to_vec() );
+							let err = ConnectionError::ServiceGone( Into::<Bytes>::into( sid ).to_vec() );
 							self.send_err( cid_null.clone(), &err, false ).await;
 						}
 					};

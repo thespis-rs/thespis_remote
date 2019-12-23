@@ -16,6 +16,31 @@ pub struct ServiceID
 }
 
 
+impl ServiceID
+{
+	/// Generate a random ID
+	//
+	pub fn random() -> Self
+	{
+		let mut buf = BytesMut::with_capacity( 16 );
+		let mut rng = rand::thread_rng();
+
+		// u128 doesn't work in wasm and serde is being a pain, so 2 u64
+		//
+		let a = rng.gen::<u64>();
+		let b = rng.gen::<u64>();
+
+		let mut wtr = vec![];
+		wtr.write_u64::<LittleEndian>( a ).unwrap();
+		wtr.write_u64::<LittleEndian>( b ).unwrap();
+
+		buf.extend( wtr );
+
+		Self { bytes: Bytes::from( buf ) }
+	}
+}
+
+
 
 /// Internally is also represented as Bytes, so you just get a copy.
 //

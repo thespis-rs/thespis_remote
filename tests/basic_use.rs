@@ -99,7 +99,6 @@ impl Handler< Show > for Parallel
 service_map!
 (
 	namespace     : parallel ;
-	multi_service : MS       ;
 	services      : Show     ;
 );
 
@@ -122,7 +121,7 @@ fn parallel()
 
 	let peera = async move
 	{
-		let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
+		let codec: MulServTokioCodec = MulServTokioCodec::new(1024);
 
 		// get a framed connection
 		//
@@ -130,7 +129,7 @@ fn parallel()
 
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer<MS>> = Inbox::new( "peera".into()  );
+		let mb_peer  : Inbox<Peer> = Inbox::new( "peera".into()  );
 		let peer_addr                  = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink
@@ -162,7 +161,7 @@ fn parallel()
 
 		// Create mailbox for peer
 		//
-		let     mb_peer  : Inbox<Peer<MS>> = Inbox::new( "peer_b".into()  );
+		let     mb_peer  : Inbox<Peer> = Inbox::new( "peer_b".into()  );
 		let mut peer_addr                  = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink

@@ -51,19 +51,18 @@ pub mod import
     use import::*;
 pub use actors::*;
 
-pub type TheSink = SplitSink< Framed< Endpoint, MulServTokioCodec<MS> >, MS> ;
-pub type MS      = MultiServiceImpl<ServiceID, ConnID>                       ;
+pub type TheSink = SplitSink< Framed< Endpoint, MulServTokioCodec >, MultiServiceImpl> ;
 
 
-pub fn peer_listen( socket: Endpoint, sm: impl ServiceMap<MS>, exec: &impl Spawn ) -> (Addr<Peer<MS>>, Events<PeerEvent>)
+pub fn peer_listen( socket: Endpoint, sm: impl ServiceMap, exec: &impl Spawn ) -> (Addr<Peer>, Events<PeerEvent>)
 {
-	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
+	let codec = MulServTokioCodec::new(1024);
 
 	let (sink, stream) = Framed::new( socket, codec ).split();
 
 	// Create mailbox for peer
 	//
-	let mb_peer  : Inbox<Peer<MS>> = Inbox::default()              ;
+	let mb_peer  : Inbox<Peer> = Inbox::default()              ;
 	let peer_addr                  = Addr ::new( mb_peer.sender() );
 
 	// create peer with stream/sink
@@ -84,17 +83,17 @@ pub fn peer_listen( socket: Endpoint, sm: impl ServiceMap<MS>, exec: &impl Spawn
 
 
 
-pub async fn peer_connect( socket: Endpoint, exec: &impl Spawn, name: &'static str ) -> (Addr<Peer<MS>>, Events<PeerEvent>)
+pub async fn peer_connect( socket: Endpoint, exec: &impl Spawn, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	// frame the connection with codec for multiservice
 	//
-	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
+	let codec: MulServTokioCodec = MulServTokioCodec::new(1024);
 
 	let (sink_a, stream_a) = Framed::new( socket, codec ).split();
 
 	// Create mailbox for peer
 	//
-	let mb  : Inbox<Peer<MS>> = Inbox::new( name.into() );
+	let mb  : Inbox<Peer> = Inbox::new( name.into() );
 	let addr                  = Addr ::new( mb.sender() );
 
 	// create peer with stream/sink + service map
@@ -114,12 +113,12 @@ pub async fn peer_connect( socket: Endpoint, exec: &impl Spawn, name: &'static s
 
 pub async fn connect_return_stream( socket: Endpoint ) ->
 
-	(SplitSink<Framed<Endpoint, MulServTokioCodec<MS>>, MS>, SplitStream<Framed<Endpoint, MulServTokioCodec<MS>>>)
+	(SplitSink<Framed<Endpoint, MulServTokioCodec>, MultiServiceImpl>, SplitStream<Framed<Endpoint, MulServTokioCodec>>)
 
 {
 	// frame the connection with codec for multiservice
 	//
-	let codec: MulServTokioCodec<MS> = MulServTokioCodec::new(1024);
+	let codec: MulServTokioCodec = MulServTokioCodec::new(1024);
 
 	Framed::new( socket, codec ).split()
 }
@@ -129,8 +128,7 @@ pub async fn connect_return_stream( socket: Endpoint ) ->
 
 service_map!
 (
-	namespace:     remotes   ;
-	multi_service: MS        ;
-	services     : Add, Show ;
+	namespace: remotes   ;
+	services : Add, Show ;
 );
 

@@ -1,15 +1,15 @@
 //! Implementation of the MultiService wire format.
 //
 mod service_id;
-mod conn_id;
 
 pub use
 {
 	service_id :: * ,
-	conn_id    :: * ,
 };
 
-
+/// A unique identifier for a connection.
+//
+pub type ConnID = ServiceID;
 
 pub mod tokio_codec   ;
 pub use tokio_codec::*;
@@ -80,27 +80,13 @@ const HEADER_LEN: usize = 32;
 //
 #[ derive( Debug, Clone, PartialEq, Eq ) ]
 //
-pub struct MultiServiceImpl<SID, CID>
-
-where
-
-	      CID  : UniqueID + TryFrom<Bytes> + Send + Sync,
-	      SID  : UniqueID + TryFrom<Bytes> + Send + Sync,
+pub struct MultiServiceImpl
 {
-	bytes: Bytes,
-
-	p1: PhantomData< CID >,
-	p2: PhantomData< SID >,
+	bytes: Bytes
 }
 
 
-impl<SID: 'static, CID: 'static> Message for MultiServiceImpl<SID, CID>
-
-where
-
-	      CID  : UniqueID + TryFrom<Bytes> + Send + Sync,
-	      SID  : UniqueID + TryFrom<Bytes> + Send + Sync,
-
+impl Message for MultiServiceImpl
 {
 	type Return = ();
 }
@@ -110,49 +96,52 @@ where
 /// All the methods here can panic. We should make sure that bytes is always big enough,
 /// because bytes.slice panics if it's to small. Same for bytes.put.
 //
-impl<SID, CID> MultiService for MultiServiceImpl<SID, CID>
-
-where
-
-	      CID  : UniqueID + TryFrom<Bytes, Error=ThesRemoteErr>,
-	      SID  : UniqueID + TryFrom<Bytes, Error=ThesRemoteErr>,
+impl MultiServiceImpl
 {
-	type ServiceID = SID   ;
-	type ConnID    = CID   ;
 
-
-	/// Beware: This can panic because of Buf.put
+	/// TODO: This can panic because of Buf.put
 	//
-	fn create( service: SID, conn_id: CID, mesg: Bytes ) -> Self
+	pub fn create( service: ServiceID, conn_id: ConnID, mesg: Bytes ) -> Self
 	{
 		let mut bytes = BytesMut::with_capacity( HEADER_LEN + mesg.len() );
 
-		bytes.put( service .into() );
-		bytes.put( conn_id .into() );
-		bytes.put( mesg            );
+		bytes.put( Into::<Bytes>::into( service ) );
+		bytes.put( Into::<Bytes>::into( conn_id ) );
+		bytes.put( mesg                           );
 
-		Self { bytes: bytes.into(), p1: PhantomData, p2: PhantomData }
+		Self { bytes: bytes.into() }
 	}
 
 
-	fn service ( &self ) -> Result< Self::ServiceID, ThesRemoteErr >
+	/// The service id of this message. When coming in over the wire, this identifies
+	/// which service you are calling. A ServiceID should be unique for a given service.
+	/// The reference implementation combines a unique type id with a namespace so that
+	/// several processes can accept the same type of service under a unique name each.
+	//
+	pub fn service ( &self ) -> Result< ServiceID, ThesRemoteErr >
 	{
-		SID::try_from( self.bytes.slice(0 , 16) )
+		ServiceID::try_from( self.bytes.slice(0 , 16) )
 	}
 
 
-	fn conn_id( &self ) -> Result< Self::ConnID, ThesRemoteErr >
+	/// The connection id. This is used to match responses to outgoing calls.
+	//
+	pub fn conn_id( &self ) -> Result< ConnID, ThesRemoteErr >
 	{
-		CID::try_from( self.bytes.slice(16, 32) )
+		ConnID::try_from( self.bytes.slice(16, 32) )
 	}
 
 
-	fn mesg( &self ) -> Bytes
+	/// The serialized payload message.
+	//
+	pub fn mesg( &self ) -> Bytes
 	{
 		self.bytes.slice_from( HEADER_LEN )
 	}
 
-	fn len( &self ) -> usize
+	/// The total length of the Multiservice in Bytes (header+payload)
+	//
+	pub fn len( &self ) -> usize
 	{
 		self.bytes.len()
 	}
@@ -160,11 +149,7 @@ where
 
 
 
-impl<SID, CID> Into< Bytes > for MultiServiceImpl<SID, CID>
-
-	where CID  : UniqueID,
-	      SID  : UniqueID,
-
+impl Into< Bytes > for MultiServiceImpl
 {
 	fn into( self ) -> Bytes
 	{
@@ -174,11 +159,7 @@ impl<SID, CID> Into< Bytes > for MultiServiceImpl<SID, CID>
 
 
 
-impl<SID, CID> TryFrom< Bytes > for MultiServiceImpl<SID, CID>
-
-	where CID  : UniqueID,
-	      SID  : UniqueID,
-
+impl TryFrom< Bytes > for MultiServiceImpl
 {
 	type Error = ThesRemoteErr;
 
@@ -194,7 +175,7 @@ impl<SID, CID> TryFrom< Bytes > for MultiServiceImpl<SID, CID>
 			return Err( ThesRemoteErr::Deserialize( "MultiServiceImpl: not enough bytes".into() ).into() );
 		}
 
-		Ok( Self { bytes, p1: PhantomData, p2: PhantomData } )
+		Ok( Self { bytes } )
 	}
 }
 
@@ -214,9 +195,7 @@ mod tests
 	//
 
 	use super::{ * };
-	use crate::{ multi_service::{ ConnID, ServiceID } };
 
-	type MS = MultiServiceImpl<ServiceID, ConnID>;
 
 	#[test]
 	//
@@ -226,7 +205,7 @@ mod tests
 		//
 		let buf = Bytes::from( vec![5;HEADER_LEN] );
 
-		match MS::try_from( buf )
+		match MultiServiceImpl::try_from( buf )
 		{
 			Ok (_) => assert!( false, "MultiServiceImpl::try_from( Bytes ) should fail for data shorter than header" ),
 

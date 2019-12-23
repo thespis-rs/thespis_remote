@@ -7,25 +7,22 @@ use crate :: { import::*, * };
 //
 #[ derive( Debug ) ]
 //
-pub struct RegisterRelay<MS>
-
-	where MS: BoundsMS,
-
+pub struct RegisterRelay
 {
 	/// The services that are to be relayed
 	//
-	pub services: Vec<&'static <MS as MultiService>::ServiceID> ,
+	pub services: Vec<&'static ServiceID> ,
 
 	/// The peer to which to relay the selected services them.
 	//
-	pub peer: Addr< Peer<MS> >,
+	pub peer: Addr< Peer >,
 
 	/// The events stream for the relay peer. Used to detect errors and connection close.
 	//
 	pub peer_events: Events<PeerEvent>,
 }
 
-impl<MS> Message for RegisterRelay<MS> where MS: BoundsMS
+impl Message for RegisterRelay
 {
 	type Return = Result<(), ThesRemoteErr>;
 }
@@ -50,11 +47,11 @@ impl<MS> Message for RegisterRelay<MS> where MS: BoundsMS
 // - store in a hashmap, but put the peer address in an Rc? + a unique id (addr doesn't have Eq)
 //
 //
-impl<MS> Handler< RegisterRelay<MS> > for Peer<MS> where MS: BoundsMS
+impl Handler< RegisterRelay > for Peer
 {
-	fn handle( &mut self, msg: RegisterRelay<MS> ) -> Return< '_, <RegisterRelay<MS> as Message>::Return >
+	fn handle( &mut self, msg: RegisterRelay ) -> Return< '_, <RegisterRelay as Message>::Return >
 	{
-		trace!( "peer: starting Handler<RegisterRelay<MS>>" );
+		trace!( "peer: starting Handler<RegisterRelay>" );
 
 		let RegisterRelay { services, peer, peer_events } = msg;
 
