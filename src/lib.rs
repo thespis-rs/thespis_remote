@@ -32,7 +32,6 @@ pub mod peer              ;
 pub mod multi_service     ;
     mod service_map_macro ;
     mod service_map       ;
-    mod service_provider  ;
 
 pub use
 {
@@ -41,7 +40,6 @@ pub use
 	multi_service     :: * ,
 	service_map       :: * ,
 	service_map_macro :: * ,
-	service_provider  :: * ,
 };
 
 

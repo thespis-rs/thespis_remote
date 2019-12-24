@@ -195,6 +195,23 @@ impl Peer
 	}
 
 
+	/// Register a service map as the handler for service ids that come in over the network. Normally you should
+	/// not call this directly, but use [´thespis_remote::ServiceMap::register_with_peer´].
+	//
+	pub fn register_services( &mut self, sm: Arc< dyn ServiceMap + Send + Sync > )
+	{
+		let id = sm.type_id();
+
+		for sid in sm.services().iter()
+		{
+			trace!( "Register Service: {:?}", sid );
+			self.services.insert( sid, id );
+		}
+
+		self.service_maps.insert( id, sm );
+	}
+
+
 
 	/// Tell this peer to make a given service avaible to a remote, by forwarding incoming requests to the given
 	/// providing peer (connection to a remote provider).
@@ -394,25 +411,6 @@ impl Observable<PeerEvent> for Peer
 	fn observe( &mut self, config: ObserveConfig<PeerEvent> ) -> Result< Events<PeerEvent>, pharos::Error >
 	{
 		self.pharos.observe( config )
-	}
-}
-
-impl ServiceProvider for Peer
-{
-	/// Register a service map as the handler for service ids that come in over the network. Normally you should
-	/// not call this directly, but use [´thespis_remote::ServiceMap::register_with_peer´].
-	//
-	fn register_services( &mut self, sm: Arc< dyn ServiceMap + Send + Sync > )
-	{
-		let id = sm.type_id();
-
-		for sid in sm.services().iter()
-		{
-			trace!( "Register Service: {:?}", sid );
-			self.services.insert( sid, id );
-		}
-
-		self.service_maps.insert( id, sm );
 	}
 }
 

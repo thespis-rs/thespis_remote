@@ -63,7 +63,7 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 	// Create mailbox for peer
 	//
 	let mb_peer  : Inbox<Peer> = Inbox::default()              ;
-	let peer_addr                  = Addr ::new( mb_peer.sender() );
+	let peer_addr              = Addr ::new( mb_peer.sender() );
 
 	// create peer with stream/sink
 	//
