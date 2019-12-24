@@ -49,7 +49,7 @@ mod b
 //
 fn sid_diff_for_diff_ns()
 {
-	assert_ne!( <Add as Service<a::remotes::Services>>::sid(), <Add as Service<a::others::Services>>::sid() );
+	assert_ne!( <Add as a::remotes::Service>::sid(), <Add as a::others::Service>::sid() );
 }
 
 
@@ -59,7 +59,7 @@ fn sid_diff_for_diff_ns()
 //
 fn sid_diff_for_diff_service()
 {
-	assert_ne!( <Add as Service<a::remotes::Services>>::sid(), <Show as Service<a::remotes::Services>>::sid() );
+	assert_ne!( <Add as a::remotes::Service>::sid(), <Show as a::remotes::Service>::sid() );
 }
 
 
@@ -69,7 +69,7 @@ fn sid_diff_for_diff_service()
 //
 fn sid_same_for_same_ns()
 {
-	assert_eq!( <Add as Service<a::remotes::Services>>::sid(), <Add as Service<b::remotes::Services>>::sid() );
+	assert_eq!( <Add as a::remotes::Service>::sid(), <Add as b::remotes::Service>::sid() );
 }
 
 

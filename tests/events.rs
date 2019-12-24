@@ -171,7 +171,7 @@ fn header_unknown_service_error()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid = <Add as Service<remotes::Services>>::UniqueID::try_from( Bytes::from( vec![3;16] ) )
+		let sid = ServiceID::try_from( Bytes::from( vec![3;16] ) )
 
 			.expect( "generate random sid" )
 		;
@@ -240,7 +240,7 @@ fn header_deserialize()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid: Bytes = <Add as Service<remotes::Services>>::sid().clone().into();
+		let sid: Bytes = <Add as remotes::Service>::sid().clone().into();
 		let cid: Bytes = ConnID::null().into();
 		let msg: Bytes = serde_cbor::to_vec( &Add(5) ).unwrap().into();
 
@@ -314,7 +314,7 @@ fn sm_deserialize_error()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid = <Add as Service<remotes::Services>>::sid().clone();
+		let sid = <Add as remotes::Service>::sid().clone();
 		let ms  = MultiServiceImpl::create( sid, ConnID::null(), Bytes::from( vec![3,3]));
 
 		peera.send( ms ).await.expect( "send ms to peera" );

@@ -38,6 +38,53 @@ impl ServiceID
 
 		Self { bytes: Bytes::from( buf ) }
 	}
+
+
+	/// Seed the ServiceID. It might be data that will be hashed to generate the id.
+	/// An identical input here should always give an identical ServiceID.
+	//
+	pub fn from_seed( data: &[u8] ) -> Self
+	{
+		let mut h = XxHash::default();
+
+		for byte in data
+		{
+			h.write_u8( *byte );
+		}
+
+		// The format of the multiservice message requires this to be 128 bits, so add a zero
+		// We will have 128bit hash here when xxhash supports 128bit output.
+		//
+		let mut wtr = vec![];
+		wtr.write_u64::<LittleEndian>( h.finish() ).unwrap();
+		wtr.write_u64::<LittleEndian>( 0          ).unwrap();
+
+		Self { bytes: Bytes::from( wtr ) }
+	}
+
+
+	/// And empty ServiceID. Can be used to signify the abscence of an id, would usually be all
+	/// zero bytes.
+	//
+	pub fn null() -> Self
+	{
+		// The format of the multiservice message requires this to be 128 bits, so add a zero
+		// We will have 128bit hash here when xxhash supports 128bit output.
+		//
+		let mut wtr = vec![];
+		wtr.write_u64::<LittleEndian>( 0 ).unwrap();
+		wtr.write_u64::<LittleEndian>( 0 ).unwrap();
+
+		Self { bytes: Bytes::from( wtr ) }
+	}
+
+
+	/// Predicate for null values (all bytes are 0).
+	//
+	pub fn is_null( &self ) -> bool
+	{
+		self.bytes.iter().all( |b| *b == 0 )
+	}
 }
 
 
@@ -86,51 +133,6 @@ impl fmt::Debug for ServiceID
 		}
 
 		Ok(())
-	}
-}
-
-
-impl UniqueID for ServiceID
-{
-	/// Seed the uniqueID. It might be data that will be hashed to generate the id.
-	/// An identical input here should always give an identical UniqueID.
-	//
-	fn from_seed( data: &[u8] ) -> Self
-	{
-		let mut h = XxHash::default();
-
-		for byte in data
-		{
-			h.write_u8( *byte );
-		}
-
-		// The format of the multiservice message requires this to be 128 bits, so add a zero
-		// We will have 128bit hash here when xxhash supports 128bit output.
-		//
-		let mut wtr = vec![];
-		wtr.write_u64::<LittleEndian>( h.finish() ).unwrap();
-		wtr.write_u64::<LittleEndian>( 0          ).unwrap();
-
-		Self { bytes: Bytes::from( wtr ) }
-	}
-
-
-	fn null() -> Self
-	{
-		// The format of the multiservice message requires this to be 128 bits, so add a zero
-		// We will have 128bit hash here when xxhash supports 128bit output.
-		//
-		let mut wtr = vec![];
-		wtr.write_u64::<LittleEndian>( 0 ).unwrap();
-		wtr.write_u64::<LittleEndian>( 0 ).unwrap();
-
-		Self { bytes: Bytes::from( wtr ) }
-	}
-
-
-	fn is_null( &self ) -> bool
-	{
-		self.bytes.iter().all( |b| *b == 0 )
 	}
 }
 

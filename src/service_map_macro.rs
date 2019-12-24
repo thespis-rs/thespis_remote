@@ -36,8 +36,8 @@
 /// {
 ///    // sid will be different for ServiceA in another service map with another namespace than myns
 ///    //
-///    impl Service<self::Services> for ServiceA {...} // self being myns
-///    impl Service<self::Services> for ServiceB {...}
+///    impl Service for ServiceA {...} // self being myns
+///    impl Service for ServiceB {...}
 ///
 ///    pub struct Services {}
 ///
@@ -119,12 +119,40 @@ use
 };
 
 
-$(
-	impl Service<self::Services> for $services
-	{
-		type UniqueID = ServiceID;
 
-		fn sid() -> &'static Self::UniqueID
+/// A [Message] that can be received from remote code. Mainly defines that this [Message] type has
+/// a unique id which allows distinguishing it from other services. It is namespaced, so that different
+/// components/processes can expose services to the network which will accept the same [Message] type,
+/// yet give them a unique identifier.
+///
+pub trait Service
+
+	// TODO: make peace with serde and figure out once and for all when it makes sense
+	//       to create a bound to Deserialize<'de> and when to use DeserializeOwned.
+	//
+	where  Self                    : Message + Serialize + DeserializeOwned,
+         <Self as Message>::Return:           Serialize + DeserializeOwned,
+{
+	/// The unique service id. It needs to be static. You can create runtime static data with
+	/// lazy_static or OnceCell. That way it will only have to be generated once per service per
+	/// process run. Even better is to be able to generate it from const code so it has no runtime
+	/// overhead.
+	///
+	/// For a given Service and Namespace, the output should always be the same, even accross processes
+	/// compiled with different versions of rustc. Ideally the algorithm is also clearly described so
+	/// programs written in other languages can also communicate with your services.
+	//
+	fn sid() -> &'static ServiceID where Self: Sized;
+}
+
+
+
+
+
+$(
+	impl Service for $services
+	{
+		fn sid() -> &'static ServiceID
 		{
 			static INSTANCE: OnceCell< ServiceID > = OnceCell::new();
 
@@ -144,9 +172,6 @@ pub struct Services
 {
 	handlers: HashMap< &'static ServiceID, Box< dyn Any + Send + Sync > >
 }
-
-
-impl Namespace for Services { const NAMESPACE: &'static str = stringify!( $ns ); }
 
 
 
@@ -175,7 +200,7 @@ impl fmt::Debug for Services
 		let mut accu = String::new();
 
 		$(
-			let sid = <$services as Service<Self>>::sid();
+			let sid = <$services as Service>::sid();
 
 			accu += &format!
 			(
@@ -219,7 +244,7 @@ impl Clone for Services
 			match k
 			{
 				$(
-					_ if *k == <$services as Service<self::Services>>::sid() =>
+					_ if *k == <$services as Service>::sid() =>
 					{
 						let h: &Receiver<$services> = v.downcast_ref().expect( "downcast receiver in Clone" );
 
@@ -257,7 +282,7 @@ impl Services
 	//
 	pub fn recipient<S>( peer: Addr<Peer> ) -> RemoteAddr
 
-		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
+		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
@@ -270,10 +295,10 @@ impl Services
 	//
 	pub fn register_handler<S>( &mut self, handler: Receiver<S> )
 
-		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
+		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 	{
-		self.handlers.insert( <S as Service<Self>>::sid(), Box::new( handler ) );
+		self.handlers.insert( <S as Service>::sid(), Box::new( handler ) );
 	}
 
 
@@ -281,7 +306,7 @@ impl Services
 	//
 	fn send_service_gen<S>( msg: MultiServiceImpl, receiver: &Box< dyn Any + Send + Sync > ) -> ThesRemoteRes<()>
 
-		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
+		where  S                    : Service + Send,
 	         <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
@@ -329,7 +354,7 @@ impl Services
 
 	) -> ThesRemoteRes<()>
 
-		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
+		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
@@ -387,7 +412,7 @@ impl Services
 
 			// Create a MultiService
 			//
-			let     sid          = <S as Service<Self>>::sid().clone()                             ;
+			let     sid          = <S as Service>::sid().clone()                                   ;
 			let     mul          = MultiServiceImpl::create( sid, cid.clone(), serialized.into() ) ;
 			let mut return_addr2 = return_addr.clone_box()                                         ;
 
@@ -490,7 +515,7 @@ impl ServiceMap for Services
 		match sid
 		{
 			$(
-				_ if sid == *<$services as Service<Self>>::sid() =>
+				_ if sid == *<$services as Service>::sid() =>
 				{
 					let receiver = self.handlers.get( &sid ).ok_or
 					(
@@ -537,7 +562,7 @@ impl ServiceMap for Services
 		match sid
 		{
 			$(
-				_ if sid == *<$services as Service<self::Services>>::sid() =>
+				_ if sid == *<$services as Service>::sid() =>
 				{
 					let receiver = self.handlers.get( &sid ).ok_or
 					(
@@ -582,11 +607,11 @@ impl RemoteAddr
 	//
 	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< MultiServiceImpl, ThesRemoteErr >
 
-		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
+		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
-		let sid = <S as Service<self::Services>>::sid().clone();
+		let sid = <S as Service>::sid().clone();
 
 		let serialized: Vec<u8> = serde_cbor::to_vec( &msg )
 
@@ -602,7 +627,7 @@ impl RemoteAddr
 	//
 	async fn send_gen<S>( &mut self, msg: S ) -> Result<(), ThesRemoteErr>
 
-		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
+		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
@@ -622,7 +647,7 @@ impl RemoteAddr
 	// 2.
 	async fn call_gen<S>( &mut self, msg: S ) -> Result< <S as Message>::Return, ThesRemoteErr >
 
-		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
+		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
@@ -669,7 +694,7 @@ impl RemoteAddr
 
 impl<S> Recipient<S> for RemoteAddr
 
-	where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
+	where  S                    : Service + Send,
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 {
@@ -702,7 +727,7 @@ impl<S> Recipient<S> for RemoteAddr
 
 impl<S> Sink<S> for RemoteAddr
 
-	where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
+	where  S                    : Service + Send,
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 

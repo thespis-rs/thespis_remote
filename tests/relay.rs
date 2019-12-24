@@ -47,8 +47,8 @@ async fn relay
 		//
 		let mut peer = Peer::new( peer_addr, srv_stream, srv_sink ).expect( "spawn peer" );
 
-		let add  = <Add   as Service<remotes::Services>>::sid();
-		let show = <Show  as Service<remotes::Services>>::sid();
+		let add  = <Add   as remotes::Service>::sid();
+		let show = <Show  as remotes::Service>::sid();
 
 		let relayed = if relay_show
 		{
@@ -381,7 +381,7 @@ fn relay_disappeared()
 	{
 		let (mut relay, mut relay_evts) = peer_connect( cb, &ex2, "consumer_to_relay" ).await;
 
-		let sid              = <Add as Service<remotes::Services>>::sid().clone();
+		let sid              = <Add as remotes::Service>::sid().clone();
 		let bytes_sid: Bytes = sid.clone().into();
 		let cid              = ConnID::random();
 		let msg              = Bytes::from( vec![ 5;5 ] );
@@ -504,7 +504,7 @@ fn relay_disappeared_multi()
 	{
 		let (mut relay, mut relay_evts) = peer_connect( fe, &ex2, "consumer_to_relay" ).await;
 
-		let sid              = <Add as Service<remotes::Services>>::sid().clone();
+		let sid              = <Add as remotes::Service>::sid().clone();
 		let bytes_sid: Bytes = sid.clone().into();
 		let cid              = ConnID::random();
 		let msg              = Bytes::from( vec![ 5;5 ] );
