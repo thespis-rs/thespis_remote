@@ -29,11 +29,6 @@
 ///
 /// mod myns
 /// {
-///    pub trait MarkServices {}; // trait bound for all services in this service_map
-///
-///    impl MarkServices for ServiceA {}
-///    impl MarkServices for ServiceB {}
-///
 ///    // sid will be different for ServiceA in another service map with another namespace than myns
 ///    //
 ///    impl Service<self::Services> for ServiceA {...} // self being myns
@@ -119,24 +114,7 @@ use
 };
 
 
-
-/// Mark the services part of this particular service map, so we can write generic impls only for them.
-//
-pub trait MarkServices
-
-	where  Self                    : Service<self::Services, UniqueID=ServiceID> + Send,
-	      <Self as Message>::Return: Serialize + DeserializeOwned                + Send,
-{}
-
 $(
-
-	impl MarkServices for $services
-
-		where  Self                    : Service<self::Services, UniqueID=ServiceID> + Send,
-	   	   <Self as Message>::Return: Serialize + DeserializeOwned                + Send,
-	{}
-
-
 	impl Service<self::Services> for $services
 	{
 		type UniqueID = ServiceID;
@@ -274,7 +252,7 @@ impl Services
 	//
 	pub fn recipient<S>( peer: Addr<Peer> ) -> RemoteAddr
 
-		where  S: MarkServices                                           ,
+		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
@@ -287,7 +265,7 @@ impl Services
 	//
 	pub fn register_handler<S>( &mut self, handler: Receiver<S> )
 
-		where  S: MarkServices                                           ,
+		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 	{
 		self.handlers.insert( <S as Service<Self>>::sid(), Box::new( handler ) );
@@ -298,8 +276,8 @@ impl Services
 	//
 	fn send_service_gen<S>( msg: MultiServiceImpl, receiver: &Box< dyn Any + Send + Sync > ) -> ThesRemoteRes<()>
 
-		where  S: MarkServices                                           ,
-		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
+		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
+	         <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
 		let backup: &Receiver<S> = receiver.downcast_ref()
@@ -346,7 +324,7 @@ impl Services
 
 	) -> ThesRemoteRes<()>
 
-		where  S: MarkServices                                           ,
+		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
@@ -610,7 +588,7 @@ impl RemoteAddr
 	//
 	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< MultiServiceImpl, ThesRemoteErr >
 
-		where  S: MarkServices                                           ,
+		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
@@ -630,7 +608,7 @@ impl RemoteAddr
 	//
 	async fn send_gen<S>( &mut self, msg: S ) -> Result<(), ThesRemoteErr>
 
-		where  S: MarkServices                                           ,
+		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
@@ -650,7 +628,7 @@ impl RemoteAddr
 	// 2.
 	async fn call_gen<S>( &mut self, msg: S ) -> Result< <S as Message>::Return, ThesRemoteErr >
 
-		where  S: MarkServices                                           ,
+		where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
@@ -697,7 +675,7 @@ impl RemoteAddr
 
 impl<S> Recipient<S> for RemoteAddr
 
-	where  S: MarkServices                                           ,
+	where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 {
@@ -730,7 +708,7 @@ impl<S> Recipient<S> for RemoteAddr
 
 impl<S> Sink<S> for RemoteAddr
 
-	where  S: MarkServices                                           ,
+	where  S                    : Service<self::Services, UniqueID=ServiceID> + Send,
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 
