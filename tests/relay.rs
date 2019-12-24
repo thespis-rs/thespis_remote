@@ -138,15 +138,14 @@ fn relay_once()
 
 		// Call the service and receive the response
 		//
-		let mut add  = remotes::Services::recipient::<Add >( to_relay.clone() );
-		let mut show = remotes::Services::recipient::<Show>( to_relay.clone() );
+		let mut addr  = remotes::RemoteAddr::new( to_relay.clone() );
 
-		let resp = add.call( Add(5) ).await.expect( "Call failed" );
+		let resp = addr.call( Add(5) ).await.expect( "Call failed" );
 		assert_eq!( (), resp );
 
-		add.send( Add(5) ).await.expect( "Send failed" );
+		addr.send( Add(5) ).await.expect( "Send failed" );
 
-		let resp = show.call( Show ).await.expect( "Call failed" );
+		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 10, resp );
 
 		warn!( "consumer end, telling relay to close connection" );
@@ -219,15 +218,14 @@ fn relay_multi()
 
 		// Call the service and receive the response
 		//
-		let mut add  = remotes::Services::recipient::<Add >( relay.clone() );
-		let mut show = remotes::Services::recipient::<Show>( relay.clone() );
+		let mut addr  = remotes::RemoteAddr::new( relay.clone() );
 
-		let resp = add.call( Add(5) ).await.expect( "Call failed" );
+		let resp = addr.call( Add(5) ).await.expect( "Call failed" );
 		assert_eq!( (), resp );
 
-		add.send( Add(5) ).await.expect( "Send failed" );
+		addr.send( Add(5) ).await.expect( "Send failed" );
 
-		let resp = show.call( Show ).await.expect( "Call failed" );
+		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 10, resp );
 
 		relay.send( CloseConnection{ remote: false } ).await.expect( "close connection to nodeb" );

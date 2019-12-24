@@ -277,19 +277,6 @@ impl Services
 	}
 
 
-	/// Creates a recipient to a Service type for a remote actor, which can be used in exactly the
-	/// same way as if the actor was local.
-	//
-	pub fn recipient<S>( peer: Addr<Peer> ) -> RemoteAddr
-
-		where  S                    : Service + Send,
-		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
-
-	{
-		RemoteAddr::new( peer )
-	}
-
-
 	/// Register a handler for a given service type
 	/// Calling this method twice for the same type will override the first handler.
 	//

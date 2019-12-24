@@ -55,15 +55,14 @@ fn remote()
 
 		// Call the service and receive the response
 		//
-		let mut add  = remotes::Services::recipient::<Add >( peera.clone() );
-		let mut show = remotes::Services::recipient::<Show>( peera.clone() );
+		let mut addr  = remotes::RemoteAddr::new( peera.clone() );
 
-		let resp = add.call( Add(5) ).await.expect( "Call failed" );
+		let resp = addr.call( Add(5) ).await.expect( "Call failed" );
 		assert_eq!( (), resp );
 
-		add.send( Add(5) ).await.expect( "Send failed" );
+		addr.send( Add(5) ).await.expect( "Send failed" );
 
-		let resp = show.call( Show ).await.expect( "Call failed" );
+		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 10, resp );
 
 		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
@@ -138,11 +137,11 @@ fn parallel()
 
 		// Create recipients
 		//
-		let show = remotes::Services::recipient::<Show>( peer_addr );
+		let addr = remotes::RemoteAddr::new( peer_addr );
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Parallel{ sum: Box::new( show ) }, &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Parallel{ sum: Box::new( addr ) }, &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -185,9 +184,9 @@ fn parallel()
 
 		// Create recipients
 		//
-		let mut show = parallel::Services::recipient::<Show>( peer_addr.clone() );
+		let mut remote = parallel::RemoteAddr::new( peer_addr.clone() );
 
-		let resp = show.call( Show ).await.expect( "Call failed" );
+		let resp = remote.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 19, resp );
 
 		// dbg!( resp );
@@ -226,12 +225,12 @@ fn call_after_close_connection()
 
 		// Call the service and receive the response
 		//
-		let mut add = remotes::Services::recipient::<Add>( peera.clone() );
+		let mut addr = remotes::RemoteAddr::new( peera.clone() );
 
 		assert_eq!( PeerEvent::ClosedByRemote, peera_evts.next().await.unwrap() );
 
 
-		match add.call( Add(5) ).await
+		match addr.call( Add(5) ).await
 		{
 			Ok (_) => unreachable!(),
 			Err(e) =>
