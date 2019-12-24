@@ -110,7 +110,6 @@ use
 		once_cell       :: { sync::OnceCell                               } ,
 		futures         :: { future::FutureExt, task::{ Context, Poll }   } ,
 		thespis         :: { *                                            } ,
-		thespis_remote  :: { *                                            } ,
 		thespis_impl    :: { Addr, Receiver, ThesErr, ThesRes             } ,
 		serde_cbor      :: { self, from_slice as des                      } ,
 		serde           :: { Serialize, Deserialize, de::DeserializeOwned } ,
@@ -291,7 +290,7 @@ impl Services
 
 	// Helper function for send_service below
 	//
-	fn send_service_gen<S>( msg: MultiServiceImpl, receiver: &Box< dyn Any + Send + Sync > ) -> ThesRemoteRes<()>
+	fn send_service_gen<S>( msg: MultiServiceImpl, receiver: &Box< dyn Any + Send + Sync > ) -> Result< (), ThesRemoteErr >
 
 		where  S                    : Service + Send,
 	         <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -339,7 +338,7 @@ impl Services
 		    receiver   : &Box< dyn Any + Send + Sync >            ,
 		mut return_addr:  BoxRecipient<MultiServiceImpl, ThesErr> ,
 
-	) -> ThesRemoteRes<()>
+	) -> Result< (), ThesRemoteErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -495,7 +494,7 @@ impl ServiceMap for Services
 	/// the expect in there. See if anyone manages to trigger it, we can take it from there.
 	///
 	//
-	fn send_service( &self, msg: MultiServiceImpl ) -> ThesRemoteRes<()>
+	fn send_service( &self, msg: MultiServiceImpl ) -> Result< (), ThesRemoteErr >
 	{
 		let sid = msg.service().expect( "get service" );
 
@@ -541,7 +540,7 @@ impl ServiceMap for Services
 		msg        :  MultiServiceImpl                        ,
 		return_addr:  BoxRecipient<MultiServiceImpl, ThesErr> ,
 
-	) -> ThesRemoteRes<()>
+	) -> Result< (), ThesRemoteErr >
 
 	{
 		let sid = msg.service().expect( "get service" );

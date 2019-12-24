@@ -10,7 +10,6 @@ pub mod import
 		async_executors     :: { LocalPool, AsyncStd, ThreadPool, JoinHandle, SpawnHandle, LocalSpawnHandle } ,
 		futures_ringbuf     :: { Endpoint                                                                   } ,
 		thespis             :: { *                                                                          } ,
-		thespis_remote      :: { *                                                                          } ,
 		thespis_impl        :: { *                                                                          } ,
 		thespis_remote_impl :: { *, service_map, peer                                                       } ,
 		log                 :: { *                                                                          } ,

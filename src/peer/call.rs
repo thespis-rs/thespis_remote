@@ -18,7 +18,7 @@ pub struct Call
 
 impl Message for Call
 {
-	type Return = ThesRemoteRes< oneshot::Receiver<Result<MultiServiceImpl, ConnectionError>> >;
+	type Return = Result< oneshot::Receiver<Result<MultiServiceImpl, ConnectionError>>, ThesRemoteErr >;
 }
 
 impl Call

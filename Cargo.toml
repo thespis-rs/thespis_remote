@@ -12,6 +12,7 @@ futures_codec = "^0.3"
 log = "^0.4"
 once_cell = "^1.0.0-pre"
 simple_logger = "^1"
+thiserror = "^1"
 
 [dependencies.async_runtime]
 default-features = false
@@ -53,9 +54,6 @@ path = "../thespis"
 
 [dependencies.thespis_impl]
 path = "../thespis_impl"
-
-[dependencies.thespis_remote]
-path = "../thespis_remote"
 
 [dependencies.tokio]
 default-features = false

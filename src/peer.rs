@@ -1,7 +1,7 @@
 //! The peer module holds everything that deals with managing a remote connection over which
 //! actor messages can be sent and received.
 //
-use crate :: { import::*, MultiServiceImpl, ServiceID, ConnID, ServiceMap, ServiceProvider };
+use crate :: { import::*, * };
 
 
 mod close_connection  ;

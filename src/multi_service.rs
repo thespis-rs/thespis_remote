@@ -14,7 +14,7 @@ pub type ConnID = ServiceID;
 pub mod tokio_codec   ;
 pub use tokio_codec::*;
 
-use crate::{ import::* };
+use crate::{ import::*, ThesRemoteErr };
 
 const HEADER_LEN: usize = 32;
 
@@ -163,7 +163,7 @@ impl TryFrom< Bytes > for MultiServiceImpl
 {
 	type Error = ThesRemoteErr;
 
-	fn try_from( bytes: Bytes ) -> ThesRemoteRes<Self>
+	fn try_from( bytes: Bytes ) -> Result< Self, ThesRemoteErr >
 	{
 		// at least verify we have enough bytes
 		// minimum: header: 32 + 1 byte mesg = 33

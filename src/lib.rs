@@ -27,6 +27,7 @@
 )]
 
 
+    mod error             ;
 pub mod peer              ;
 pub mod multi_service     ;
     mod service_map_macro ;
@@ -35,6 +36,7 @@ pub mod multi_service     ;
 
 pub use
 {
+	error             :: * ,
 	peer              :: * ,
 	multi_service     :: * ,
 	service_map       :: * ,
@@ -56,10 +58,8 @@ pub mod external_deps
 	pub use serde_cbor     ;
 	pub use serde          ;
 	pub use thespis        ;
-	pub use thespis_remote ;
 	pub use thespis_impl   ;
 }
-
 
 
 
@@ -73,7 +73,6 @@ mod import
 	{
 		async_runtime  :: { rt                                        } ,
 		thespis        :: { *                                         } ,
-		thespis_remote :: { *                                         } ,
 		thespis_impl   :: { Addr, ThesErr                             } ,
 		log            :: { *                                         } ,
 		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt } ,
@@ -84,6 +83,8 @@ mod import
 		futures        :: { future::RemoteHandle                      } ,
 		pharos         :: { Pharos, Observable, ObserveConfig, Events } ,
 		serde          :: { Serialize, Deserialize                    } ,
+		thiserror      :: { Error                                     } ,
+
 
 		std ::
 		{

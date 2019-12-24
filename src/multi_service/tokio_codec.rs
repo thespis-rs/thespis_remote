@@ -1,6 +1,6 @@
 //! The codec to frame the connection with our wire format.
 //
-use crate::{ import::*, MultiServiceImpl };
+use crate::{ import::*, MultiServiceImpl, ThesRemoteErr };
 use super::HEADER_LEN;
 
 /// The tokio codec to frame AsyncRead/Write streams.
