@@ -43,11 +43,6 @@ pub use
 };
 
 
-/// A boxed servicemap that is `Send` and `Sync`.
-//
-pub type BoxServiceMap = Box< dyn ServiceMap + Send + Sync > ;
-
-
 // needed for macro
 //
 #[ doc( hidden ) ]
@@ -96,7 +91,7 @@ mod import
 			any         :: { TypeId      } ,
 			convert     :: { TryFrom     } ,
 			collections :: { HashMap     } ,
-
+			sync        :: { Arc         } ,
 		},
 
 

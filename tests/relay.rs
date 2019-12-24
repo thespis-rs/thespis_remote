@@ -121,7 +121,7 @@ fn relay_once()
 		// get a framed connection
 		//
 		debug!( "start mailbox for provider" );
-		let (peer_addr, _peer_evts) = peer_listen( ab, sm, &ex1 );
+		let (peer_addr, _peer_evts) = peer_listen( ab, Arc::new( sm ), &ex1 );
 
 		drop( peer_addr );
 		trace!( "End of provider" );
@@ -205,7 +205,7 @@ fn relay_multi()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, sm, &ex1 );
+		let _ = peer_listen( ab, Arc::new( sm ), &ex1 );
 
 		trace!( "End of provider" );
 	};
@@ -278,7 +278,7 @@ fn relay_unknown_service()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, sm, &ex1 );
+		let _ = peer_listen( ab, Arc::new( sm ), &ex1 );
 
 
 		trace!( "End of provider" );
@@ -368,7 +368,7 @@ fn relay_disappeared()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, sm, &ex1 );
+		let _ = peer_listen( ab, Arc::new( sm ), &ex1 );
 
 
 		trace!( "End of provider" );
@@ -491,7 +491,7 @@ fn relay_disappeared_multi()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, sm, &ex1 );
+		let _ = peer_listen( ab, Arc::new( sm ), &ex1 );
 
 
 		trace!( "End of provider" );

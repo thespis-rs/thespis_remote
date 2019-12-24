@@ -23,6 +23,7 @@ pub mod import
 			convert :: TryFrom    ,
 			future  :: Future     ,
 			pin     :: Pin        ,
+			sync    :: Arc        ,
 		},
 
 		futures::
@@ -54,7 +55,7 @@ pub use actors::*;
 pub type TheSink = SplitSink< Framed< Endpoint, MulServTokioCodec >, MultiServiceImpl> ;
 
 
-pub fn peer_listen( socket: Endpoint, sm: impl ServiceMap, exec: &impl Spawn ) -> (Addr<Peer>, Events<PeerEvent>)
+pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: &impl Spawn ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	let codec = MulServTokioCodec::new(1024);
 
@@ -73,7 +74,7 @@ pub fn peer_listen( socket: Endpoint, sm: impl ServiceMap, exec: &impl Spawn ) -
 
 	// register service map with peer
 	//
-	sm.register_with_peer( &mut peer );
+	peer.register_services( sm );
 
 	exec.spawn( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
 

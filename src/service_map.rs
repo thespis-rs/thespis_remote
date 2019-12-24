@@ -9,12 +9,6 @@ use crate::{ *, import::* } ;
 //
 pub trait ServiceMap
 {
-	/// Return a boxed ServiceMap.
-	/// This allows for cleaner api's as you don't have to pass a Type parameter and a boxed value.
-	//
-	fn boxed() -> BoxServiceMap where Self: Sized;
-
-
 	/// Send a message to a handler. This should take care of deserialization.
 	//
 	fn send_service( &self, msg: MultiServiceImpl ) -> ThesRemoteRes<()>;
@@ -33,7 +27,7 @@ pub trait ServiceMap
 	) -> ThesRemoteRes<()>;
 
 
-	/// Tell the [Peer] to make all the services in this map available to remote actors.
+	/// Get a list of all services provided by this service map.
 	//
-	fn register_with_peer( self, peer: &mut dyn ServiceProvider );
+	fn services( &self ) -> Vec<&'static ServiceID>;
 }

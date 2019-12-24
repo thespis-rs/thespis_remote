@@ -43,7 +43,7 @@ fn remote()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( server, sm, &ex1 );
+		let _ = peer_listen( server, Arc::new( sm ), &ex1 );
 
 		trace!( "end of peera" );
 	};
@@ -149,7 +149,7 @@ fn parallel()
 		let mut sm = parallel::Services::new();
 		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
 
-		sm.register_with_peer( &mut peer );
+		peer.register_services( Arc::new( sm ) );
 
 		mb_peer.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
 	};
@@ -178,7 +178,7 @@ fn parallel()
 		let mut sm = remotes::Services::new();
 		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
 
-		sm.register_with_peer( &mut peer );
+		peer.register_services( Arc::new( sm ) );
 
 		mb_peer.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" );
 

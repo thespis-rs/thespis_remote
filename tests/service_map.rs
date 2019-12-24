@@ -133,8 +133,8 @@ fn debug()
 	let txt = format!
 ("remotes::Services
 {{
-	Add  - sid: c5c22cab4f2d334e0000000000000000 - handler (actor_id): {:?}
-	Show - sid: 0617b1cfb55b99700000000000000000 - handler (actor_id): {:?}
+	Add  - sid: 4646377cd1cf40640000000000000000 - handler (actor_id): {:?}
+	Show - sid: 887576671878d3cd0000000000000000 - handler (actor_id): {:?}
 }}",
 &id,
 &id,

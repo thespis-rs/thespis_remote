@@ -1,7 +1,7 @@
 //! The peer module holds everything that deals with managing a remote connection over which
 //! actor messages can be sent and received.
 //
-use crate :: { import::*, MultiServiceImpl, ServiceID, ConnID, BoxServiceMap, ServiceProvider };
+use crate :: { import::*, MultiServiceImpl, ServiceID, ConnID, ServiceMap, ServiceProvider };
 
 
 mod close_connection  ;
@@ -107,7 +107,7 @@ pub struct Peer
 	// I have put ThesErr, because it's getting to complex.
 	//
 	services      : HashMap<&'static ServiceID, TypeId>,
-	service_maps  : HashMap<TypeId, BoxServiceMap >,
+	service_maps  : HashMap<TypeId, Arc<dyn ServiceMap + Send + Sync > >,
 
 	/// All services that we relay to another peer. It has to be of the same type for now since there is
 	/// no trait for peers.
@@ -119,7 +119,7 @@ pub struct Peer
 	/// we found the id in relayed.
 	//
 	relayed       : HashMap< &'static ServiceID, usize >,
-	relays        : HashMap< usize, (Addr<Self>, oneshot::Sender<()>)        >,
+	relays        : HashMap< usize, (Addr<Self>, oneshot::Sender<()>) >,
 
 	/// We use onshot channels to give clients a future that will resolve to their response.
 	//
@@ -203,7 +203,7 @@ impl Peer
 	pub fn register_relayed_services
 	(
 		&mut self                                                        ,
-		     services    : Vec<&'static ServiceID> ,
+		     services    : Vec<&'static ServiceID>                       ,
 
 		     // TODO: provider might be a different type then Self?
 		     //
@@ -402,18 +402,17 @@ impl ServiceProvider for Peer
 	/// Register a service map as the handler for service ids that come in over the network. Normally you should
 	/// not call this directly, but use [´thespis_remote::ServiceMap::register_with_peer´].
 	//
-	fn register_services( &mut self, services: &[&'static ServiceID], sm: BoxServiceMap )
+	fn register_services( &mut self, sm: Arc< dyn ServiceMap + Send + Sync > )
 	{
 		let id = sm.type_id();
 
-		self.service_maps.insert( id, sm );
-
-
-		for sid in services.iter()
+		for sid in sm.services().iter()
 		{
 			trace!( "Register Service: {:?}", sid );
 			self.services.insert( sid, id );
 		}
+
+		self.service_maps.insert( id, sm );
 	}
 }
 

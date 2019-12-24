@@ -7,5 +7,5 @@ pub trait ServiceProvider: Actor
 {
 	/// Register a service map as the handler for service ids that might come in over the network
 	//
-	fn register_services( &mut self, services: &[&'static ServiceID], sm: BoxServiceMap );
+	fn register_services( &mut self, sm: Arc< dyn ServiceMap + Send + Sync > );
 }

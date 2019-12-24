@@ -13,6 +13,11 @@
 /// it all in action. There are many integration tests as well testing each feature of the remote actors
 /// in the `tests/remote` folder..
 ///
+/// A unique service id is crated for each service based on the "<namespace>::<service>". It uses
+/// the exact strings you provide to the macro. Server and client need to provide the exact same
+/// parameters to the macro in order to be able to communicate, eg. if you refer to the service types
+/// as some path (eg. `module::Type`), both server and client need to do so.
+///
 /// Types created by this macro, for the following invocation:
 ///
 /// ```ignore
@@ -125,7 +130,7 @@ $(
 
 			INSTANCE.get_or_init( ||
 			{
-				ServiceID::from_seed( &[ stringify!( $services ), Services::NAMESPACE ].concat().as_bytes() )
+				ServiceID::from_seed( stringify!( $ns::$services ).as_bytes() )
 			})
 		}
 	}
@@ -425,7 +430,7 @@ impl Services
 			Ok (t) => Ok(t),
 			Err(e) =>
 			{
-				let ms  = <Peer>::prep_error( cid.clone(), &e );
+				let ms  = Peer::prep_error( cid.clone(), &e );
 				let res = peer.send( ms ).await;
 
 				if let Err( ref err ) = res { error!( "Failed to send error back to remote: {:?}", err ) };
@@ -450,18 +455,7 @@ impl Services
 
 impl ServiceMap for Services
 {
-	// TODO: why do we have this? is this being used at all
-	//
-	fn boxed() -> BoxServiceMap
-	{
-		Box::new( Self{ handlers: HashMap::new() } )
-	}
-
-
-	/// Register all the services for which we have handlers with peer, so that we
-	/// can start receiving incoming messages for those handlers over this connection.
-	//
-	fn register_with_peer( self, peer: &mut dyn ServiceProvider )
+	fn services( &self ) -> Vec<&'static ServiceID>
 	{
 		let mut s: Vec<&'static ServiceID> = Vec::with_capacity( self.handlers.len() );
 
@@ -470,7 +464,7 @@ impl ServiceMap for Services
 			s.push( sid );
 		}
 
-		peer.register_services( &s, Box::new( self ) );
+		s
 	}
 
 
@@ -718,19 +712,25 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		< Addr<Peer> as Sink<MultiServiceImpl> >::poll_ready( self.peer.as_mut(), cx ).map_err( Into::into )
+		< Addr<Peer> as Sink<MultiServiceImpl> >::poll_ready( self.peer.as_mut(), cx )
+
+			.map_err( Into::into )
 	}
 
 
 	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
-		< Addr<Peer> as Sink<MultiServiceImpl> >::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? ).map_err( Into::into )
+		< Addr<Peer> as Sink<MultiServiceImpl> >::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? )
+
+			.map_err( Into::into )
 	}
 
 
 	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		< Addr<Peer> as Sink<MultiServiceImpl> >::poll_flush( self.peer.as_mut(), cx ).map_err( Into::into )
+		< Addr<Peer> as Sink<MultiServiceImpl> >::poll_flush( self.peer.as_mut(), cx )
+
+			.map_err( Into::into )
 	}
 
 
