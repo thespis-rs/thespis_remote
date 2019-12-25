@@ -88,14 +88,11 @@ dependencies:
 
 dev-dependencies:
 
-  criterion         : { version: ^0.3 , features: [ real_blackbox ]                       }
-  tokio             : { version: ^0.1 , default-features: false, features: [ tcp, codec ] }
-
   pretty_assertions : ^0.6
   flexi_logger      : ^0.14
 
   async_executors   : { path: ../../async_executors, features: [ localpool, threadpool, async_std ] }
-  futures_ringbuf   : ^0.1
+  # futures_ringbuf   : ^0.1
   futures_ringbuf   : { path: ../../futures_ringbuf }
   async_runtime       : { version: ^0.3, package: naja_async_runtime }
 

@@ -87,17 +87,8 @@ path = "../../async_executors"
 package = "naja_async_runtime"
 version = "^0.3"
 
-[dev-dependencies.criterion]
-features = ["real_blackbox"]
-version = "^0.3"
-
 [dev-dependencies.futures_ringbuf]
 path = "../../futures_ringbuf"
-
-[dev-dependencies.tokio]
-default-features = false
-features = ["tcp", "codec"]
-version = "^0.1"
 
 [features]
 default = []
