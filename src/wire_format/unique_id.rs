@@ -10,17 +10,17 @@ use crate::{ import::*, ThesRemoteErr };
 //
 #[ derive( Clone, PartialEq, Eq, Hash ) ]
 //
-pub struct ServiceID
+pub(crate) struct UniqueID
 {
 	bytes: Bytes,
 }
 
 
-impl ServiceID
+impl UniqueID
 {
 	/// Generate a random ID
 	//
-	pub fn random() -> Self
+	pub(crate) fn random() -> Self
 	{
 		let mut buf = BytesMut::with_capacity( 16 );
 		let mut rng = rand::thread_rng();
@@ -40,10 +40,10 @@ impl ServiceID
 	}
 
 
-	/// Seed the ServiceID. It might be data that will be hashed to generate the id.
-	/// An identical input here should always give an identical ServiceID.
+	/// Seed the UniqueID. It might be data that will be hashed to generate the id.
+	/// An identical input here should always give an identical UniqueID.
 	//
-	pub fn from_seed( data: &[u8] ) -> Self
+	pub(crate) fn from_seed( data: &[u8] ) -> Self
 	{
 		let mut h = XxHash::default();
 
@@ -63,10 +63,10 @@ impl ServiceID
 	}
 
 
-	/// And empty ServiceID. Can be used to signify the abscence of an id, would usually be all
+	/// And empty UniqueID. Can be used to signify the abscence of an id, would usually be all
 	/// zero bytes.
 	//
-	pub fn null() -> Self
+	pub(crate) fn null() -> Self
 	{
 		// The format of the multiservice message requires this to be 128 bits, so add a zero
 		// We will have 128bit hash here when xxhash supports 128bit output.
@@ -81,7 +81,7 @@ impl ServiceID
 
 	/// Predicate for null values (all bytes are 0).
 	//
-	pub fn is_null( &self ) -> bool
+	pub(crate) fn is_null( &self ) -> bool
 	{
 		self.bytes.iter().all( |b| *b == 0 )
 	}
@@ -91,7 +91,7 @@ impl ServiceID
 
 /// Internally is also represented as Bytes, so you just get a copy.
 //
-impl Into< Bytes > for ServiceID
+impl Into< Bytes > for UniqueID
 {
 	fn into( self ) -> Bytes
 	{
@@ -102,7 +102,7 @@ impl Into< Bytes > for ServiceID
 
 /// The object will just keep the bytes as internal representation, no copies will be made
 //
-impl TryFrom< Bytes > for ServiceID
+impl TryFrom< Bytes > for UniqueID
 {
 	type Error = ThesRemoteErr;
 
@@ -113,7 +113,7 @@ impl TryFrom< Bytes > for ServiceID
 }
 
 
-impl fmt::Display for ServiceID
+impl fmt::Display for UniqueID
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
@@ -123,7 +123,7 @@ impl fmt::Display for ServiceID
 
 
 
-impl fmt::Debug for ServiceID
+impl fmt::Debug for UniqueID
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
@@ -151,8 +151,8 @@ mod tests
 	//
 	fn identical()
 	{
-		let sid  = ServiceID::from_seed( b"hi from seed" );
-		let sid2 = ServiceID::from_seed( b"hi from seed" );
+		let sid  = UniqueID::from_seed( b"hi from seed" );
+		let sid2 = UniqueID::from_seed( b"hi from seed" );
 
 		assert_eq!( sid, sid2 );
 	}
@@ -163,7 +163,7 @@ mod tests
 	fn debug()
 	{
 		let bytes: Bytes = vec![ 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, ].into();
-		let sid = ServiceID::try_from( bytes ).unwrap();
+		let sid = UniqueID::try_from( bytes ).unwrap();
 
 		assert_eq!( "000102030405060708090a0b0c0d0e0f", &format!( "{:?}", sid ) );
 	}

@@ -23,21 +23,21 @@ pub use register_relay    :: RegisterRelay    ;
 //
 /// Trait bounds for the stream of incoming messages
 //
-pub trait BoundsIn : 'static + Stream< Item = Result<MultiServiceImpl, ThesRemoteErr> > + Unpin + Send {}
+pub trait BoundsIn : 'static + Stream< Item = Result<WireFormat, ThesRemoteErr> > + Unpin + Send {}
 
 /// Trait bounds for the Sink of outgoing messages.
 //
-pub trait BoundsOut: 'static + Sink<MultiServiceImpl, Error=ThesRemoteErr > + Unpin + Send {}
+pub trait BoundsOut: 'static + Sink<WireFormat, Error=ThesRemoteErr > + Unpin + Send {}
 
 
 impl<T> BoundsIn for T
 
-	where T : 'static + Stream< Item = Result<MultiServiceImpl, ThesRemoteErr> > + Unpin + Send
+	where T : 'static + Stream< Item = Result<WireFormat, ThesRemoteErr> > + Unpin + Send
 {}
 
 impl<T> BoundsOut for T
 
-	where T : 'static + Sink<MultiServiceImpl, Error=ThesRemoteErr > + Unpin + Send
+	where T : 'static + Sink<WireFormat, Error=ThesRemoteErr > + Unpin + Send
 {}
 
 
@@ -123,7 +123,7 @@ pub struct Peer
 
 	/// We use onshot channels to give clients a future that will resolve to their response.
 	//
-	responses     : HashMap< ConnID, oneshot::Sender<Result<MultiServiceImpl, ConnectionError>> >,
+	responses     : HashMap< ConnID, oneshot::Sender<Result<WireFormat, ConnectionError>> >,
 
 	/// The pharos allows us to have observers.
 	//
@@ -210,19 +210,15 @@ impl Peer
 	//
 	pub fn from_async_read
 	(
-		addr  : Addr<Self>,
-
-		//
-		socket: impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static,
-
-		//
+		addr    : Addr<Self>,
+		socket  : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static,
 		max_size: usize,
 	)
 
 		-> Result< Self, ThesRemoteErr >
 
 	{
-		let codec = MulServTokioCodec::new(max_size);
+		let codec = ThesCodec::new(max_size);
 
 		let (sink, stream) = FutFramed::new( socket, codec ).split();
 
@@ -341,7 +337,7 @@ impl Peer
 
 	// actually send the message accross the wire
 	//
-	async fn send_msg( &mut self, msg: MultiServiceImpl ) -> Result<(), ThesRemoteErr>
+	async fn send_msg( &mut self, msg: WireFormat ) -> Result<(), ThesRemoteErr>
 	{
 		match &mut self.outgoing
 		{
@@ -393,13 +389,13 @@ impl Peer
 	//
 	#[ doc( hidden ) ]
 	//
-	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> MultiServiceImpl
+	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> WireFormat
 	{
 		let serialized   = serde_cbor::to_vec( err ).expect( "serialize response" );
 
 		// sid null is the marker that this is an error message.
 		//
-		MultiServiceImpl::create
+		WireFormat::create
 		(
 			ServiceID::null() ,
 			cid                                     ,
@@ -413,9 +409,9 @@ impl Peer
 // Put an outgoing multiservice message on the wire.
 // TODO: why do we not return the error?
 //
-impl Handler<MultiServiceImpl> for Peer
+impl Handler<WireFormat> for Peer
 {
-	fn handle( &mut self, msg: MultiServiceImpl ) -> Return<'_, ()>
+	fn handle( &mut self, msg: WireFormat ) -> Return<'_, ()>
 	{
 		Box::pin( async move
 		{

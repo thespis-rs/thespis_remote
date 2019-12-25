@@ -3,10 +3,8 @@
 
 - design: try to simplify
 
-	- rename MultiServiceImpl, MulServTokioCodec
-
 	- rethink macro, public interface, try to move things out of macro and review the need for
-	  Service, ServiceMap, ServiceProvider, UniqueID
+	  Service, ServiceMap
 
 	  requirements:
 
@@ -19,8 +17,11 @@
 	- get rid of futures and tokio 0.1
 
 
-	- have a codec for both tokio and futures-codec
-	- ideally take AsyncRead+AsyncWrite rather than Stream+Sink eg. make a method for tokio and one for futures version, but keep it stored as a Stream+Sink to simplify peer
-	- have futures-codec and tokio optional
+	- tokio support
 
 - get rid of async_runtime
+
+- TODO's and FIXME's
+- add tests
+- fix examples
+- documentation

@@ -29,7 +29,7 @@
 
     mod error             ;
 pub mod peer              ;
-pub mod multi_service     ;
+pub mod wire_format       ;
     mod service_map_macro ;
     mod service_map       ;
 
@@ -37,7 +37,7 @@ pub use
 {
 	error             :: * ,
 	peer              :: * ,
-	multi_service     :: * ,
+	wire_format       :: * ,
 	service_map       :: * ,
 	service_map_macro :: * ,
 };
@@ -73,7 +73,7 @@ mod import
 		thespis        :: { *                                           } ,
 		thespis_impl   :: { Addr, ThesErr                               } ,
 		log            :: { *                                           } ,
-		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt   } ,
+		byteorder      :: { LittleEndian, WriteBytesExt                 } ,
 		bytes          :: { Bytes, BytesMut, BufMut                     } ,
 		rand           :: { Rng                                         } ,
 		std            :: { hash::{ Hasher }, any::Any                  } ,
@@ -104,12 +104,12 @@ mod import
 	};
 
 
-	#[ cfg( feature = "tokio-codec" ) ]
+	#[ cfg( feature = "tokio_codec" ) ]
 	//
-	pub use
+	pub(crate) use
 	{
 		tokio :: { prelude::{ AsyncRead as TokioAsyncR, AsyncWrite as TokioAsyncW }                                      } ,
-		tokio :: { codec::{ Decoder as TokioDecoder, Encoder as TokioEncoder, TokioFramed, FramedParts, FramedRead, FramedWrite } } ,
+		tokio :: { codec::{ Decoder as TokioDecoder, Encoder as TokioEncoder, Framed as TokioFramed, FramedParts, FramedRead, FramedWrite } } ,
 	};
 
 
@@ -130,6 +130,14 @@ mod import
 			AsyncWrite as FutAsyncWrite ,
 		}
 	};
+
+	#[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ]
+	//
+	pub(crate) use
+	{
+		byteorder :: { ReadBytesExt } ,
+	};
+
 
 
 	#[ cfg(test) ]

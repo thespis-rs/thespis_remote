@@ -178,7 +178,7 @@ fn header_unknown_service_error()
 			.expect( "generate random sid" )
 		;
 
-		let ms  = MultiServiceImpl::create( sid, ConnID::null(), serde_cbor::to_vec( &Add(5) )
+		let ms  = WireFormat::create( sid, ConnID::null(), serde_cbor::to_vec( &Add(5) )
 
 			.expect( "serialize Add(5)" ).into() )
 		;
@@ -257,7 +257,7 @@ fn header_deserialize()
 		buf.extend( cod );
 		buf.extend( msg );
 
-		let ms  = MultiServiceImpl::try_from( Bytes::from( buf ) ).expect( "serialize Add(5)" );
+		let ms  = WireFormat::try_from( Bytes::from( buf ) ).expect( "serialize Add(5)" );
 
 		peera.call( ms ).await.expect( "send ms to peera" );
 		assert_eq!( PeerEvent::RemoteError(ConnectionError::Deserialize), peera_evts.next().await.unwrap() );
@@ -317,7 +317,7 @@ fn sm_deserialize_error()
 		// Create some random data that shouldn't deserialize
 		//
 		let sid = <Add as remotes::Service>::sid().clone();
-		let ms  = MultiServiceImpl::create( sid, ConnID::null(), Bytes::from( vec![3,3]));
+		let ms  = WireFormat::create( sid, ConnID::null(), Bytes::from( vec![3,3]));
 
 		peera.send( ms ).await.expect( "send ms to peera" );
 

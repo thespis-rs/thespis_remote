@@ -4,7 +4,7 @@ use crate::{ import::*, * };
 //
 pub(super) struct Incoming
 {
-	pub(crate) msg: Result<MultiServiceImpl, ThesRemoteErr>
+	pub(crate) msg: Result<WireFormat, ThesRemoteErr>
 }
 
 impl Message for Incoming
@@ -211,7 +211,7 @@ async fn incoming_send
 	peer    : &mut Peer        ,
 	sid     : ServiceID        ,
 	cid_null: ConnID           ,
-	frame   : MultiServiceImpl ,
+	frame   : WireFormat ,
 )
 {
 	trace!( "Incoming Send" );
@@ -330,7 +330,7 @@ async fn incoming_call
 	peer    : &mut Peer                   ,
 	cid     : ConnID    ,
 	sid     : ServiceID ,
-	frame   : MultiServiceImpl                              ,
+	frame   : WireFormat                              ,
 )
 {
 	trace!( "Incoming Call" );

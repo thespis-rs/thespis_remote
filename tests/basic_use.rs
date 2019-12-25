@@ -122,7 +122,7 @@ fn parallel()
 
 	let peera = async move
 	{
-		let codec: MulServTokioCodec = MulServTokioCodec::new(1024);
+		let codec: ThesCodec = ThesCodec::new(1024);
 
 		// get a framed connection
 		//

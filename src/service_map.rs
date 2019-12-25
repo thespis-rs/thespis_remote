@@ -11,7 +11,7 @@ pub trait ServiceMap
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//
-	fn send_service( &self, msg: MultiServiceImpl ) -> Result< (), ThesRemoteErr >;
+	fn send_service( &self, msg: WireFormat ) -> Result< (), ThesRemoteErr >;
 
 
 	/// Call a Service.
@@ -21,8 +21,8 @@ pub trait ServiceMap
 	fn call_service
 	(
 		&self                                    ,
-		 msg        :  MultiServiceImpl                        ,
-		 return_addr:  BoxRecipient<MultiServiceImpl, ThesErr> ,
+		 msg        :  WireFormat                        ,
+		 return_addr:  BoxRecipient<WireFormat, ThesErr> ,
 
 	) -> Result< (), ThesRemoteErr >;
 

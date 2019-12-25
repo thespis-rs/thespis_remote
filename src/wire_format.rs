@@ -1,15 +1,15 @@
 //! Implementation of the MultiService wire format.
 //
-mod service_id;
+mod unique_id  ;
+mod conn_id    ;
+mod service_id ;
 
 pub use
 {
 	service_id :: * ,
+	conn_id    :: * ,
 };
 
-/// A unique identifier for a connection.
-//
-pub type ConnID = ServiceID;
 
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub mod codec   ;
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub use codec::*;
@@ -80,13 +80,13 @@ const HEADER_LEN: usize = 32;
 //
 #[ derive( Debug, Clone, PartialEq, Eq ) ]
 //
-pub struct MultiServiceImpl
+pub struct WireFormat
 {
 	bytes: Bytes
 }
 
 
-impl Message for MultiServiceImpl
+impl Message for WireFormat
 {
 	type Return = ();
 }
@@ -96,7 +96,7 @@ impl Message for MultiServiceImpl
 /// All the methods here can panic. We should make sure that bytes is always big enough,
 /// because bytes.slice panics if it's to small. Same for bytes.put.
 //
-impl MultiServiceImpl
+impl WireFormat
 {
 
 	/// TODO: This can panic because of Buf.put
@@ -149,7 +149,7 @@ impl MultiServiceImpl
 
 
 
-impl Into< Bytes > for MultiServiceImpl
+impl Into< Bytes > for WireFormat
 {
 	fn into( self ) -> Bytes
 	{
@@ -159,7 +159,7 @@ impl Into< Bytes > for MultiServiceImpl
 
 
 
-impl TryFrom< Bytes > for MultiServiceImpl
+impl TryFrom< Bytes > for WireFormat
 {
 	type Error = ThesRemoteErr;
 
@@ -172,7 +172,7 @@ impl TryFrom< Bytes > for MultiServiceImpl
 		//
 		if bytes.len() < HEADER_LEN + 1
 		{
-			return Err( ThesRemoteErr::Deserialize( "MultiServiceImpl: not enough bytes".into() ).into() );
+			return Err( ThesRemoteErr::Deserialize( "WireFormat: not enough bytes".into() ).into() );
 		}
 
 		Ok( Self { bytes } )
@@ -205,9 +205,9 @@ mod tests
 		//
 		let buf = Bytes::from( vec![5;HEADER_LEN] );
 
-		match MultiServiceImpl::try_from( buf )
+		match WireFormat::try_from( buf )
 		{
-			Ok (_) => assert!( false, "MultiServiceImpl::try_from( Bytes ) should fail for data shorter than header" ),
+			Ok (_) => assert!( false, "WireFormat::try_from( Bytes ) should fail for data shorter than header" ),
 
 			Err(e) => match e
 			{

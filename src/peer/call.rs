@@ -13,19 +13,19 @@ use crate::{ import::*, * };
 //
 pub struct Call
 {
-	mesg: MultiServiceImpl,
+	mesg: WireFormat,
 }
 
 impl Message for Call
 {
-	type Return = Result< oneshot::Receiver<Result<MultiServiceImpl, ConnectionError>>, ThesRemoteErr >;
+	type Return = Result< oneshot::Receiver<Result<WireFormat, ConnectionError>>, ThesRemoteErr >;
 }
 
 impl Call
 {
 	/// Create a new Call to send an outgoing message over the peer.
 	//
-	pub fn new( mesg: MultiServiceImpl ) -> Self
+	pub fn new( mesg: WireFormat ) -> Self
 	{
 		Self{ mesg }
 	}
@@ -59,7 +59,7 @@ impl Handler<Call> for Peer
 
 			// If the above succeeded, store the other end of the channel
 			//
-			let (sender, receiver) = oneshot::channel::< Result<MultiServiceImpl, ConnectionError> >() ;
+			let (sender, receiver) = oneshot::channel::< Result<WireFormat, ConnectionError> >() ;
 
 			self.responses.insert( conn_id, sender );
 

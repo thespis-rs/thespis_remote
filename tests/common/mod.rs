@@ -51,12 +51,12 @@ pub mod import
     use import::*;
 pub use actors::*;
 
-pub type TheSink = SplitSink< Framed< Endpoint, MulServTokioCodec >, MultiServiceImpl> ;
+pub type TheSink = SplitSink< Framed< Endpoint, ThesCodec >, WireFormat> ;
 
 
 pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: &impl Spawn ) -> (Addr<Peer>, Events<PeerEvent>)
 {
-	let codec = MulServTokioCodec::new(1024);
+	let codec = ThesCodec::new(1024);
 
 	let (sink, stream) = Framed::new( socket, codec ).split();
 
@@ -87,7 +87,7 @@ pub async fn peer_connect( socket: Endpoint, exec: &impl Spawn, name: &'static s
 {
 	// frame the connection with codec for multiservice
 	//
-	let codec: MulServTokioCodec = MulServTokioCodec::new(1024);
+	let codec: ThesCodec = ThesCodec::new(1024);
 
 	let (sink_a, stream_a) = Framed::new( socket, codec ).split();
 
@@ -113,12 +113,12 @@ pub async fn peer_connect( socket: Endpoint, exec: &impl Spawn, name: &'static s
 
 pub async fn connect_return_stream( socket: Endpoint ) ->
 
-	(SplitSink<Framed<Endpoint, MulServTokioCodec>, MultiServiceImpl>, SplitStream<Framed<Endpoint, MulServTokioCodec>>)
+	(SplitSink<Framed<Endpoint, ThesCodec>, WireFormat>, SplitStream<Framed<Endpoint, ThesCodec>>)
 
 {
 	// frame the connection with codec for multiservice
 	//
-	let codec: MulServTokioCodec = MulServTokioCodec::new(1024);
+	let codec: ThesCodec = ThesCodec::new(1024);
 
 	Framed::new( socket, codec ).split()
 }

@@ -305,7 +305,7 @@ fn relay_unknown_service()
 		buf.extend( cid );
 		buf.extend( msg );
 
-		let corrupt = MultiServiceImpl::try_from( Bytes::from( buf ) ).expect( "serialize Add(5)" );
+		let corrupt = WireFormat::try_from( Bytes::from( buf ) ).expect( "serialize Add(5)" );
 
 
 		let rx = relay.call( Call::new( corrupt ) ).await
@@ -387,7 +387,7 @@ fn relay_disappeared()
 		let msg              = Bytes::from( vec![ 5;5 ] );
 
 
-		let corrupt = MultiServiceImpl::create( sid, cid, msg );
+		let corrupt = WireFormat::create( sid, cid, msg );
 
 		let rx = relay.call( Call::new( corrupt.clone() ) ).await
 
@@ -509,7 +509,7 @@ fn relay_disappeared_multi()
 		let cid              = ConnID::random();
 		let msg              = Bytes::from( vec![ 5;5 ] );
 
-		let corrupt = MultiServiceImpl::create( sid, cid, msg );
+		let corrupt = WireFormat::create( sid, cid, msg );
 
 		let rx = relay.call( Call::new( corrupt.clone() ) ).await
 

@@ -290,7 +290,7 @@ impl Services
 
 	// Helper function for send_service below
 	//
-	fn send_service_gen<S>( msg: MultiServiceImpl, receiver: &Box< dyn Any + Send + Sync > ) -> Result< (), ThesRemoteErr >
+	fn send_service_gen<S>( msg: WireFormat, receiver: &Box< dyn Any + Send + Sync > ) -> Result< (), ThesRemoteErr >
 
 		where  S                    : Service + Send,
 	         <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -334,9 +334,9 @@ impl Services
 	//
 	fn call_service_gen<S>
 	(
-		    msg        :  MultiServiceImpl                        ,
+		    msg        :  WireFormat                        ,
 		    receiver   : &Box< dyn Any + Send + Sync >            ,
-		mut return_addr:  BoxRecipient<MultiServiceImpl, ThesErr> ,
+		mut return_addr:  BoxRecipient<WireFormat, ThesErr> ,
 
 	) -> Result< (), ThesRemoteErr >
 
@@ -399,7 +399,7 @@ impl Services
 			// Create a MultiService
 			//
 			let     sid          = <S as Service>::sid().clone()                                   ;
-			let     mul          = MultiServiceImpl::create( sid, cid.clone(), serialized.into() ) ;
+			let     mul          = WireFormat::create( sid, cid.clone(), serialized.into() ) ;
 			let mut return_addr2 = return_addr.clone_box()                                         ;
 
 			// Send the MultiService out over the network.
@@ -430,7 +430,7 @@ impl Services
 	//
 	async fn handle_err<'a, T>
 	(
-		peer: &'a mut BoxRecipient<MultiServiceImpl, ThesErr> ,
+		peer: &'a mut BoxRecipient<WireFormat, ThesErr> ,
 		cid : &'a ConnID                                      ,
 		res : Result<T, ConnectionError>                      ,
 
@@ -494,7 +494,7 @@ impl ServiceMap for Services
 	/// the expect in there. See if anyone manages to trigger it, we can take it from there.
 	///
 	//
-	fn send_service( &self, msg: MultiServiceImpl ) -> Result< (), ThesRemoteErr >
+	fn send_service( &self, msg: WireFormat ) -> Result< (), ThesRemoteErr >
 	{
 		let sid = msg.service().expect( "get service" );
 
@@ -537,8 +537,8 @@ impl ServiceMap for Services
 	fn call_service
 	(
 		&self                                                 ,
-		msg        :  MultiServiceImpl                        ,
-		return_addr:  BoxRecipient<MultiServiceImpl, ThesErr> ,
+		msg        :  WireFormat                        ,
+		return_addr:  BoxRecipient<WireFormat, ThesErr> ,
 
 	) -> Result< (), ThesRemoteErr >
 
@@ -591,7 +591,7 @@ impl RemoteAddr
 
 	/// Take the raw message and turn it into a MultiService
 	//
-	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< MultiServiceImpl, ThesRemoteErr >
+	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< WireFormat, ThesRemoteErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -604,7 +604,7 @@ impl RemoteAddr
 			.map_err( |_| ThesRemoteErr::Serialize( format!( "Service: {:?}", sid ) ) )?;
 
 
-		Ok( MultiServiceImpl::create( sid, cid, serialized.into() ) )
+		Ok( WireFormat::create( sid, cid, serialized.into() ) )
 	}
 
 
@@ -706,7 +706,7 @@ impl<S> Recipient<S> for RemoteAddr
 	{
 		// TODO: self.peer.id()? and name?
 		//
-		< Addr<Peer> as Recipient<MultiServiceImpl> >::actor_id( &self.peer )
+		< Addr<Peer> as Recipient<WireFormat> >::actor_id( &self.peer )
 	}
 }
 
@@ -725,7 +725,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		< Addr<Peer> as Sink<MultiServiceImpl> >::poll_ready( self.peer.as_mut(), cx )
+		< Addr<Peer> as Sink<WireFormat> >::poll_ready( self.peer.as_mut(), cx )
 
 			.map_err( Into::into )
 	}
@@ -733,7 +733,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
-		< Addr<Peer> as Sink<MultiServiceImpl> >::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? )
+		< Addr<Peer> as Sink<WireFormat> >::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? )
 
 			.map_err( Into::into )
 	}
@@ -741,7 +741,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		< Addr<Peer> as Sink<MultiServiceImpl> >::poll_flush( self.peer.as_mut(), cx )
+		< Addr<Peer> as Sink<WireFormat> >::poll_flush( self.peer.as_mut(), cx )
 
 			.map_err( Into::into )
 	}
