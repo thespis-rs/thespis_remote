@@ -1,3 +1,5 @@
+#![ cfg( feature = "futures_codec" ) ]
+
 mod common;
 
 use common::*                       ;

@@ -7,10 +7,8 @@ status = "actively-developed"
 repository = "thespis-rs/thespis_remote_impl"
 
 [dependencies]
-futures_cbor_codec = "^0.1"
-futures_codec = "^0.3"
 log = "^0.4"
-once_cell = "^1.0.0-pre"
+once_cell = "^1"
 simple_logger = "^1"
 thiserror = "^1"
 
@@ -28,6 +26,15 @@ version = "^0.4"
 [dependencies.futures]
 default-features = false
 features = ["std", "compat"]
+version = "^0.3"
+
+[dependencies.futures_cbor_codec]
+optional = true
+version = "^0.1"
+
+[dependencies.futures_codec_crate]
+optional = true
+package = "futures_codec"
 version = "^0.3"
 
 [dependencies.pharos]
@@ -57,9 +64,13 @@ path = "../thespis_impl"
 
 [dependencies.tokio]
 default-features = false
-features = ["rt-full", "codec"]
+features = ["codec"]
 optional = true
 version = "^0.1"
+
+[dependencies.tokio-serde-cbor]
+optional = true
+version = "^0.3"
 
 [dependencies.twox-hash]
 version = "^1.1"
@@ -91,6 +102,8 @@ version = "^0.1"
 [features]
 default = []
 external_doc = []
+futures_codec = ["futures_codec_crate", "futures_cbor_codec"]
+tokio_codec = ["tokio", "tokio-serde-cbor"]
 
 [lib]
 bench = false
@@ -112,7 +125,7 @@ version = "0.1.0"
 [package.metadata]
 [package.metadata.docs]
 [package.metadata.docs.rs]
-features = ["external_doc"]
+all-features = true
 
 [profile]
 [profile.release]

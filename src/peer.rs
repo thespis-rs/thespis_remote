@@ -84,7 +84,7 @@ pub struct Peer
 {
 	/// The sink
 	//
-	outgoing      : Option< Box<dyn BoundsOut > >,
+	outgoing      : Option< Box<dyn BoundsOut> >,
 
 	/// This is needed so that the loop listening to the incoming stream can send messages to this actor.
 	/// The loop runs in parallel of the rest of the actor, yet processing incoming messages need mutable
@@ -193,6 +193,43 @@ impl Peer
 			pharos       : Pharos::default()          ,
 		})
 	}
+
+
+
+	#[ cfg( feature = "futures_codec" ) ]
+	//
+	/// Create a Peer directly from an asynchronous stream. This is a convenience wrapper around Peer::new so
+	/// you don't have to bother with framing the connection.
+	///
+	/// *addr*: This peers own adress.
+	///
+	/// *socket*: The async stream to frame.
+	///
+	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
+	/// stream if it exceeds this size.
+	//
+	pub fn from_async_read
+	(
+		addr  : Addr<Self>,
+
+		//
+		socket: impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static,
+
+		//
+		max_size: usize,
+	)
+
+		-> Result< Self, ThesRemoteErr >
+
+	{
+		let codec = MulServTokioCodec::new(max_size);
+
+		let (sink, stream) = FutFramed::new( socket, codec ).split();
+
+		Peer::new( addr.clone(), stream, sink )
+	}
+
+
 
 
 	/// Register a service map as the handler for service ids that come in over the network. Normally you should

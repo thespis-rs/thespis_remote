@@ -1,3 +1,5 @@
+#![ cfg( feature = "futures_codec" ) ]
+
 // This currently combines testing error handling and peer events, because often the events are the way
 // to be notified of errors.
 //

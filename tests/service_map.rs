@@ -1,3 +1,5 @@
+#![ cfg( feature = "futures_codec" ) ]
+
 // Tested:
 //
 // - ✔ Verify that the same      service, in a   different namespace has different service id.

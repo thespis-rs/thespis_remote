@@ -11,8 +11,8 @@ pub use
 //
 pub type ConnID = ServiceID;
 
-pub mod tokio_codec   ;
-pub use tokio_codec::*;
+#[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub mod codec   ;
+#[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub use codec::*;
 
 use crate::{ import::*, ThesRemoteErr };
 

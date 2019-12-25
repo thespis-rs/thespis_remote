@@ -704,6 +704,8 @@ impl<S> Recipient<S> for RemoteAddr
 	//
 	fn actor_id( &self ) -> usize
 	{
+		// TODO: self.peer.id()? and name?
+		//
 		< Addr<Peer> as Recipient<MultiServiceImpl> >::actor_id( &self.peer )
 	}
 }

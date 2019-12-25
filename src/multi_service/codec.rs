@@ -26,15 +26,36 @@ impl MulServTokioCodec
 	{
 		Self{ max_length }
 	}
-}
 
 
-impl Decoder for MulServTokioCodec
-{
-	type Item  = MultiServiceImpl ;
-	type Error = ThesRemoteErr    ;
+	fn encode_impl( &mut self, item: MultiServiceImpl, buf: &mut BytesMut ) -> Result<(), ThesRemoteErr>
+	{
+		// respect the max_length
+		//
+		if item.len() > self.max_length
+		{
+			return Err( ThesRemoteErr::MessageSizeExceeded
+			(
+				format!( "Tokio Codec Encoder: max_length={:?} bytes, message={:?} bytes", self.max_length, item.len() )
 
-	fn decode( &mut self, buf: &mut BytesMut ) -> Result< Option<Self::Item>, Self::Error >
+			).into() )
+		}
+
+
+		let len = item.len() + 8;
+		buf.reserve( len );
+
+		let mut wtr = vec![];
+		wtr.write_u64::<LittleEndian>( len as u64 ).expect( "Tokio codec encode: Write u64 to vec" );
+
+		buf.put( wtr                         );
+		buf.put( Into::<Bytes>::into( item ) );
+
+		Ok(())
+	}
+
+
+	fn decode_impl( &mut self, buf: &mut BytesMut ) -> Result< Option<MultiServiceImpl>, ThesRemoteErr >
 	{
 		trace!( "Decoding incoming message: {:?}", &buf );
 
@@ -89,44 +110,39 @@ impl Decoder for MulServTokioCodec
 }
 
 
+#[ cfg( feature = "futures_codec" ) ]
+//
+impl FutDecoder for MulServTokioCodec
+{
+	type Item  = MultiServiceImpl ;
+	type Error = ThesRemoteErr    ;
+
+	fn decode( &mut self, buf: &mut BytesMut ) -> Result< Option<Self::Item>, Self::Error >
+	{
+		self.decode_impl( buf )
+	}
+}
+
+
 // TODO: zero copy encoding. Currently we copy bytes in the output buffer.
 // In principle we would like to not have to serialize the inner message
 // before having access to this buffer.
 //
-impl Encoder for MulServTokioCodec
+#[ cfg( feature = "futures_codec" ) ]
+//
+impl FutEncoder for MulServTokioCodec
 {
 	type Item  = MultiServiceImpl ;
 	type Error = ThesRemoteErr    ;
 
 	fn encode( &mut self, item: Self::Item, buf: &mut BytesMut ) -> Result<(), Self::Error>
 	{
-		// respect the max_length
-		//
-		if item.len() > self.max_length
-		{
-			return Err( ThesRemoteErr::MessageSizeExceeded
-			(
-				format!( "Tokio Codec Encoder: max_length={:?} bytes, message={:?} bytes", self.max_length, item.len() )
-
-			).into() )
-		}
-
-
-		let len = item.len() + 8;
-		buf.reserve( len );
-
-		let mut wtr = vec![];
-		wtr.write_u64::<LittleEndian>( len as u64 ).expect( "Tokio codec encode: Write u64 to vec" );
-
-		buf.put( wtr                         );
-		buf.put( Into::<Bytes>::into( item ) );
-
-		Ok(())
+		self.encode_impl( item, buf )
 	}
 }
 
 
-#[ cfg(test) ]
+#[ cfg(all( test, feature = "futures_codec" )) ]
 //
 mod tests
 {

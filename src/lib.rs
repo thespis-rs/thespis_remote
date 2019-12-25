@@ -69,19 +69,18 @@ mod import
 {
 	pub(crate) use
 	{
-		async_runtime  :: { rt                                        } ,
-		thespis        :: { *                                         } ,
-		thespis_impl   :: { Addr, ThesErr                             } ,
-		log            :: { *                                         } ,
-		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt } ,
-		bytes          :: { Bytes, BytesMut, BufMut                   } ,
-		rand           :: { Rng                                       } ,
-		std            :: { hash::{ Hasher }, any::Any                } ,
-		twox_hash      :: { XxHash                                    } ,
-		futures        :: { future::RemoteHandle                      } ,
-		pharos         :: { Pharos, Observable, ObserveConfig, Events } ,
-		serde          :: { Serialize, Deserialize                    } ,
-		thiserror      :: { Error                                     } ,
+		async_runtime  :: { rt                                          } ,
+		thespis        :: { *                                           } ,
+		thespis_impl   :: { Addr, ThesErr                               } ,
+		log            :: { *                                           } ,
+		byteorder      :: { LittleEndian, ReadBytesExt, WriteBytesExt   } ,
+		bytes          :: { Bytes, BytesMut, BufMut                     } ,
+		rand           :: { Rng                                         } ,
+		std            :: { hash::{ Hasher }, any::Any                  } ,
+		twox_hash      :: { XxHash                                      } ,
+		pharos         :: { Pharos, Observable, ObserveConfig, Events   } ,
+		serde          :: { Serialize, Deserialize                      } ,
+		thiserror      :: { Error                                       } ,
 
 
 		std ::
@@ -96,29 +95,40 @@ mod import
 
 		futures ::
 		{
-			prelude :: { Stream, Sink } ,
-			channel :: { oneshot      } ,
-			future  :: { FutureExt    } ,
-			sink    :: { SinkExt      } ,
-			stream  :: { StreamExt    } ,
+			prelude :: { Stream, Sink            } ,
+			channel :: { oneshot                 } ,
+			future  :: { FutureExt, RemoteHandle } ,
+			sink    :: { SinkExt                 } ,
+			stream  :: { StreamExt               } ,
 		},
 	};
 
 
-	#[ cfg( feature = "tokio" ) ]
+	#[ cfg( feature = "tokio-codec" ) ]
 	//
 	pub use
 	{
-		tokio :: { prelude::{ AsyncRead as TokioAsyncR, AsyncWrite as TokioAsyncW }          } ,
-		tokio :: { codec::{ Decoder, Encoder, Framed, FramedParts, FramedRead, FramedWrite } } ,
+		tokio :: { prelude::{ AsyncRead as TokioAsyncR, AsyncWrite as TokioAsyncW }                                      } ,
+		tokio :: { codec::{ Decoder as TokioDecoder, Encoder as TokioEncoder, TokioFramed, FramedParts, FramedRead, FramedWrite } } ,
 	};
 
 
-	#[ cfg(not( feature = "tokio" )) ]
+	#[ cfg( feature = "futures_codec" ) ]
 	//
 	pub(crate) use
 	{
-		futures_codec :: { Encoder, Decoder } ,
+		futures_codec_crate ::
+		{
+			Encoder as FutEncoder,
+			Decoder as FutDecoder,
+			Framed  as FutFramed ,
+		} ,
+
+		futures::
+		{
+			AsyncRead  as FutAsyncRead  ,
+			AsyncWrite as FutAsyncWrite ,
+		}
 	};
 
 
