@@ -218,13 +218,13 @@ mod tests
 		let     data  = empty_data();
 		let     data2 = data.clone();
 
-		codec.encode( data, &mut buf ).expect( "Encoding empty" );
+		<ThesCodec as FutEncoder>::encode( &mut codec, data, &mut buf ).expect( "Encoding empty" );
 
 		assert_eq!
 		(
 			data2,
 
-			codec.decode( &mut buf )
+			<ThesCodec as FutDecoder>::decode( &mut codec, &mut buf )
 
 				.expect( "No errors should occur"                      )
 				.expect( "There should be some data (eg. Not Ok(None)" )
@@ -241,13 +241,13 @@ mod tests
 		let     data  = full_data();
 		let     data2 = data.clone();
 
-		codec.encode( data, &mut buf ).expect( "Encoding empty" );
+		<ThesCodec as FutEncoder>::encode( &mut codec, data, &mut buf ).expect( "Encoding empty" );
 
 		assert_eq!
 		(
 			data2,
 
-			codec.decode( &mut buf )
+			<ThesCodec as FutDecoder>::decode( &mut codec, &mut buf )
 
 				.expect( "No errors should occur"                      )
 				.expect( "There should be some data (eg. Not Ok(None)" )
@@ -270,14 +270,20 @@ mod tests
 		let     full2  = full .clone();
 		let     full3  = full .clone();
 
-		codec.encode( empty, &mut buf ).expect( "Encoding empty" ); // 41 bytes
-		codec.encode( full , &mut buf ).expect( "Encoding full"  ); // 45 bytes
-		codec.encode( full2, &mut buf ).expect( "Encoding full"  ); // 45 bytes
+		<ThesCodec as FutEncoder>::encode( &mut codec, empty, &mut buf ).expect( "Encoding empty" ); // 41 bytes
+		<ThesCodec as FutEncoder>::encode( &mut codec, full , &mut buf ).expect( "Encoding full"  ); // 45 bytes
+		<ThesCodec as FutEncoder>::encode( &mut codec, full2, &mut buf ).expect( "Encoding full"  ); // 45 bytes
 
 		// total is 131
 		//
-		assert_eq!( empty2, codec.decode( &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
-		assert_eq!(  full3, codec.decode( &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
+		assert_eq!( empty2, <ThesCodec as FutDecoder>::decode( &mut codec, &mut buf )
+
+				.expect( "Decode empty" ).expect( "Not None" ) );
+
+		assert_eq!(  full3, <ThesCodec as FutDecoder>::decode( &mut codec, &mut buf )
+
+				.expect( "Decode empty" ).expect( "Not None" ) );
+
 		assert_eq!( 45, buf.len() ); // there should be exactly 48 bytes sitting there waiting for the last.
 	}
 }
