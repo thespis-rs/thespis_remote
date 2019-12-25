@@ -281,8 +281,8 @@ impl Services
 	//
 	pub fn register_handler<S>( &mut self, handler: Receiver<S> )
 
-		where  S                    : Service + Send,
-		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
+		where  S                    : Service,
+		      <S as Message>::Return: Serialize + DeserializeOwned,
 	{
 		self.handlers.insert( <S as Service>::sid(), Box::new( handler ) );
 	}
@@ -292,8 +292,8 @@ impl Services
 	//
 	fn send_service_gen<S>( msg: WireFormat, receiver: &Box< dyn Any + Send + Sync > ) -> Result< (), ThesRemoteErr >
 
-		where  S                    : Service + Send,
-	         <S as Message>::Return: Serialize + DeserializeOwned + Send,
+		where  S                    : Service,
+	         <S as Message>::Return: Serialize + DeserializeOwned,
 
 	{
 		let backup: &Receiver<S> = receiver.downcast_ref()
