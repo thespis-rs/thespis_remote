@@ -143,6 +143,7 @@ pub struct Peer<MS> where MS: BoundsMS
 impl<MS> Peer<MS> where MS : BoundsMS,
 {
 	/// Create a new peer to represent a connection to some remote.
+	/// `addr` is the actor address for this actor.
 	//
 	pub fn new( addr: Addr<Self>, mut incoming: impl BoundsIn<MS>, outgoing: impl BoundsOut<MS> ) -> Result< Self, ThesRemoteErr >
 	{
@@ -164,9 +165,11 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 			//
 			while let Some(msg) = incoming.next().await
 			{
-				trace!( "incoming message" );
+				trace!( "incoming message for actor: {}", addr2.id() );
 				addr2.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" )
 			}
+
+			trace!( "peer incoming stream end, closing out, peer: {}", addr2.id() );
 
 			// Same as above.
 			//
@@ -195,14 +198,18 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 
 
 
-	/// Tell this peer to make a given service avaible to a remote, by forwarding incoming requests to the given peer.
+	/// Tell this peer to make a given service avaible to a remote, by forwarding incoming requests to the given
+	/// providing peer (connection to a remote provider).
 	/// For relaying services from other processes.
 	//
 	pub fn register_relayed_services
 	(
 		&mut self                                                        ,
 		     services    : Vec<&'static <MS as MultiService>::ServiceID> ,
-		     peer        : Addr<Self>                                    ,
+
+		     // TODO: provider might be a different type then Self?
+		     //
+		     provider    : Addr<Self>                                    ,
 		     peer_events : Events<PeerEvent>                             ,
 
 	) -> Result<(), ThesRemoteErr>
@@ -422,6 +429,8 @@ impl<MS> fmt::Debug for Peer<MS> where MS: BoundsMS
 
 impl<MS> Drop for Peer<MS> where MS: BoundsMS
 {
+	// TODO: only do processing if logging is on.
+	//
 	fn drop( &mut self )
 	{
 		let mut id = String::new();
@@ -431,6 +440,6 @@ impl<MS> Drop for Peer<MS> where MS: BoundsMS
 			id = format!( ": {:?}", addr );
 		}
 
-		trace!( "Drop peer{:?}", id );
+		trace!( "Drop peer {}", id );
 	}
 }

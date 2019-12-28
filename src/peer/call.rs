@@ -49,6 +49,8 @@ impl<MS> Handler<Call<MS>> for Peer<MS> where MS: BoundsMS,
 
 		Box::pin( async move
 		{
+			trace!( "peer: polled Handler<Call<MS>>" );
+
 			// Fallible operations first
 			// Can fail to deserialize connection id from the outgoing call.
 			//

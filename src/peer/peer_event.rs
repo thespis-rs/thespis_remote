@@ -53,20 +53,24 @@ impl Message for RelayEvent
 
 
 
-/// Handler for events from relays.
+/// Handler for events from provider connections.
 /// If we notice Closed or ClosedByRemote on relays, we will stop relaying their services.
 //
 impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
 {
 	fn handle( &mut self, re: RelayEvent ) -> Return< '_, <RelayEvent as Message>::Return >
 	{
-		let id = <Addr<Self> as Recipient<RelayEvent>>::actor_id( &self.addr.clone().unwrap() );
+		match &self.addr
+		{
+			Some( a ) => trace!( "RelayEvent in peer: {}", a.id() ),
+			None      => trace!( "RelayEvent in closing Peer"     ),
+		}
 
-		trace!( "peer {:?}: starting Handler<RelayEvent>: {:?}", id , &re );
+		trace!( "Starting Handler<RelayEvent>, provider id: {:?}", &re );
 
 		let peer_id = re.id;
 
-		Box::pin( async move
+		async move
 		{
 			match re.evt
 			{
@@ -75,7 +79,7 @@ impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
 				  PeerEvent::Closed
 				| PeerEvent::ClosedByRemote =>
 				{
-					trace!( "peer {:?}: Removing relay because it's connection is closed", id );
+					trace!( "Removing relay because it's connection is closed" );
 					let cid_null = <MS as MultiService>::ConnID::null();
 
 
@@ -139,7 +143,8 @@ impl<MS> Handler<RelayEvent> for Peer<MS> where MS: BoundsMS
 				_ => {}
 			}
 
-			trace!( "peer {:?}: End of handler relay event", id );
-		})
+			trace!( "End of handler RelayEvent" );
+
+		}.boxed()
 	}
 }

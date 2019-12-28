@@ -36,7 +36,12 @@ impl<MS> Handler<CloseConnection> for Peer<MS> where MS: BoundsMS
 	{
 		Box::pin( async move
 		{
-			trace!( "CloseConnection self in peer");
+			match &self.addr
+			{
+				Some( a ) => trace!( "CloseConnection in peer: {}", a.id() ),
+				None      => trace!( "CloseConnection in peer" ),
+			}
+
 
 
 			if msg.remote { self.pharos.send( PeerEvent::ClosedByRemote ).await.expect( "pharos not closed" ) }
@@ -49,7 +54,7 @@ impl<MS> Handler<CloseConnection> for Peer<MS> where MS: BoundsMS
 			{
 				Some( out ) =>
 				{
-					out.close().await.expect( "close sink for peer" );
+					out.close().await.expect( "CloseConnection: close sink for peer" );
 					self.outgoing = None;
 				},
 
