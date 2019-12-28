@@ -119,7 +119,7 @@ pub struct Peer
 	/// we found the id in relayed.
 	//
 	relayed       : HashMap< &'static ServiceID, usize >,
-	relays        : HashMap< usize, (Addr<Self>, oneshot::Sender<()>) >,
+	relays        : HashMap< usize, (Addr<Self>, RemoteHandle<()>)           >,
 
 	/// We use onshot channels to give clients a future that will resolve to their response.
 	//
@@ -278,7 +278,7 @@ impl Peer
 		};
 
 		let peer_id = < Addr<Self> as Recipient<RelayEvent> >::actor_id( &provider );
-		let (handle, cancel) = oneshot::channel::<()>();
+
 
 		let listen = async move
 		{
@@ -293,9 +293,7 @@ impl Peer
 			//
 			// So, I think we can unwrap for now.
 			//
-			let receive = self_addr.send_all( stream );
-
-			futures::future::select( receive, cancel ).await;
+			self_addr.send_all( stream ).await.expect( "peer send to self" );
 
 			// Same as above.
 			// Normally relays shouldn't just dissappear, without notifying us, but it could
@@ -311,18 +309,17 @@ impl Peer
 			trace!( "Stop listening to relay provider events: peer" );
 		};
 
+		// When we need to stop listening, we have to drop this future, because it contains
+		// our address, and we won't be dropped as long as there are adresses around.
+		//
+		let (remote, handle) = listen.remote_handle();
 
-		rt::spawn( listen ).map_err( |_| -> ThesRemoteErr
+		rt::spawn( remote ).map_err( |_| -> ThesRemoteErr
 		{
 			ThesErr::Spawn{ actor: "Stream of events from relay peer".to_string() }.into()
-
 		})?;
 
-
-		// When the handle (oneshot::Sender) get's dropped, the rx should get woken up so
-		// our task above ends...
-		//
-		self.relays .insert( peer_id, (provider, handle) );
+		self.relays.insert( peer_id, (provider, handle) );
 
 		for sid in services
 		{
