@@ -136,6 +136,7 @@ mod import
 	pub(crate) use
 	{
 		byteorder :: { ReadBytesExt } ,
+		bytes     :: { Buf          } ,
 	};
 
 

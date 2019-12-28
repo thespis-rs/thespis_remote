@@ -48,7 +48,7 @@ impl ThesCodec
 		let mut wtr = vec![];
 		wtr.write_u64::<LittleEndian>( len as u64 ).expect( "Tokio codec encode: Write u64 to vec" );
 
-		buf.put( wtr                         );
+		buf.put( wtr.as_ref()                );
 		buf.put( Into::<Bytes>::into( item ) );
 
 		Ok(())
@@ -105,7 +105,7 @@ impl ThesCodec
 
 		// Convert
 		//
-		Ok( Some( WireFormat::try_from( Bytes::from( buf ) )? ) )
+		Ok( Some( WireFormat::try_from( buf.freeze() )? ) )
 	}
 }
 
@@ -193,9 +193,9 @@ mod tests
 	fn empty_data() -> WireFormat
 	{
 		let mut buf = BytesMut::with_capacity( 1 );
-		buf.put( 0u8 );
+		buf.put( &[0u8;1][..] );
 
-		let m = WireFormat::create( ServiceID::from_seed( b"Empty Message" ), ConnID::random(), buf.into() );
+		let m = WireFormat::create( ServiceID::from_seed( b"Empty Message" ), ConnID::random(), buf.freeze() );
 
 		m
 	}
@@ -203,9 +203,9 @@ mod tests
 	fn full_data() -> WireFormat
 	{
 		let mut buf = BytesMut::with_capacity( 5 );
-		buf.put( b"hello".to_vec() );
+		buf.put( "hello".as_bytes() );
 
-		WireFormat::create( ServiceID::from_seed( b"Full Message" ), ConnID::random(), buf.into() )
+		WireFormat::create( ServiceID::from_seed( b"Full Message" ), ConnID::random(), buf.freeze() )
 	}
 
 

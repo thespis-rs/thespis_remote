@@ -257,7 +257,7 @@ fn header_deserialize()
 		buf.extend( cod );
 		buf.extend( msg );
 
-		let ms  = WireFormat::try_from( Bytes::from( buf ) ).expect( "serialize Add(5)" );
+		let ms  = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
 		peera.call( ms ).await.expect( "send ms to peera" );
 		assert_eq!( PeerEvent::RemoteError(ConnectionError::Deserialize), peera_evts.next().await.unwrap() );

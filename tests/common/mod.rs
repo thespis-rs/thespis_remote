@@ -36,17 +36,29 @@ pub mod import
 			executor:: { block_on                                                                } ,
 		},
 
-
-		tokio        ::
-		{
-			prelude :: { Stream as TokStream, stream::{ SplitStream as TokSplitStream, SplitSink as TokSplitSink } } ,
-		},
-
-		futures_codec_crate :: { Decoder, Framed, FramedWrite } ,
-
 		pretty_assertions::{ assert_eq, assert_ne }
 	};
 }
+
+#[ cfg( feature = "tokio_codec" ) ]
+//
+pub(crate) use
+{
+	tokio::
+	{
+		prelude :: { Stream as TokStream, stream::{ SplitStream as TokSplitStream, SplitSink as TokSplitSink } } ,
+	},
+};
+
+
+#[ cfg( feature = "futures_codec" ) ]
+//
+pub(crate) use
+{
+	futures_codec_crate :: { Framed } ,
+};
+
+
 
     use import::*;
 pub use actors::*;

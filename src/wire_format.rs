@@ -109,7 +109,7 @@ impl WireFormat
 		bytes.put( Into::<Bytes>::into( conn_id ) );
 		bytes.put( mesg                           );
 
-		Self { bytes: bytes.into() }
+		Self { bytes: bytes.freeze() }
 	}
 
 
@@ -120,7 +120,7 @@ impl WireFormat
 	//
 	pub fn service ( &self ) -> Result< ServiceID, ThesRemoteErr >
 	{
-		ServiceID::try_from( self.bytes.slice(0 , 16) )
+		ServiceID::try_from( self.bytes.slice( 0..16 ) )
 	}
 
 
@@ -128,7 +128,7 @@ impl WireFormat
 	//
 	pub fn conn_id( &self ) -> Result< ConnID, ThesRemoteErr >
 	{
-		ConnID::try_from( self.bytes.slice(16, 32) )
+		ConnID::try_from( self.bytes.slice( 16..32 ) )
 	}
 
 
@@ -136,7 +136,7 @@ impl WireFormat
 	//
 	pub fn mesg( &self ) -> Bytes
 	{
-		self.bytes.slice_from( HEADER_LEN )
+		self.bytes.slice( HEADER_LEN.. )
 	}
 
 	/// The total length of the Multiservice in Bytes (header+payload)

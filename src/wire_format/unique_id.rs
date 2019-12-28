@@ -36,7 +36,7 @@ impl UniqueID
 
 		buf.extend( wtr );
 
-		Self { bytes: Bytes::from( buf ) }
+		Self { bytes: buf.freeze() }
 	}
 
 

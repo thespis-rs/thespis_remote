@@ -21,7 +21,7 @@ version = "^0.3"
 version = "^1.3"
 
 [dependencies.bytes]
-version = "^0.4"
+version = "^0.5"
 
 [dependencies.futures]
 default-features = false
@@ -30,7 +30,7 @@ version = "^0.3"
 
 [dependencies.futures_cbor_codec]
 optional = true
-version = "^0.1"
+version = "^0.2"
 
 [dependencies.futures_codec_crate]
 optional = true

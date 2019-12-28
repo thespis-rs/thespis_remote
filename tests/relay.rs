@@ -305,7 +305,7 @@ fn relay_unknown_service()
 		buf.extend( cid );
 		buf.extend( msg );
 
-		let corrupt = WireFormat::try_from( Bytes::from( buf ) ).expect( "serialize Add(5)" );
+		let corrupt = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
 
 		let rx = relay.call( Call::new( corrupt ) ).await
