@@ -127,7 +127,7 @@ pub struct Peer<MS> where MS: BoundsMS
 	/// we found the id in relayed.
 	//
 	relayed       : HashMap< &'static <MS as MultiService>::ServiceID, usize >,
-	relays        : HashMap< usize, (Addr<Self>, RemoteHandle<()>)           >,
+	relays        : HashMap< usize, (Addr<Self>, oneshot::Sender<()>)        >,
 
 	/// We use onshot channels to give clients a future that will resolve to their response.
 	//
@@ -222,20 +222,21 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 		//
 		let mut self_addr = match &self.addr
 		{
-			Some( self_addr ) => self_addr.clone() ,
-			None              =>
+			Some( addr ) => addr.clone(),
 
-				return Err( ThesRemoteErrKind::ConnectionClosed( "register_relayed_services".to_string() ).into() ),
+			None =>
+
+				return Err( ThesRemoteErr::ConnectionClosed( "register_relayed_services".to_string() ).into() ),
 		};
 
-		let peer_id = < Addr<Self> as Recipient<RelayEvent> >::actor_id( &peer );
-
+		let peer_id = < Addr<Self> as Recipient<RelayEvent> >::actor_id( &provider );
+		let (handle, cancel) = oneshot::channel::<()>();
 
 		let listen = async move
 		{
 			// We need to map this to a custom type, since we had to impl Message for it.
 			//
-			let stream = &mut peer_events.map( |evt| RelayEvent{ id: peer_id, evt } );
+			let stream = &mut peer_events.map( |evt| Ok( RelayEvent{ id: peer_id, evt } ) );
 
 			// This can fail if:
 			// - channel is full (for now we use unbounded)
@@ -244,7 +245,9 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 			//
 			// So, I think we can unwrap for now.
 			//
-			self_addr.send_all( stream ).await.expect( "peer send to self" );
+			let receive = self_addr.send_all( stream );
+
+			futures::future::select( receive, cancel ).await;
 
 			// Same as above.
 			// Normally relays shouldn't just dissappear, without notifying us, but it could
@@ -256,18 +259,22 @@ impl<MS> Peer<MS> where MS : BoundsMS,
 			let evt = PeerEvent::Closed;
 
 			self_addr.send( RelayEvent{ id: peer_id, evt } ).await.expect( "peer send to self");
+
+			trace!( "Stop listening to relay provider events: peer" );
 		};
 
-		// When we need to stop listening, we have to drop this future, because it contains
-		// our address, and we won't be dropped as long as there are adresses around.
-		//
-		let (remote, handle) = listen.remote_handle();
-		rt::spawn( remote ).map_err( |_|
+
+		rt::spawn( listen ).map_err( |_| -> ThesRemoteErr
 		{
-			ThesRemoteErrKind::ThesErr( "Stream of events from relay peer".into() )
+			ThesErr::Spawn{ actor: "Stream of events from relay peer".to_string() }.into()
+
 		})?;
 
-		self.relays .insert( peer_id, (peer, handle) );
+
+		// When the handle (oneshot::Sender) get's dropped, the rx should get woken up so
+		// our task above ends...
+		//
+		self.relays .insert( peer_id, (provider, handle) );
 
 		for sid in services
 		{
