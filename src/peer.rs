@@ -173,9 +173,9 @@ impl Peer
 		//
 		let (remote, handle) = listen.remote_handle();
 
-		rt::spawn( remote ).map_err( |_| -> ThesRemoteErr
+		rt::spawn( remote ).map_err( |e| -> ThesRemoteErr
 		{
-			ThesErr::Spawn{ actor: "Incoming stream for peer".to_string() }.into()
+			ThesErr::Spawn{ actor: format!( "Incoming stream for peer: {}", e ) }.into()
 
 		})?;
 
@@ -277,14 +277,14 @@ impl Peer
 				return Err( ThesRemoteErr::ConnectionClosed( "register_relayed_services".to_string() ).into() ),
 		};
 
-		let peer_id = < Addr<Self> as Recipient<RelayEvent> >::actor_id( &provider );
+		let peer_id = provider.id();
 
 
 		let listen = async move
 		{
 			// We need to map this to a custom type, since we had to impl Message for it.
 			//
-			let stream = &mut peer_events.map( |evt| Ok( RelayEvent{ id: peer_id, evt } ) );
+			// let stream = &mut peer_events.map( |evt| Ok( RelayEvent{ id: peer_id, evt } ) );
 
 			// This can fail if:
 			// - channel is full (for now we use unbounded)
@@ -293,8 +293,11 @@ impl Peer
 			//
 			// So, I think we can unwrap for now.
 			//
-			self_addr.send_all( stream ).await.expect( "peer send to self" );
-
+			// self_addr.send_all( stream ).await.expect( "peer send to self" );
+			//
+			let (_pending_tx, pending_rx) = oneshot::channel::<()>();
+			let _ = pending_rx.await;
+			let _mine = self_addr;
 			// Same as above.
 			// Normally relays shouldn't just dissappear, without notifying us, but it could
 			// happen for example that the peer already shut down and the above stream was already
@@ -302,9 +305,9 @@ impl Peer
 			// Since we are doing multi threading it's possible to receive the peers address,
 			// but it's no longer valid. So send ourselves a message.
 			//
-			let evt = PeerEvent::Closed;
+			// let evt = PeerEvent::Closed;
 
-			self_addr.send( RelayEvent{ id: peer_id, evt } ).await.expect( "peer send to self");
+			// self_addr.send( RelayEvent{ id: peer_id, evt } ).await.expect( "peer send to self");
 
 			trace!( "Stop listening to relay provider events: peer" );
 		};

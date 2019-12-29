@@ -69,7 +69,7 @@ mod import
 {
 	pub(crate) use
 	{
-		async_runtime  :: { rt                                          } ,
+		async_runtime  as rt                                              ,
 		thespis        :: { *                                           } ,
 		thespis_impl   :: { Addr, ThesErr                               } ,
 		log            :: { *                                           } ,

@@ -7,7 +7,10 @@ fn main()
 {
 	flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
-	let exec = AsyncStd::default();
+	rt::init( rt::Config::ThreadPool ).expect( "start threadpool" );
+
+	let mut exec = LocalPool::default();
+	let     ex2  = exec.clone();
 
 	let relays = async move
 	{
@@ -19,12 +22,12 @@ fn main()
 		let consumer_conn = incoming.next().await.expect( "one connection" ).expect( "valid tcp" );
 
 
-		relay( producer_conn, consumer_conn, true, exec ).await;
+		relay( producer_conn, consumer_conn, true, ex2 ).await;
 
 		warn!( "relays end" );
 	};
 
-	block_on( relays );
+	exec.run_until( relays );
 }
 
 

@@ -5,10 +5,12 @@ use common::{ import::*, * };
 
 fn main()
 {
-	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
+	flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
-	let exec = AsyncStd::default();
-	let ex1  = exec.clone();
+	rt::init( rt::Config::ThreadPool ).expect( "start threadpool" );
+
+	let mut exec = LocalPool::default();
+	let     ex2  = exec.clone();
 
 
 	let server = async move
@@ -16,7 +18,7 @@ fn main()
 		// Create mailbox for our handler
 		//
 		debug!( "start mailbox for handler" );
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::try_from( Sum(0), &ex2 ).expect( "spawn actor mailbox" );
 
 		// Get a TCP connection.
 		//
@@ -50,7 +52,7 @@ fn main()
 
 		// Start the peer actor
 		//
-		let peer_handle = exec.spawn_handle( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
+		let peer_handle = ex2.spawn_handle( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
 
 
 		// Wait for the connection to close, which will automatically stop the peer.
@@ -64,5 +66,5 @@ fn main()
 	// --------------------------------------
 
 
-	block_on( server );
+	exec.run_until( server );
 }

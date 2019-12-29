@@ -7,7 +7,10 @@ fn main()
 {
 	flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
-	let exec = AsyncStd::default();
+	rt::init( rt::Config::ThreadPool ).expect( "start threadpool" );
+
+	let mut exec = LocalPool::default();
+	let     ex2  = exec.clone();
 
 	let client = async move
 	{
@@ -15,7 +18,7 @@ fn main()
 
 		let tcp = TcpStream::connect( RELAY ).await.expect( "Connect to relay" );
 
-		let (mut to_relay, evts) = peer_connect( tcp, &exec, "client_to_relay" ).await;
+		let (mut to_relay, evts) = peer_connect( tcp, &ex2, "client_to_relay" ).await;
 
 		// We don't use these in this example, but if we use `let _` they will only get
 		// dropped at the end of this async block, which is the end of the process.
@@ -43,5 +46,5 @@ fn main()
 	};
 
 
-	block_on( client );
+	exec.run_until( client );
 }

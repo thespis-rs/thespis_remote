@@ -64,7 +64,8 @@ impl Handler<CloseConnection> for Peer
 
 			// try to drop close our mailbox and drop ourselves
 			//
-			self.addr          = None;
+			drop( self.addr.take() );
+			// self.addr          = None;
 			self.listen_handle = None;
 
 
