@@ -61,6 +61,8 @@ impl Handler<Call> for Peer
 			//
 			let (sender, receiver) = oneshot::channel::< Result<WireFormat, ConnectionError> >() ;
 
+			// TODO: Probably need to keep some timeout mechanism for when responses never come...
+			//
 			self.responses.insert( conn_id, sender );
 
 			Ok( receiver )

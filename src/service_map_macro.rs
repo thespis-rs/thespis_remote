@@ -288,57 +288,15 @@ impl Services
 	}
 
 
-	// Helper function for send_service below
-	//
-	fn send_service_gen<S>( msg: WireFormat, receiver: &Box< dyn Any + Send + Sync > ) -> Result< (), ThesRemoteErr >
-
-		where  S                    : Service,
-	         <S as Message>::Return: Serialize + DeserializeOwned,
-
-	{
-		let backup: &Receiver<S> = receiver.downcast_ref()
-
-			.ok_or( ThesRemoteErr::Downcast( "Receiver in service_macro".into() ))?
-		;
-
-
-		let message: S = des( &msg.mesg() )
-
-			.map_err( |_| ThesRemoteErr::Deserialize( "Deserialize incoming remote message".into() ))?
-		;
-
-
-		let mut rec = backup.clone_box();
-
-		rt::spawn( async move
-		{
-			// TODO: we are only logging the potential error. Can we do better? Note that spawn requires
-			//       we return a tuple.
-			//
-			let res = rec.send( message ).await;
-
-			if res.is_err() { error!( "Failed to deliver remote message to actor: {:?}", &rec ); }
-
-		}).map_err( |_| -> ThesRemoteErr
-		{
-			ThesErr::Spawn{ actor: "Task for sending to the local Service".to_string() }.into()
-
-		})?;
-
-		Ok(())
-	}
-
-
-
 	// Helper function for call_service below
 	//
 	fn call_service_gen<S>
 	(
 		    msg        :  WireFormat                        ,
-		    receiver   : &Box< dyn Any + Send + Sync >            ,
+		    receiver   : &Box< dyn Any + Send + Sync >      ,
 		mut return_addr:  BoxRecipient<WireFormat, ThesErr> ,
 
-	) -> Result< (), ThesRemoteErr >
+	) -> Result< Return<'static, Result<(), ThesErr>>, ThesRemoteErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -357,11 +315,14 @@ impl Services
 		;
 
 		let mut rec  = backup.clone_box() ;
-		let cid_null = ConnID::null()     ;
 		let cid      = msg.conn_id()?     ;
 
-
-		rt::spawn( async move
+		// Call the service with the deserialized request
+		// wait for the response
+		// serialize the response
+		// send it back out to the peer
+		//
+		Ok( async move
 		{
 			// Call the service
 			// TODO: we should probably match this error later. If it is a mailbox full, we could
@@ -376,7 +337,7 @@ impl Services
 			).await
 			{
 				Ok (resp) => resp   ,
-				Err(_   ) => return ,
+				Err(_   ) => return Ok(()),
 			};
 
 			let bytes = serde_cbor::to_vec( &resp ).map_err( |e| { error!( "{:?}", e ); ConnectionError::Serialize } );
@@ -385,22 +346,22 @@ impl Services
 			//
 			let serialized = match Self::handle_err
 			(
-				&mut return_addr  ,
-				&cid              ,
-				bytes             ,
+				&mut return_addr ,
+				&cid             ,
+				bytes            ,
 
 			).await
 			{
 				Ok (ser) => ser    ,
-				Err(_  ) => return ,
+				Err(_  ) => return Ok(()),
 			};
 
 
 			// Create a MultiService
 			//
-			let     sid          = <S as Service>::sid().clone()                                   ;
+			let     sid          = <S as Service>::sid().clone()                             ;
 			let     mul          = WireFormat::create( sid, cid.clone(), serialized.into() ) ;
-			let mut return_addr2 = return_addr.clone_box()                                         ;
+			let mut return_addr2 = return_addr.clone_box()                                   ;
 
 			// Send the MultiService out over the network.
 			// We're returning anyway, so there's nothing to do with the result.
@@ -413,13 +374,9 @@ impl Services
 
 			).await;
 
-		}).map_err( |_| -> ThesRemoteErr
-		{
-			ThesErr::Spawn{ actor: "Task for calling the local Service".to_string() }.into()
+			Ok(())
 
-		})?;
-
-		Ok(())
+		}.boxed() )
 	}
 
 
@@ -431,8 +388,8 @@ impl Services
 	async fn handle_err<'a, T>
 	(
 		peer: &'a mut BoxRecipient<WireFormat, ThesErr> ,
-		cid : &'a ConnID                                      ,
-		res : Result<T, ConnectionError>                      ,
+		cid : &'a ConnID                                ,
+		res : Result<T, ConnectionError>                ,
 
 	) -> Result<T, ConnectionError>
 	{
@@ -486,7 +443,6 @@ impl ServiceMap for Services
 	/// - ThesRemoteErr::Downcast
 	/// - ThesRemoteErr::UnknownService
 	/// - ThesRemoteErr::Deserialize
-	/// - ThesRemoteErr::ThesErr -> Spawn error
 	///
 	/// # Panics
 	/// For the moment this can panic if the downcast to Receiver fails. It should never happen unless there
@@ -494,28 +450,48 @@ impl ServiceMap for Services
 	/// the expect in there. See if anyone manages to trigger it, we can take it from there.
 	///
 	//
-	fn send_service( &self, msg: WireFormat ) -> Result< (), ThesRemoteErr >
+	fn send_service( &self, msg: WireFormat )
+
+		-> Result< Return<'static, Result<(), ThesErr>>, ThesRemoteErr >
+
 	{
 		let sid = msg.service().expect( "get service" );
 
+		// This sid should be in our map.
+		//
+		let receiver = self.handlers.get( &sid ).ok_or
+		(
+			ThesRemoteErr::UnknownService( format!( "sid: {:?}", sid ))
+		)?;
+
+
+		// Map the sid to a type S.
+		//
 		match sid
 		{
 			$(
 				_ if sid == *<$services as Service>::sid() =>
 				{
-					let receiver = self.handlers.get( &sid ).ok_or
-					(
-						ThesRemoteErr::UnknownService( format!( "sid: {:?}", sid ))
-					)?;
+					let rec: &Receiver<$services> = receiver.downcast_ref()
 
-					Self::send_service_gen::<$services>( msg, receiver )?
+						.ok_or( ThesRemoteErr::Downcast( "Receiver in service_macro".into() ))?
+					;
+
+					let message: $services = des( &msg.mesg() )
+
+						.map_err( |_| ThesRemoteErr::Deserialize( "Deserialize incoming remote message".into() ))?
+					;
+
+					// We need to clone the receiver so it can be inside the future as &mut self.
+					//
+					let mut rec = rec.clone_box();
+
+					Ok( async move { rec.send( message ).await }.boxed() )
 				},
 			)+
 
-			_ => Err( ThesRemoteErr::UnknownService( format!( "sid: {:?}", sid )) )?,
-		};
-
-		Ok(())
+			_ => Err( ThesRemoteErr::UnknownService( format!( "sid: {:?}", sid )) ),
+		}
 	}
 
 
@@ -536,11 +512,11 @@ impl ServiceMap for Services
 	//
 	fn call_service
 	(
-		&self                                                 ,
+		&self                                           ,
 		msg        :  WireFormat                        ,
 		return_addr:  BoxRecipient<WireFormat, ThesErr> ,
 
-	) -> Result< (), ThesRemoteErr >
+	) -> Result< Return<'static, Result<(), ThesErr>>, ThesRemoteErr >
 
 	{
 		let sid = msg.service().expect( "get service" );
@@ -555,15 +531,13 @@ impl ServiceMap for Services
 						ThesRemoteErr::UnknownService( format!( "sid: {:?}", sid ))
 					)?;
 
-					Self::call_service_gen::<$services>( msg, receiver, return_addr )?
+					Ok( Self::call_service_gen::<$services>( msg, receiver, return_addr )? )
 				},
 			)+
 
 
 			_ => Err( ThesRemoteErr::UnknownService( format!( "sid: {:?}", sid )) )?,
-		};
-
-		Ok(())
+		}
 	}
 }
 
@@ -575,7 +549,8 @@ impl ServiceMap for Services
 //
 pub struct RemoteAddr
 {
-	// TODO: get rid of boxing
+	// TODO: do not rely on Addr, we should be generic over Recipient, but not
+	//       choose an implementation.
 	//
 	peer: Pin<Box< Addr<Peer> >>
 }

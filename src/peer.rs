@@ -172,6 +172,7 @@ impl Peer
 		// our address, and we won't be dropped as long as there are adresses around.
 		//
 		let (remote, handle) = listen.remote_handle();
+		rt::init_allow_same( rt::Config::ThreadPool ).expect( "init threadpool" );
 
 		rt::spawn( remote ).map_err( |e| -> ThesRemoteErr
 		{
@@ -284,7 +285,7 @@ impl Peer
 		{
 			// We need to map this to a custom type, since we had to impl Message for it.
 			//
-			// let stream = &mut peer_events.map( |evt| Ok( RelayEvent{ id: peer_id, evt } ) );
+			let stream = &mut peer_events.map( |evt| Ok( RelayEvent{ id: peer_id, evt } ) );
 
 			// This can fail if:
 			// - channel is full (for now we use unbounded)
@@ -293,11 +294,8 @@ impl Peer
 			//
 			// So, I think we can unwrap for now.
 			//
-			// self_addr.send_all( stream ).await.expect( "peer send to self" );
-			//
-			let (_pending_tx, pending_rx) = oneshot::channel::<()>();
-			let _ = pending_rx.await;
-			let _mine = self_addr;
+			self_addr.send_all( stream ).await.expect( "peer send to self" );
+
 			// Same as above.
 			// Normally relays shouldn't just dissappear, without notifying us, but it could
 			// happen for example that the peer already shut down and the above stream was already
@@ -305,9 +303,9 @@ impl Peer
 			// Since we are doing multi threading it's possible to receive the peers address,
 			// but it's no longer valid. So send ourselves a message.
 			//
-			// let evt = PeerEvent::Closed;
+			let evt = PeerEvent::Closed;
 
-			// self_addr.send( RelayEvent{ id: peer_id, evt } ).await.expect( "peer send to self");
+			self_addr.send( RelayEvent{ id: peer_id, evt } ).await.expect( "peer send to self");
 
 			trace!( "Stop listening to relay provider events: peer" );
 		};
@@ -316,6 +314,8 @@ impl Peer
 		// our address, and we won't be dropped as long as there are adresses around.
 		//
 		let (remote, handle) = listen.remote_handle();
+
+		rt::init_allow_same( rt::Config::ThreadPool ).expect( "init threadpool" );
 
 		rt::spawn( remote ).map_err( |_| -> ThesRemoteErr
 		{

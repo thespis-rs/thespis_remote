@@ -13,6 +13,7 @@ simple_logger = "^1"
 thiserror = "^1"
 
 [dependencies.async_runtime]
+features = ["threadpool"]
 package = "naja_async_runtime"
 path = "../../async_runtime"
 
@@ -64,9 +65,9 @@ path = "../thespis_impl"
 
 [dependencies.tokio]
 default-features = false
-features = ["codec"]
+features = ["io-util"]
 optional = true
-version = "^0.1"
+version = "^0.2"
 
 [dependencies.tokio-serde-cbor]
 optional = true
@@ -77,6 +78,7 @@ version = "^1.1"
 
 [dev-dependencies]
 flexi_logger = "^0.14"
+futures_ringbuf = "^0.1"
 pretty_assertions = "^0.6"
 
 [dev-dependencies.async_executors]
@@ -86,9 +88,6 @@ path = "../../async_executors"
 [dev-dependencies.async_runtime]
 package = "naja_async_runtime"
 path = "../../async_runtime"
-
-[dev-dependencies.futures_ringbuf]
-path = "../../futures_ringbuf"
 
 [features]
 default = []

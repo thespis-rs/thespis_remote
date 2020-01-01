@@ -226,25 +226,16 @@ async fn incoming_send
 		//
 		let sm = &mut peer.service_maps.get( &typeid ).unwrap();
 
-
-		if let Err(e) = sm.send_service( frame )
+		match sm.send_service( frame )
 		{
-			error!( "Failed to send message to handler for service [{:?}]: {:?}", sid, e );
-
-			match e
+			Ok(fut) =>
 			{
-				ThesRemoteErr::Deserialize(..) =>
-				{
-					peer.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
+				rt::init_allow_same( rt::Config::ThreadPool ).expect( "init threadpool" );
+				// TODO: we should do error handling when the send fails.
+				//
+				let res = rt::spawn( async{ let _ = fut.await; } );
 
-					// Send an error back to the remote peer and close the connection
-					//
-					peer.send_err( cid_null, &ConnectionError::Deserialize, true ).await;
-				},
-
-
-				  ThesRemoteErr::ThesErr (..) // This is a spawn error
-				| ThesRemoteErr::Downcast(..) =>
+				if res.is_err()
 				{
 					peer.pharos.send( PeerEvent::Error( ConnectionError::InternalServerError ) ).await
 
@@ -254,23 +245,53 @@ async fn incoming_send
 					// Send an error back to the remote peer and close the connection
 					//
 					peer.send_err( cid_null, &ConnectionError::InternalServerError, false ).await;
-				},
+				}
+			}
 
+			Err(e) =>
+			{
+				error!( "Failed to send message to handler for service [{:?}]: {:?}", sid, e );
 
-				ThesRemoteErr::UnknownService(..) =>
+				match e
 				{
-					let err = ConnectionError::UnknownService( Into::<Bytes>::into( sid ).to_vec() );
+					ThesRemoteErr::Deserialize(..) =>
+					{
+						peer.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
 
-					// Send an error back to the remote peer and don't close the connection
-					//
-					peer.send_err( cid_null, &err, false ).await;
+						// Send an error back to the remote peer and close the connection
+						//
+						peer.send_err( cid_null, &ConnectionError::Deserialize, true ).await;
+					},
 
-					let evt = PeerEvent::Error( err );
-					peer.pharos.send( evt ).await.expect( "pharos not closed" );
 
-				},
+					ThesRemoteErr::Downcast(..) =>
+					{
+						peer.pharos.send( PeerEvent::Error( ConnectionError::InternalServerError ) ).await
 
-				_ => {}
+							.expect( "pharos not closed" )
+						;
+
+						// Send an error back to the remote peer and close the connection
+						//
+						peer.send_err( cid_null, &ConnectionError::InternalServerError, false ).await;
+					},
+
+
+					ThesRemoteErr::UnknownService(..) =>
+					{
+						let err = ConnectionError::UnknownService( Into::<Bytes>::into( sid ).to_vec() );
+
+						// Send an error back to the remote peer and don't close the connection
+						//
+						peer.send_err( cid_null, &err, false ).await;
+
+						let evt = PeerEvent::Error( err );
+						peer.pharos.send( evt ).await.expect( "pharos not closed" );
+
+					},
+
+					_ => {}
+				}
 			}
 		}
 	}
@@ -327,31 +348,63 @@ async fn incoming_send
 
 async fn incoming_call
 (
-	peer    : &mut Peer                   ,
-	cid     : ConnID    ,
-	sid     : ServiceID ,
-	frame   : WireFormat                              ,
+	peer    : &mut Peer  ,
+	cid     : ConnID     ,
+	sid     : ServiceID  ,
+	frame   : WireFormat ,
 )
 {
 	trace!( "Incoming Call" );
 
-
-	if let Some( ref self_addr ) = peer.addr
+	let self_addr = match peer.addr
 	{
-		// It's a call for a local actor
+		Some(ref addr) => addr,
+
+		// we no longer have our address, we're shutting down. we can't really do anything
+		// without our address we won't have the sink for the connection either. We can
+		// no longer send outgoing messages
 		//
-		if let Some( typeid ) = peer.services.get( &sid )
+		None => return,
+	};
+
+
+	// It's a call for a local actor
+	//
+	if let Some( typeid ) = peer.services.get( &sid )
+	{
+		trace!( "Incoming Call for local Actor" );
+
+		// We are keeping our internal state consistent, so the unwrap is fine. if it's in
+		// peer.services, it's in peer.service_maps.
+		//
+		let sm = &mut peer.service_maps.get( &typeid ).unwrap();
+
+		// Call actor
+		//
+		match sm.call_service( frame, self_addr.recipient() )
 		{
-			trace!( "Incoming Call for local Actor" );
+			Ok(fut) =>
+			{
+				rt::init_allow_same( rt::Config::ThreadPool ).expect( "init threadpool" );
 
-			// We are keeping our internal state consistent, so the unwrap is fine. if it's in
-			// peer.services, it's in peer.service_maps.
-			//
-			let sm = &mut peer.service_maps.get( &typeid ).unwrap();
+				// TODO: we should do error handling when the call fails.
+				//
+				let res = rt::spawn( async{ let _ = fut.await; } );
 
-			// Call actor
-			//
-			if let Err(e) = sm.call_service( frame, self_addr.recipient() )
+				if res.is_err()
+				{
+					peer.pharos.send( PeerEvent::Error( ConnectionError::InternalServerError ) ).await
+
+						.expect( "pharos not closed" )
+					;
+
+					// Send an error back to the remote peer and close the connection
+					//
+					peer.send_err( cid, &ConnectionError::InternalServerError, false ).await;
+				}
+			}
+
+			Err(e) =>
 			{
 				error!( "Failed to call handler for service [{:?}]: {:?}", sid, e );
 
@@ -359,7 +412,9 @@ async fn incoming_call
 				{
 					ThesRemoteErr::Deserialize(..) =>
 					{
-						peer.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await.expect( "pharos not closed" );
+						peer.pharos.send( PeerEvent::Error( ConnectionError::Deserialize ) ).await
+
+							.expect( "pharos not closed" );
 
 						// Send an error back to the remote peer and close the connection
 						//
@@ -379,8 +434,7 @@ async fn incoming_call
 					},
 
 
-					  ThesRemoteErr::ThesErr (..) // This is a spawn error
-					| ThesRemoteErr::Downcast(..) =>
+					ThesRemoteErr::Downcast(..) =>
 					{
 						peer.pharos.send( PeerEvent::Error( ConnectionError::InternalServerError ) ).await
 
@@ -397,151 +451,144 @@ async fn incoming_call
 				}
 			}
 		}
+	}
 
 
-		// Call for relayed actor
+	// Call for relayed actor
+	//
+	// service_id in peer.relay   => Create Call and send to recipient found in peer.relay.
+	//
+	// What could possibly go wrong???
+	// - relay peer has been shut down (eg. remote closed connection)
+	// - we manage to call, but then when we await the response, the relay goes down, so the
+	//   sender of the channel for the response will come back as a disconnected error.
+	// - the remote peer responds with a ConnectionError
+	//
+	else if let Some( relayed ) = peer.relayed.get( &sid )
+	{
+		trace!( "Incoming Call for relayed Actor" );
+
+		// The unwrap is safe, because we just checked peer.relayed and we shall keep both
+		// in sync
 		//
-		// service_id in peer.relay   => Create Call and send to recipient found in peer.relay.
-		//
-		// What could possibly go wrong???
-		// - relay peer has been shut down (eg. remote closed connection)
-		// - we manage to call, but then when we await the response, the relay goes down, so the
-		//   sender of the channel for the response will come back as a disconnected error.
-		// - the remote peer responds with a ConnectionError
-		//
-		else if let Some( relayed ) = peer.relayed.get( &sid )
+		let mut relayed   = peer.relays.get_mut( &relayed ).unwrap().0.clone();
+		let mut self_addr = self_addr.clone();
+		rt::init_allow_same( rt::Config::ThreadPool ).expect( "init threadpool" );
+
+		rt::spawn( async move
 		{
-			trace!( "Incoming Call for relayed Actor" );
-
-			// The unwrap is safe, because we just checked peer.relayed and we shall keep both
-			// in sync
+			// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 			//
-			let mut relayed   = peer.relays.get_mut( &relayed ).unwrap().0.clone();
-			let mut self_addr = self_addr.clone();
+			let called = relayed.call( Call::new( frame ) ).await.expect( "Call to relay failed" );
 
-			rt::spawn( async move
+
+			// TODO: Let the incoming remote know that their call failed
+			// not sure the current process wants to know much about this. We sure shouldn't
+			// crash.
+			//
+			match called
 			{
-				// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
+				// Sending out over the sink (connection) didn't fail
 				//
-				let called = relayed.call( Call::new( frame ) ).await.expect( "Call to relay failed" );
-
-
-				// TODO: Let the incoming remote know that their call failed
-				// not sure the current process wants to know much about this. We sure shouldn't
-				// crash.
-				//
-				match called
+				Ok( receiver ) =>	{ match receiver.await
 				{
-					// Sending out over the sink (connection) didn't fail
+					// The channel was not dropped before resolving, so the relayed connection didn't close
+					// until we got a response.
 					//
-					Ok( receiver ) =>	{ match receiver.await
+					Ok( result ) =>
 					{
-						// The channel was not dropped before resolving, so the relayed connection didn't close
-						// until we got a response.
-						//
-						Ok( result ) =>
+						match result
 						{
-							match result
+							// The remote managed to process the message and send a result back
+							// (no connection errors like deserialization failures etc)
+							//
+							Ok( resp ) =>
 							{
-								// The remote managed to process the message and send a result back
-								// (no connection errors like deserialization failures etc)
+								trace!( "Got response from relayed call, sending out" );
+
+								// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 								//
-								Ok( resp ) =>
-								{
-									trace!( "Got response from relayed call, sending out" );
+								self_addr.send( resp ).await.expect( "Failed to send response from relay out on connection" );
+							},
 
-									// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
-									//
-									self_addr.send( resp ).await.expect( "Failed to send response from relay out on connection" );
-								},
+							// The relayed remote had connection errors, forward the error to the caller.
+							// This is a particular case. In principle we can imagine that the caller does not know
+							// whether we are providing a service, or relaying it. However. When these errors would
+							// happen here, on our connection, it would mean the stream was potentially corrupt
+							// and we would close the connection. However, as these errors are on the connection to the
+							// relay, we don't need to close the connection. Currently we don't explicitly have an error
+							// type to tell the caller that this is an error in a relayed process, but they might observe
+							// that we don't close the connection.
+							//
+							Err(e) =>
+							{
+								warn!( "Got ERROR back from relayed call, error to caller: {:?}", &e );
 
-								// The relayed remote had connection errors, forward the error to the caller.
-								// This is a particular case. In principle we can imagine that the caller does not know
-								// whether we are providing a service, or relaying it. However. When these errors would
-								// happen here, on our connection, it would mean the stream was potentially corrupt
-								// and we would close the connection. However, as these errors are on the connection to the
-								// relay, we don't need to close the connection. Currently we don't explicitly have an error
-								// type to tell the caller that this is an error in a relayed process, but they might observe
-								// that we don't close the connection.
+								let err = Peer::prep_error( cid, &e );
+
+								// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 								//
-								Err(e) =>
-								{
-									warn!( "Got ERROR back from relayed call, error to caller: {:?}", &e );
-
-									let err = Peer::prep_error( cid, &e );
-
-									// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
-									//
-									self_addr.send( err ).await.expect( "send msg to self" );
-								},
-							}
-						},
-
-
-						// This can only happen if the sender got dropped. Eg, if the remote relay goes down
-						// Inform peer that their call failed because we lost connection to the relay after
-						// it was sent out.
-						//
-						Err( e ) =>
-						{
-							error!( "Lost relay: {:?}", e );
-
-							// Send an error back to the remote peer
-							//
-							let err = Peer::prep_error( cid, &ConnectionError::LostRelayBeforeResponse );
-
-
-							// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
-							//
-							self_addr.send( err ).await.expect( "send msg to self" );
+								self_addr.send( err ).await.expect( "send msg to self" );
+							},
 						}
-					}},
+					},
 
-					// Sending out call to relayed failed. This normally only happens if the connection
-					// was closed, or a network transport malfunctioned.
+
+					// This can only happen if the sender got dropped. Eg, if the remote relay goes down
+					// Inform peer that their call failed because we lost connection to the relay after
+					// it was sent out.
 					//
 					Err( e ) =>
 					{
-						error!( "Relay returned a ConnectionError for a remote Call: {:?}", &e );
+						error!( "Lost relay: {:?}", e );
 
 						// Send an error back to the remote peer
-						// We do not include
 						//
-						let err = Peer::prep_error( cid, &ConnectionError::FailedToRelay( Into::<Bytes>::into( sid ).to_vec() ) );
+						let err = Peer::prep_error( cid, &ConnectionError::LostRelayBeforeResponse );
 
 
 						// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 						//
 						self_addr.send( err ).await.expect( "send msg to self" );
 					}
+				}},
+
+				// Sending out call to relayed failed. This normally only happens if the connection
+				// was closed, or a network transport malfunctioned.
+				//
+				Err( e ) =>
+				{
+					error!( "Relay returned a ConnectionError for a remote Call: {:?}", &e );
+
+					// Send an error back to the remote peer
+					// We do not include
+					//
+					let err = Peer::prep_error( cid, &ConnectionError::FailedToRelay( Into::<Bytes>::into( sid ).to_vec() ) );
+
+
+					// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
+					//
+					self_addr.send( err ).await.expect( "send msg to self" );
 				}
+			}
 
-			}).expect( "failed to spawn" );
+		}).expect( "failed to spawn" );
 
-		}
-
-		// service_id unknown => send back and log error
-		//
-		else
-		{
-			error!( "Incoming Call for unknown Actor: {}", sid );
-
-			// Send an error back to the remote peer and to the observers
-			//
-			let err = ConnectionError::UnknownService( Into::<Bytes>::into( sid ).to_vec() );
-			peer.send_err( cid, &err, false ).await;
-
-			let err = PeerEvent::Error( err );
-			peer.pharos.send( err ).await.expect( "pharos not closed" );
-		}
 	}
 
+	// service_id unknown => send back and log error
+	//
 	else
 	{
-		// we no longer have our address, we're shutting down. we can't really do anything
-		// without our address we won't have the sink for the connection either. We can
-		// no longer send outgoing messages
+		error!( "Incoming Call for unknown Actor: {}", sid );
+
+		// Send an error back to the remote peer and to the observers
 		//
-		// return
+		let err = ConnectionError::UnknownService( Into::<Bytes>::into( sid ).to_vec() );
+		peer.send_err( cid, &err, false ).await;
+
+		let err = PeerEvent::Error( err );
+		peer.pharos.send( err ).await.expect( "pharos not closed" );
 	}
+
 }

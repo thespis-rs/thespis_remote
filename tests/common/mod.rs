@@ -106,7 +106,7 @@ pub async fn peer_connect( socket: Endpoint, exec: &impl Spawn, name: &'static s
 	// Create mailbox for peer
 	//
 	let mb  : Inbox<Peer> = Inbox::new( name.into() );
-	let addr                  = Addr ::new( mb.sender() );
+	let addr              = Addr ::new( mb.sender() );
 
 	// create peer with stream/sink + service map
 	//
