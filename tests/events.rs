@@ -51,13 +51,13 @@ fn close_connection()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), &ex1 );
+		let _ = peer_listen( server, Arc::new( sm ), ex1.clone() );
 	};
 
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" ).await;
 
 		// Close the connection and check the event
 		//
@@ -106,13 +106,13 @@ fn close_connection_call()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), &ex1 );
+		let _ = peer_listen( server, Arc::new( sm ), ex1.clone() );
 	};
 
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" ).await;
 
 		// Close the connection and check the event
 		//
@@ -161,7 +161,7 @@ fn header_unknown_service_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = peer_listen( server, Arc::new( sm ), &ex1 );
+		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone() );
 
 		assert_eq!( PeerEvent::Error(ConnectionError::UnknownService( vec![3;16] )),  evts.next().await.unwrap() );
 	};
@@ -169,7 +169,7 @@ fn header_unknown_service_error()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -230,7 +230,7 @@ fn header_deserialize()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = peer_listen( server, Arc::new( sm ), &ex1 );
+		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone() );
 
 		assert_eq!( PeerEvent::Error(ConnectionError::Deserialize),  evts.next().await.unwrap() );
 	};
@@ -238,7 +238,7 @@ fn header_deserialize()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -304,7 +304,7 @@ fn sm_deserialize_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = peer_listen( server, Arc::new( sm ), &ex1 );
+		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone() );
 
 		assert_eq!( PeerEvent::Error(ConnectionError::Deserialize),  evts.next().await.unwrap() );
 	};
@@ -312,7 +312,7 @@ fn sm_deserialize_error()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, &ex2, "nodeb_to_nodea" ).await;
+		let (mut peera, mut peera_evts) = peer_connect( client, ex2.clone(), "nodeb_to_nodea" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//

@@ -128,6 +128,10 @@ pub struct Peer
 	/// The pharos allows us to have observers.
 	//
 	pharos        : Pharos<PeerEvent>,
+
+	// An executor to spawn tasks, for processing requests.
+	//
+	exec          : Box< dyn Spawn + Send + 'static >,
 }
 
 
@@ -137,7 +141,16 @@ impl Peer
 	/// Create a new peer to represent a connection to some remote.
 	/// `addr` is the actor address for this actor.
 	//
-	pub fn new( addr: Addr<Self>, mut incoming: impl BoundsIn, outgoing: impl BoundsOut ) -> Result< Self, ThesRemoteErr >
+	pub fn new
+	(
+		    addr    : Addr<Self>                  ,
+		mut incoming: impl BoundsIn               ,
+		    outgoing: impl BoundsOut              ,
+		    exec    : impl Spawn + Send + 'static ,
+	)
+
+		-> Result< Self, ThesRemoteErr >
+
 	{
 		trace!( "create peer" );
 
@@ -172,9 +185,8 @@ impl Peer
 		// our address, and we won't be dropped as long as there are adresses around.
 		//
 		let (remote, handle) = listen.remote_handle();
-		rt::init_allow_same( rt::Config::ThreadPool ).expect( "init threadpool" );
 
-		rt::spawn( remote ).map_err( |e| -> ThesRemoteErr
+		exec.spawn( remote ).map_err( |e| -> ThesRemoteErr
 		{
 			ThesErr::Spawn{ actor: format!( "Incoming stream for peer: {}", e ) }.into()
 
@@ -192,6 +204,7 @@ impl Peer
 			relays       : HashMap::new()             ,
 			listen_handle: Some( handle )             ,
 			pharos       : Pharos::default()          ,
+			exec         : Box::new( exec )           ,
 		})
 	}
 
@@ -211,9 +224,10 @@ impl Peer
 	//
 	pub fn from_async_read
 	(
-		addr    : Addr<Self>,
-		socket  : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static,
-		max_size: usize,
+		addr    : Addr<Self>                                                 ,
+		socket  : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static ,
+		max_size: usize                                                      ,
+		exec    : impl Spawn + Send + 'static                                ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -223,7 +237,7 @@ impl Peer
 
 		let (sink, stream) = FutFramed::new( socket, codec ).split();
 
-		Peer::new( addr.clone(), stream, sink )
+		Peer::new( addr.clone(), stream, sink, exec )
 	}
 
 
@@ -315,9 +329,7 @@ impl Peer
 		//
 		let (remote, handle) = listen.remote_handle();
 
-		rt::init_allow_same( rt::Config::ThreadPool ).expect( "init threadpool" );
-
-		rt::spawn( remote ).map_err( |_| -> ThesRemoteErr
+		self.exec.spawn( remote ).map_err( |_| -> ThesRemoteErr
 		{
 			ThesErr::Spawn{ actor: "Stream of events from relay peer".to_string() }.into()
 		})?;

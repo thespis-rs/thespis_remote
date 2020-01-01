@@ -106,7 +106,6 @@ use
 
 	$crate::external_deps::
 	{
-		async_runtime   as rt                                               ,
 		once_cell       :: { sync::OnceCell                               } ,
 		futures         :: { future::FutureExt, task::{ Context, Poll }   } ,
 		thespis         :: { *                                            } ,

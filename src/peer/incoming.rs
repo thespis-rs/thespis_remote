@@ -230,10 +230,9 @@ async fn incoming_send
 		{
 			Ok(fut) =>
 			{
-				rt::init_allow_same( rt::Config::ThreadPool ).expect( "init threadpool" );
 				// TODO: we should do error handling when the send fails.
 				//
-				let res = rt::spawn( async{ let _ = fut.await; } );
+				let res = peer.exec.spawn( async{ let _ = fut.await; } );
 
 				if res.is_err()
 				{
@@ -385,11 +384,9 @@ async fn incoming_call
 		{
 			Ok(fut) =>
 			{
-				rt::init_allow_same( rt::Config::ThreadPool ).expect( "init threadpool" );
-
 				// TODO: we should do error handling when the call fails.
 				//
-				let res = rt::spawn( async{ let _ = fut.await; } );
+				let res = peer.exec.spawn( async{ let _ = fut.await; } );
 
 				if res.is_err()
 				{
@@ -473,9 +470,8 @@ async fn incoming_call
 		//
 		let mut relayed   = peer.relays.get_mut( &relayed ).unwrap().0.clone();
 		let mut self_addr = self_addr.clone();
-		rt::init_allow_same( rt::Config::ThreadPool ).expect( "init threadpool" );
 
-		rt::spawn( async move
+		peer.exec.spawn( async move
 		{
 			// TODO: until we have bounded channels, this should never fail, so I'm leaving the expect.
 			//

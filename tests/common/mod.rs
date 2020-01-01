@@ -66,7 +66,7 @@ pub use actors::*;
 pub type TheSink = SplitSink< Framed< Endpoint, ThesCodec >, WireFormat> ;
 
 
-pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: &impl Spawn ) -> (Addr<Peer>, Events<PeerEvent>)
+pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: impl Spawn + Clone + Send + 'static ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	let codec = ThesCodec::new(1024);
 
@@ -79,7 +79,7 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 
 	// create peer with stream/sink
 	//
-	let mut peer = Peer::new( peer_addr.clone(), stream, sink ).expect( "create peer" );
+	let mut peer = Peer::new( peer_addr.clone(), stream, sink, exec.clone() ).expect( "create peer" );
 
 	let peer_evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
@@ -95,7 +95,7 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 
 
 
-pub async fn peer_connect( socket: Endpoint, exec: &impl Spawn, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+pub async fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	// frame the connection with codec for multiservice
 	//
@@ -110,7 +110,7 @@ pub async fn peer_connect( socket: Endpoint, exec: &impl Spawn, name: &'static s
 
 	// create peer with stream/sink + service map
 	//
-	let mut peer = Peer::new( addr.clone(), stream_a, sink_a ).expect( "spawn peer" );
+	let mut peer = Peer::new( addr.clone(), stream_a, sink_a, exec.clone() ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 

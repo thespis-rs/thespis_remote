@@ -12,11 +12,6 @@ once_cell = "^1"
 simple_logger = "^1"
 thiserror = "^1"
 
-[dependencies.async_runtime]
-features = ["threadpool"]
-package = "naja_async_runtime"
-path = "../../async_runtime"
-
 [dependencies.byteorder]
 version = "^1.3"
 
@@ -84,10 +79,6 @@ pretty_assertions = "^0.6"
 [dev-dependencies.async_executors]
 features = ["localpool", "threadpool", "async_std"]
 path = "../../async_executors"
-
-[dev-dependencies.async_runtime]
-package = "naja_async_runtime"
-path = "../../async_runtime"
 
 [features]
 default = []

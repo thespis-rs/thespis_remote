@@ -45,7 +45,7 @@ fn remote()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), &ex1 );
+		let _ = peer_listen( server, Arc::new( sm ), ex1.clone() );
 
 		trace!( "end of peera" );
 	};
@@ -53,7 +53,7 @@ fn remote()
 
 	let peerb = async move
 	{
-		let (mut peera, _)  = peer_connect( client, &ex2, "peer_b_to_peera" ).await;
+		let (mut peera, _)  = peer_connect( client, ex2, "peer_b_to_peera" ).await;
 
 		// Call the service and receive the response
 		//
@@ -131,11 +131,11 @@ fn parallel()
 		// Create mailbox for peer
 		//
 		let mb_peer  : Inbox<Peer> = Inbox::new( "peera".into()  );
-		let peer_addr                  = Addr ::new( mb_peer.sender() );
+		let peer_addr              = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::new( peer_addr.clone(), stream_a, sink_a ).expect( "spawn peer" );
+		let mut peer = Peer::new( peer_addr.clone(), stream_a, sink_a, ex1.clone() ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -163,11 +163,11 @@ fn parallel()
 		// Create mailbox for peer
 		//
 		let     mb_peer  : Inbox<Peer> = Inbox::new( "peer_b".into()  );
-		let mut peer_addr                  = Addr ::new( mb_peer.sender() );
+		let mut peer_addr              = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::new( peer_addr.clone(), stream_b, sink_b ).expect( "spawn peer" );
+		let mut peer = Peer::new( peer_addr.clone(), stream_b, sink_b, ex2.clone() ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//
@@ -223,7 +223,7 @@ fn call_after_close_connection()
 
 	let nodeb = async move
 	{
-		let (peera, mut peera_evts) = peer_connect( client, &ex1, "nodeb_to_node_a" ).await;
+		let (peera, mut peera_evts) = peer_connect( client, ex1, "nodeb_to_node_a" ).await;
 
 		// Call the service and receive the response
 		//

@@ -49,7 +49,6 @@ pub use
 //
 pub mod external_deps
 {
-	pub use async_runtime  ;
 	pub use futures        ;
 	pub use log            ;
 	pub use once_cell      ;
@@ -69,7 +68,6 @@ mod import
 {
 	pub(crate) use
 	{
-		async_runtime  as rt                                              ,
 		thespis        :: { *                                           } ,
 		thespis_impl   :: { Addr, ThesErr                               } ,
 		log            :: { *                                           } ,
@@ -100,6 +98,7 @@ mod import
 			future  :: { FutureExt, RemoteHandle } ,
 			sink    :: { SinkExt                 } ,
 			stream  :: { StreamExt               } ,
+			task    :: { Spawn, SpawnExt         } ,
 		},
 	};
 

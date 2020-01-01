@@ -22,17 +22,18 @@ use common::import::{ *, assert_eq };
 //
 async fn relay
 (
-	connect   : Endpoint,
-	listen    : Endpoint,
-	next      : Pin<Box< dyn Future<Output=()> + Send >>,
-	relay_show: bool,
-	exec      : impl Spawn
+	connect   : Endpoint                                 ,
+	listen    : Endpoint                                 ,
+	next      : Pin<Box< dyn Future<Output=()> + Send >> ,
+	relay_show: bool                                     ,
+	exec      : impl Spawn + Clone + Send + 'static              ,
 )
 {
 	debug!( "start mailbox for relay_to_provider" );
 
-	let (mut provider_addr, provider_evts) = peer_connect( connect, &exec, "relay_to_provider" ).await;
+	let (mut provider_addr, provider_evts) = peer_connect( connect, exec.clone(), "relay_to_provider" ).await;
 	let provider_addr2                     = provider_addr.clone();
+	let ex1                                = exec.clone();
 
 	// Relay part ---------------------
 
@@ -47,7 +48,7 @@ async fn relay
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::new( peer_addr, srv_stream, srv_sink ).expect( "spawn peer" );
+		let mut peer = Peer::new( peer_addr, srv_stream, srv_sink, ex1 ).expect( "spawn peer" );
 
 		let add  = <Add   as remotes::Service>::sid();
 		let show = <Show  as remotes::Service>::sid();
@@ -123,7 +124,7 @@ fn relay_once()
 		// get a framed connection
 		//
 		debug!( "start mailbox for provider" );
-		let (peer_addr, _peer_evts) = peer_listen( ab, Arc::new( sm ), &ex1 );
+		let (peer_addr, _peer_evts) = peer_listen( ab, Arc::new( sm ), ex1.clone() );
 
 		drop( peer_addr );
 		trace!( "End of provider" );
@@ -136,7 +137,7 @@ fn relay_once()
 	{
 		debug!( "start mailbox for consumer_to_relay" );
 
-		let (mut to_relay, _)  = peer_connect( cb, &ex2, "consumer_to_relay" ).await;
+		let (mut to_relay, _)  = peer_connect( cb, ex2.clone(), "consumer_to_relay" ).await;
 
 		// Call the service and receive the response
 		//
@@ -159,7 +160,7 @@ fn relay_once()
 
 	let relays = async move
 	{
-		relay( ba, bc, Box::pin( consumer ), true, &ex3 ).await;
+		relay( ba, bc, Box::pin( consumer ), true, ex3.clone() ).await;
 
 		warn!( "relays end" );
 	};
@@ -206,7 +207,7 @@ fn relay_multi()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, Arc::new( sm ), &ex1 );
+		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone() );
 
 		trace!( "End of provider" );
 	};
@@ -216,7 +217,7 @@ fn relay_multi()
 
 	let consumer = async move
 	{
-		let (mut relay, _)  = peer_connect( fe, &ex2, "consumer_to_relay" ).await;
+		let (mut relay, _)  = peer_connect( fe, ex2.clone(), "consumer_to_relay" ).await;
 
 		// Call the service and receive the response
 		//
@@ -278,7 +279,7 @@ fn relay_unknown_service()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, Arc::new( sm ), &ex1 );
+		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone() );
 
 
 		trace!( "End of provider" );
@@ -289,7 +290,7 @@ fn relay_unknown_service()
 
 	let consumer = async move
 	{
-		let (mut relay, _relay_evts) = peer_connect( cb, &ex2, "consumer_to_relay" ).await;
+		let (mut relay, _relay_evts) = peer_connect( cb, ex2.clone(), "consumer_to_relay" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -368,7 +369,7 @@ fn relay_disappeared()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, Arc::new( sm ), &ex1 );
+		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone() );
 
 
 		trace!( "End of provider" );
@@ -379,7 +380,7 @@ fn relay_disappeared()
 
 	let consumer = async move
 	{
-		let (mut relay, mut relay_evts) = peer_connect( cb, &ex2, "consumer_to_relay" ).await;
+		let (mut relay, mut relay_evts) = peer_connect( cb, ex2.clone(), "consumer_to_relay" ).await;
 
 		let sid              = <Add as remotes::Service>::sid().clone();
 		let bytes_sid: Bytes = sid.clone().into();
@@ -491,7 +492,7 @@ fn relay_disappeared_multi()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, Arc::new( sm ), &ex1 );
+		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone() );
 
 
 		trace!( "End of provider" );
@@ -502,7 +503,7 @@ fn relay_disappeared_multi()
 
 	let consumer = async move
 	{
-		let (mut relay, mut relay_evts) = peer_connect( fe, &ex2, "consumer_to_relay" ).await;
+		let (mut relay, mut relay_evts) = peer_connect( fe, ex2.clone(), "consumer_to_relay" ).await;
 
 		let sid              = <Add as remotes::Service>::sid().clone();
 		let bytes_sid: Bytes = sid.clone().into();
