@@ -68,14 +68,11 @@ impl UniqueID
 	//
 	pub(crate) fn null() -> Self
 	{
-		// The format of the multiservice message requires this to be 128 bits, so add a zero
-		// We will have 128bit hash here when xxhash supports 128bit output.
-		//
-		let mut wtr = vec![];
-		wtr.write_u64::<LittleEndian>( 0 ).unwrap();
-		wtr.write_u64::<LittleEndian>( 0 ).unwrap();
+		let mut data = BytesMut::with_capacity( 16 );
+		data.put_u64( 0 );
+		data.put_u64( 0 );
 
-		Self { bytes: Bytes::from( wtr ) }
+		Self { bytes: data.freeze() }
 	}
 
 
@@ -133,6 +130,30 @@ impl fmt::Debug for UniqueID
 		}
 
 		Ok(())
+	}
+}
+
+
+impl Serialize for UniqueID
+{
+	fn serialize<S: serde::Serializer>( &self, serializer: S ) -> Result<S::Ok, S::Error>
+	{
+		serde_bytes::serialize( &self.bytes[..], serializer )
+	}
+}
+
+
+impl<'de> Deserialize<'de> for UniqueID
+{
+	fn deserialize<D: serde::Deserializer<'de>>( deserializer: D ) -> Result<Self, D::Error>
+	{
+		// converting from a slice, bytes turns it into a vec anyways, so this
+		// avoids the lifetime mess for free.
+		//
+		serde_bytes::deserialize( deserializer ).map( |bytes: Vec<u8>|
+		{
+			Self { bytes: bytes.into() }
+		})
 	}
 }
 

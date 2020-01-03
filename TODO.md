@@ -12,7 +12,6 @@
 
 	- tokio support
 
-- get rid of async_runtime
 - rewrite peer incoming:
   - have an actor for handling each incoming request, since it has to run concurrently
     to the peer itself

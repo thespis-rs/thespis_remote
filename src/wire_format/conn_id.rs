@@ -11,7 +11,7 @@ use
 /// Ideally we want to use 128 bits here to have globally unique identifiers with little chance
 /// of collision, but we use xxhash which for the moment only supports 64 bit.
 //
-#[ derive( Clone, PartialEq, Eq, Hash ) ]
+#[ derive( Clone, PartialEq, Eq, Hash, Serialize, Deserialize ) ]
 //
 pub struct ConnID
 {

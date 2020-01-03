@@ -9,6 +9,7 @@ repository = "thespis-rs/thespis_remote_impl"
 [dependencies]
 log = "^0.4"
 once_cell = "^1"
+serde_bytes = "^0.11"
 simple_logger = "^1"
 thiserror = "^1"
 
