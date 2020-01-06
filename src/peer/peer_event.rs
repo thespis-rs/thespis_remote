@@ -7,7 +7,7 @@ use crate::{ import::*, * };
 /// addresses/recipients you hold for this peer, so it can be dropped. You can no longer send messages
 /// over this peer after these events.
 //
-#[ derive( Debug, Clone, PartialEq ) ]
+#[ derive( Debug, Clone, PartialEq, Eq ) ]
 //
 pub enum PeerEvent
 {
@@ -28,7 +28,7 @@ pub enum PeerEvent
 	/// handling incoming messages, and thus are not triggered by a method call from
 	/// client code. They are returned here out of band.
 	//
-	Error( ConnectionError ),
+	Error( ThesRemoteErr ),
 
 	/// The remote endpoint signals that they encountered an error while handling one of
 	/// our messages.
@@ -37,6 +37,9 @@ pub enum PeerEvent
 }
 
 
+/// Wrapper type to indicate events coming from peers to providers.
+/// The id tells us which connection the event comes from.
+//
 #[ derive( Debug, Clone ) ]
 //
 pub(super) struct RelayEvent
@@ -60,18 +63,22 @@ impl Handler<RelayEvent> for Peer
 {
 	fn handle( &mut self, re: RelayEvent ) -> Return< '_, <RelayEvent as Message>::Return >
 	{
-		match &self.addr
-		{
-			Some( a ) => trace!( "RelayEvent in peer: {}", a.id() ),
-			None      => trace!( "RelayEvent in closing Peer"     ),
-		}
-
-		trace!( "Starting Handler<RelayEvent>, provider id: {:?}", &re );
-
-		let peer_id = re.id;
-
 		async move
 		{
+			let _self_addr = match &self.addr
+			{
+				Some( a ) => a,
+
+				None =>
+				{
+					trace!( "RelayEvent in closing Peer (won't process), event: {:?}", &re );
+					return
+				},
+			};
+
+			trace!( "{}: RelayEvent Handler, event: {:?}", self.identify(), &re );
+
+
 			match re.evt
 			{
 				// Clean up relays if they disappear
@@ -79,7 +86,7 @@ impl Handler<RelayEvent> for Peer
 				  PeerEvent::Closed
 				| PeerEvent::ClosedByRemote =>
 				{
-					trace!( "Removing relay because it's connection is closed" );
+					trace!( "{}: Removing relay because it's connection is closed", self.identify() );
 					let cid_null = ConnID::null();
 
 
@@ -89,7 +96,7 @@ impl Handler<RelayEvent> for Peer
 
 					self.relayed.retain( |sid, peer|
 					{
-						let keep = *peer != peer_id;
+						let keep = *peer != re.id;
 
 						if !keep { gone.push( (*sid).clone() ) }
 
@@ -100,7 +107,7 @@ impl Handler<RelayEvent> for Peer
 					//
 					for sid in gone
 					{
-						let err = ConnectionError::ServiceGone( Into::<Bytes>::into( sid ).to_vec() );
+						let err = ConnectionError::ServiceGone( sid );
 						self.send_err( cid_null.clone(), &err, false ).await;
 					}
 
@@ -117,33 +124,25 @@ impl Handler<RelayEvent> for Peer
 				// is not closed, because the relayed peer might be relaying other peers and only some
 				// services disappear.
 				//
-				PeerEvent::RemoteError( ConnectionError::ServiceGone(sidvec) ) =>
+				PeerEvent::RemoteError( ConnectionError::ServiceGone( sid ) ) =>
 				{
-					let cid_null = ConnID::null();
+					let peer_id = re.id;
 
-					match ServiceID::try_from( Bytes::from( sidvec ) )
+					self.relayed.retain( |sid_stored, peer|
 					{
-						Err(_) => {},
+						*peer != peer_id && **sid_stored == sid
+					});
 
-						Ok(sid) =>
-						{
-							self.relayed.retain( |sid_stored, peer|
-							{
-								*peer != peer_id && **sid_stored == sid
-							});
-
-							// Warn our remote that we are no longer providing these services
-							//
-							let err = ConnectionError::ServiceGone( Into::<Bytes>::into( sid ).to_vec() );
-							self.send_err( cid_null.clone(), &err, false ).await;
-						}
-					};
+					// Warn our remote that we are no longer providing these services
+					//
+					let err = ConnectionError::ServiceGone( sid );
+					self.send_err( ConnID::null(), &err, false ).await;
 				}
 
 				_ => {}
 			}
 
-			trace!( "End of handler RelayEvent" );
+			trace!( "{}: End of handler RelayEvent", self.identify() );
 
 		}.boxed()
 	}

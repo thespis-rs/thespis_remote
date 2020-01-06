@@ -1,53 +1,139 @@
-use crate::import::*;
+use crate::{ import::*, ConnID, ServiceID, ConnectionError };
 
 
 /// Errors that can happen in thespis_impl.
 //
-#[ derive( Debug, Error ) ]
+#[ derive( Debug, Error, Clone, PartialEq, Eq ) ]
 //
 pub enum ThesRemoteErr
 {
 	/// Cannot use peer after the connection is closed.
 	//
-	#[ error( "ConnectionClosed: Cannot use peer after the connection is closed, operation: {}", _0 ) ]
+	#[ error( "Cannot use peer after the connection is closed, operation.{ctx}" ) ]
 	//
-	ConnectionClosed( String ),
+	ConnectionClosed
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: ErrorContext
+	},
 
 	/// An error happened when a remote tried to process your message.
 	//
-	#[ error( "Connection Error: A remote could not process a message we sent it: {}", _0 ) ]
+	#[ error( "A remote could not process a message we sent it{err:?}{ctx}" ) ]
 	//
-	Connection( String ),
+	Remote
+	{
+		ctx: ErrorContext    ,
+		err: ConnectionError ,
+	},
 
-	/// Failed to downcast.
+	/// Failed to downcast. This indicates an error in thespis_remote, please report.
 	//
-	#[ error( "Failed to downcast: {}", _0 ) ]
+	#[ error( "Failed to downcast: {ctx}. This indicates an error in thespis_remote, please report at https://github.com/thespis-rs/thespis_remote/issues with a reproducable example and/or a backtrace if possible." ) ]
 	//
-	Downcast( String ),
+	Downcast
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: ErrorContext
+	},
 
 	/// Maximum message size exceeded.
 	//
-	#[ error( "Maximum message size exceeded: {}", _0 ) ]
+	#[ error( "{}", self.clone().remote_err() ) ]
 	//
-	MessageSizeExceeded( String ),
+	MessageSizeExceeded
+	{
+		/// The context in which the error happened.
+		//
+		context: String ,
+
+		/// The size of the received message.
+		//
+		size: usize  ,
+
+		/// The maximum allowed message size.
+		//
+		max_size: usize  ,
+	},
 
 	/// Failed to deserialize.
 	//
-	#[ error( "Deserialize: Failed to deserialize: {}", _0 ) ]
+	#[ error( "Failed to deserialize{ctx}" ) ]
 	//
-	Deserialize( String ),
+	Deserialize
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: ErrorContext
+	},
 
-	/// Failed to serialize.
+	/// Failed to deserialize.
 	//
-	#[ error( "Serialize: Failed to serialize: {}", _0 ) ]
+	#[ error( "Failed to serialize{ctx}" ) ]
 	//
-	Serialize( String ),
+	Serialize
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: ErrorContext
+	},
 
 	/// Cannot deliver message to unknown service.
 	//
-	#[ error( "Cannot deliver message to unknown service: {}", _0 ) ]
+	#[ error( "Cannot deliver message to unknown service.{ctx}" ) ]
 	//
-	UnknownService( String ),
+	UnknownService
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: ErrorContext
+	},
+
+	/// No handler has been set for this service.
+	//
+	#[ error( "No handler has been set for this service{ctx}" ) ]
+	//
+	NoHandler
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: ErrorContext
+	},
+
+	/// Cannot deliver message to unknown service.
+	//
+	#[ error( "Cannot deliver because the handling actor is no longer running.{ctx}" ) ]
+	//
+	HandlerDead
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: ErrorContext
+	},
+
+	/// Failed to spawn a task.
+	//
+	#[ error( "Spawning a task failed.{ctx}" ) ]
+	//
+	Spawn
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: ErrorContext
+	},
+
+	/// Failed to relay a request because the connection to the relay has been closed.
+	//
+	#[ error( "Failed to relay a request because the connection to the relay has been closed. context.{ctx} relay_id: {relay_id}, relay_name: {relay_name:?}" ) ]
+	//
+	RelayGone
+	{
+		ctx       : ErrorContext     ,
+		relay_id  : usize            ,
+		relay_name: Option<Arc<str>> ,
+	},
 
 	/// Tokio codec requires that we implement From TokioIoError for the error type of the codec.
 	//  TODO: integrate the tokio IO error in here.
@@ -75,6 +161,38 @@ pub enum ThesRemoteErr
 		//
 		context: std::io::ErrorKind
 	},
+
+	#[ error( "__NonExhaustive" ) ]
+	//
+	__NonExhaustive,
+}
+
+
+impl ThesRemoteErr
+{
+	// Produce a display string suitable for sending errors to a connected client. This omit's
+	// process specific information like actor id's.
+	//
+	pub fn remote_err( self ) -> String
+	{
+		match self
+		{
+			Self::MessageSizeExceeded{ context, size, max_size } =>
+			{
+				format!( "Maximum message size exceeded: context: {}, actual: {} bytes, allowed: {} bytes." , &context, &size, &max_size )
+			}
+
+			Self::Deserialize{ mut ctx } =>
+			{
+				ctx.peer_id   = None;
+				ctx.peer_name = None;
+
+				format!( "Could not deserialize your message{}", &ctx )
+			}
+
+			_ => { unreachable!() }
+		}
+	}
 }
 
 
@@ -107,5 +225,68 @@ impl From< std::io::Error > for ThesRemoteErr
 	fn from( inner: std::io::Error ) -> ThesRemoteErr
 	{
 		ThesRemoteErr::Io{ context: inner.kind() }
+	}
+}
+
+
+
+#[ derive( Debug, Clone, PartialEq, Eq ) ]
+//
+pub struct ErrorContext
+{
+	pub context  : Option< String    > ,
+	pub peer_id  : Option< usize     > ,
+	pub peer_name: Option< Arc<str>  > ,
+	pub sid      : Option< ServiceID > ,
+	pub cid      : Option< ConnID    > ,
+}
+
+
+impl fmt::Display for ErrorContext
+{
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
+	{
+		if let Some( x ) = &self.context
+		{
+			write!( f, " Context: {}.",	x )?;
+		}
+
+		if let Some( x ) = self.peer_id
+		{
+			write!( f, " peer_id: {}.",	x )?;
+		}
+
+		if let Some( x ) = &self.peer_name
+		{
+			write!( f, " peer_name: {}.",	x )?;
+		}
+
+		if let Some( x ) = &self.sid
+		{
+			write!( f, " sid: {}.",	x )?;
+		}
+
+		if let Some( x ) = &self.cid
+		{
+			write!( f, " cid: {}.",	x )?;
+		}
+
+		Ok(())
+	}
+}
+
+
+impl Default for ErrorContext
+{
+	fn default() -> Self
+	{
+		ErrorContext
+		{
+			context  : None ,
+			peer_id  : None ,
+			peer_name: None ,
+			sid      : None ,
+			cid      : None ,
+		}
 	}
 }

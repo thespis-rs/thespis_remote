@@ -45,7 +45,7 @@ fn remote()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), ex1.clone() );
+		let _ = peer_listen( server, Arc::new( sm ), ex1.clone(), "peera" );
 
 		trace!( "end of peera" );
 	};
@@ -113,7 +113,6 @@ service_map!
 //
 fn parallel()
 {
-
 	let (server, client) = Endpoint::pair( 64, 64 );
 
 	let exec = ThreadPool::new().expect( "create threadpool" );
@@ -130,7 +129,7 @@ fn parallel()
 
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer> = Inbox::new( "peera".into()  );
+		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "peera".into() )  );
 		let peer_addr              = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink
@@ -162,7 +161,7 @@ fn parallel()
 
 		// Create mailbox for peer
 		//
-		let     mb_peer  : Inbox<Peer> = Inbox::new( "peer_b".into()  );
+		let     mb_peer  : Inbox<Peer> = Inbox::new( Some( "peer_b".into() )  );
 		let mut peer_addr              = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink
@@ -239,8 +238,8 @@ fn call_after_close_connection()
 			{
 				match e
 				{
-					ThesRemoteErr::ConnectionClosed(_) => assert!( true )                  ,
-					_                                  => panic!( "wrong error: {:?}", e ) ,
+					ThesRemoteErr::ConnectionClosed{..} => assert!( true )                  ,
+					_                                   => panic!( "wrong error: {:?}", e ) ,
 				}
 			}
 		}

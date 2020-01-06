@@ -14,7 +14,7 @@ pub use
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub mod codec   ;
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub use codec::*;
 
-use crate::{ import::*, ThesRemoteErr };
+use crate::{ import::*, ThesRemoteErr, ErrorContext };
 
 const HEADER_LEN: usize = 32;
 
@@ -33,7 +33,7 @@ const HEADER_LEN: usize = 32;
 /// ```text
 /// u64 length + payload --------------------------------------------|
 ///              16 bytes sid | 16 bytes connID | serialized message |
-///              u128         | u128            | variable           |
+///              u128 LE      | u128 LE         | variable           |
 /// ------------------------------------------------------------------
 /// ```
 ///
@@ -118,17 +118,17 @@ impl WireFormat
 	/// The reference implementation combines a unique type id with a namespace so that
 	/// several processes can accept the same type of service under a unique name each.
 	//
-	pub fn service ( &self ) -> Result< ServiceID, ThesRemoteErr >
+	pub fn service ( &self ) -> ServiceID
 	{
-		ServiceID::try_from( self.bytes.slice( 0..16 ) )
+		ServiceID::from( self.bytes.slice( 0..16 ) )
 	}
 
 
 	/// The connection id. This is used to match responses to outgoing calls.
 	//
-	pub fn conn_id( &self ) -> Result< ConnID, ThesRemoteErr >
+	pub fn conn_id( &self ) -> ConnID
 	{
-		ConnID::try_from( self.bytes.slice( 16..32 ) )
+		ConnID::from( self.bytes.slice( 16..32 ) )
 	}
 
 
@@ -167,12 +167,19 @@ impl TryFrom< Bytes > for WireFormat
 	{
 		// at least verify we have enough bytes
 		// minimum: header: 32 + 1 byte mesg = 33
-		// TODO: This means that for now, an empty message is not considered valid here. The codec does
-		// a similar length check and for now allows empty message. To be decided.
+		// TODO: we allow an empty message. Do codecs actually serialize zero sized types to nothing?
 		//
-		if bytes.len() < HEADER_LEN + 1
+		if bytes.len() < HEADER_LEN
 		{
-			return Err( ThesRemoteErr::Deserialize( "WireFormat: not enough bytes".into() ).into() );
+			return Err( ThesRemoteErr::Deserialize{ ctx: ErrorContext
+			{
+				context  : "WireFormat: not enough bytes even for the header.".to_string().into() ,
+				sid      : None                                                                   ,
+				cid      : None                                                                   ,
+				peer_id  : None                                                                   ,
+				peer_name: None                                                                   ,
+
+			}});
 		}
 
 		Ok( Self { bytes } )
@@ -203,7 +210,7 @@ mod tests
 	{
 		// The minimum size of the header + 1 byte payload is 33
 		//
-		let buf = Bytes::from( vec![5;HEADER_LEN] );
+		let buf = Bytes::from( vec![5;HEADER_LEN-1] );
 
 		match WireFormat::try_from( buf )
 		{
@@ -211,7 +218,7 @@ mod tests
 
 			Err(e) => match e
 			{
-				ThesRemoteErr::Deserialize(..) => assert!( true ),
+				ThesRemoteErr::Deserialize{..} => assert!( true ),
 				_                              => assert!( false, "Wrong error type (should be Deserialize): {:?}", e ),
 			}
 		}

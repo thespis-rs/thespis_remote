@@ -1,5 +1,7 @@
 use { crate :: { peer::* }};
 
+// TODO: maybe include a reason string for logging and error contexts?
+//
 /// Control message for [Peer]. The peer needs it's own address for normal operation,
 /// so normally it will never drop, even if you drop all addresses you have of it.
 /// Since it will never drop, it's mailbox will never stop listening for incoming messages
@@ -38,8 +40,8 @@ impl Handler<CloseConnection> for Peer
 		{
 			match &self.addr
 			{
-				Some( a ) => trace!( "CloseConnection in peer: {}", a.id() ),
-				None      => trace!( "CloseConnection in peer" ),
+				Some(_) => trace!( "{}: CloseConnection, by remote: {}", self.identify(), msg.remote ),
+				None    => trace!( "CloseConnection in peer, by remote: {}", msg.remote ),
 			}
 
 

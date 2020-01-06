@@ -35,10 +35,11 @@ impl ThesCodec
 		if item.len() > self.max_length
 		{
 			return Err( ThesRemoteErr::MessageSizeExceeded
-			(
-				format!( "Tokio Codec Encoder: max_length={:?} bytes, message={:?} bytes", self.max_length, item.len() )
-
-			).into() )
+			{
+				context: "WireFormat Codec encoder".to_string() ,
+				size   : item.len()                             ,
+				max_size: self.max_length                       ,
+			})
 		}
 
 
@@ -57,7 +58,7 @@ impl ThesCodec
 
 	fn decode_impl( &mut self, buf: &mut BytesMut ) -> Result< Option<WireFormat>, ThesRemoteErr >
 	{
-		trace!( "Decoding incoming message: {:?}", &buf );
+		// trace!( "Decoding incoming message: {:?}", &buf );
 
 		// Minimum length of an empty message is the u64 indicating the length + the header (sid/connid)
 		//
@@ -66,14 +67,8 @@ impl ThesCodec
 
 		// parse the first 8 bytes to find out the total length of the message
 		//
-		let mut len = buf[..8]
-
-			.as_ref()
-			.read_u64::<LittleEndian>()
-			.map_err( |_| ThesRemoteErr::Deserialize( "Tokio codec: Length".to_string() ))?
-
-			as usize
-		;
+		let mut tmp = Bytes::from( buf[..8].to_vec() );
+		let mut len = tmp.get_u64_le() as usize;
 
 
 		// respect the max_length
@@ -82,10 +77,11 @@ impl ThesCodec
 		if len > self.max_length
 		{
 			return Err( ThesRemoteErr::MessageSizeExceeded
-			(
-				format!( "Tokio Codec Decoder: max_length={:?} bytes, message={:?} bytes", self.max_length, len )
-
-			).into())
+			{
+				context : "WireFormat Codec decoder".to_string() ,
+				size    : len                                    ,
+				max_size: self.max_length                        ,
+			})
 		}
 
 		// Message hasn't completely arrived yet
@@ -99,13 +95,9 @@ impl ThesCodec
 		buf.advance( 8 );
 		len -= 8;
 
-		// Consume the message
+		// Consume the message & Convert
 		//
-		let buf = buf.split_to( len );
-
-		// Convert
-		//
-		Ok( Some( WireFormat::try_from( buf.freeze() )? ) )
+		Ok( Some( WireFormat::try_from( buf.split_to( len ).freeze() )? ) )
 	}
 }
 
@@ -114,8 +106,8 @@ impl ThesCodec
 //
 impl FutDecoder for ThesCodec
 {
-	type Item  = WireFormat ;
-	type Error = ThesRemoteErr    ;
+	type Item  = WireFormat    ;
+	type Error = ThesRemoteErr ;
 
 	fn decode( &mut self, buf: &mut BytesMut ) -> Result< Option<Self::Item>, Self::Error >
 	{
@@ -174,6 +166,8 @@ impl TokioEncoder for ThesCodec
 }
 
 
+// TODO: test tokio
+//
 #[ cfg(all( test, feature = "futures_codec" )) ]
 //
 mod tests

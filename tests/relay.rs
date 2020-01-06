@@ -22,11 +22,11 @@ use common::import::{ *, assert_eq };
 //
 async fn relay
 (
-	connect   : Endpoint                                 ,
-	listen    : Endpoint                                 ,
-	next      : Pin<Box< dyn Future<Output=()> + Send >> ,
-	relay_show: bool                                     ,
-	exec      : impl Spawn + Clone + Send + 'static              ,
+	connect   : Endpoint                                   ,
+	listen    : Endpoint                                   ,
+	next      : Pin<Box< dyn Future<Output=()> + Send >>   ,
+	relay_show: bool                                       ,
+	exec      : impl Spawn + Clone + Send + Sync + 'static ,
 )
 {
 	debug!( "start mailbox for relay_to_provider" );
@@ -43,15 +43,15 @@ async fn relay
 
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer> = Inbox::new( "relay_to_consumer".into() );
-		let peer_addr              = Addr ::new( mb_peer.sender() );
+		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "relay_to_consumer".into() ) );
+		let peer_addr              = Addr ::new( mb_peer.sender()                   );
 
 		// create peer with stream/sink + service map
 		//
 		let mut peer = Peer::new( peer_addr, srv_stream, srv_sink, ex1 ).expect( "spawn peer" );
 
-		let add  = <Add   as remotes::Service>::sid();
-		let show = <Show  as remotes::Service>::sid();
+		let add  = <Add  as remotes::Service>::sid();
+		let show = <Show as remotes::Service>::sid();
 
 		let relayed = if relay_show
 		{
@@ -124,7 +124,7 @@ fn relay_once()
 		// get a framed connection
 		//
 		debug!( "start mailbox for provider" );
-		let (peer_addr, _peer_evts) = peer_listen( ab, Arc::new( sm ), ex1.clone() );
+		let (peer_addr, _peer_evts) = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
 
 		drop( peer_addr );
 		trace!( "End of provider" );
@@ -207,7 +207,7 @@ fn relay_multi()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone() );
+		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
 
 		trace!( "End of provider" );
 	};
@@ -279,7 +279,7 @@ fn relay_unknown_service()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone() );
+		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
 
 
 		trace!( "End of provider" );
@@ -302,9 +302,9 @@ fn relay_unknown_service()
 		//
 		let mut buf = BytesMut::new();
 
-		buf.extend( sid );
-		buf.extend( cid );
-		buf.extend( msg );
+		buf.extend( sid.clone() );
+		buf.extend( cid         );
+		buf.extend( msg         );
 
 		let corrupt = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
@@ -317,7 +317,9 @@ fn relay_unknown_service()
 
 		assert_eq!
 		(
-			ConnectionError::UnknownService( vec![5;16] ),
+			// TODO, why is there no cid here?
+			//
+			ConnectionError::UnknownService{ sid: ServiceID::from( sid ).into(), cid: None },
 			rx.await.expect( "return error, don't drop connection" ).unwrap_err()
 		);
 
@@ -341,9 +343,9 @@ fn relay_unknown_service()
 //
 #[test]
 //
-fn relay_disappeared()
+fn relay_disappeared_single()
 {
-	// flexi_logger::Logger::with_str( "pharos=trace, relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "pharos=warn, relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let (ab, ba) = Endpoint::pair( 64, 64 );
 	let (bc, cb) = Endpoint::pair( 64, 64 );
@@ -369,10 +371,10 @@ fn relay_disappeared()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone() );
+		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
 
 
-		trace!( "End of provider" );
+		debug!( "End of provider" );
 	};
 
 
@@ -382,13 +384,12 @@ fn relay_disappeared()
 	{
 		let (mut relay, mut relay_evts) = peer_connect( cb, ex2.clone(), "consumer_to_relay" ).await;
 
-		let sid              = <Add as remotes::Service>::sid().clone();
-		let bytes_sid: Bytes = sid.clone().into();
-		let cid              = ConnID::random();
-		let msg              = Bytes::from( vec![ 5;5 ] );
+		let sid = <Add as remotes::Service>::sid().clone();
+		let cid = ConnID::random();
+		let msg = Bytes::from( vec![ 5;5 ] );
 
 
-		let corrupt = WireFormat::create( sid, cid, msg );
+		let corrupt = WireFormat::create( sid.clone(), cid, msg );
 
 		let rx = relay.call( Call::new( corrupt.clone() ) ).await
 
@@ -396,29 +397,14 @@ fn relay_disappeared()
 			.expect( "send out ms" )
 		;
 
-		assert_eq!
+		assert_matches!
 		(
-			ConnectionError::Deserialize,
-			rx.await.expect( "return error, don't drop connection" ).unwrap_err()
+			rx.await.expect( "return error, don't drop connection" ).unwrap_err(),
+			ConnectionError::Deserialize { .. }
 		);
 
-		// TODO: These sometimes arrive in opposite order. Can we make the order deterministic? Should we?
-		//
-		// assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::Deserialize) )                    , relay_evts.next().await );
-		// assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::ServiceGone(bytes_sid.to_vec())) ), relay_evts.next().await );
 
-		for _ in 0..2usize
-		{
-			match relay_evts.next().await
-			{
-				Some(PeerEvent::RemoteError( ConnectionError::Deserialize      )) => {},
-				Some(PeerEvent::RemoteError( ConnectionError::ServiceGone( s ) )) => assert_eq!( bytes_sid.to_vec(), s ) ,
-
-				_ => unreachable!(),
-			}
-		}
-
-
+		assert_eq!( Some( PeerEvent::RemoteError( ConnectionError::ServiceGone(sid) ) ), relay_evts.next().await );
 
 
 		// The relay should have closed.
@@ -426,18 +412,17 @@ fn relay_disappeared()
 		//
 		let rx = relay.call( Call::new( corrupt.clone() ) ).await
 
-			.expect( "call peer" )
+			.expect( "call peer"   )
 			.expect( "send out ms" )
 		;
 
 		// The service is no longer available
 		//
-		assert_eq!
+		assert_matches!
 		(
-			ConnectionError::UnknownService( bytes_sid.to_vec() ),
-			rx.await.expect( "return error, don't drop connection" ).unwrap_err()
+			rx.await.expect( "return error, don't drop connection" ).unwrap_err(),
+			ConnectionError::UnknownService { .. }
 		);
-
 
 		// End the program
 		//
@@ -492,7 +477,7 @@ fn relay_disappeared_multi()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone() );
+		let _ = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
 
 
 		trace!( "End of provider" );
@@ -505,12 +490,12 @@ fn relay_disappeared_multi()
 	{
 		let (mut relay, mut relay_evts) = peer_connect( fe, ex2.clone(), "consumer_to_relay" ).await;
 
-		let sid              = <Add as remotes::Service>::sid().clone();
-		let bytes_sid: Bytes = sid.clone().into();
-		let cid              = ConnID::random();
-		let msg              = Bytes::from( vec![ 5;5 ] );
+		let sid = <Add as remotes::Service>::sid().clone();
+		let cid = ConnID::random();
+		let msg = Bytes::from( vec![ 5;5 ] );
 
-		let corrupt = WireFormat::create( sid, cid, msg );
+
+		let corrupt = WireFormat::create( sid.clone(), cid, msg );
 
 		let rx = relay.call( Call::new( corrupt.clone() ) ).await
 
@@ -518,27 +503,14 @@ fn relay_disappeared_multi()
 			.expect( "send out ms" )
 		;
 
-		assert_eq!
+		assert_matches!
 		(
-			ConnectionError::Deserialize,
-			rx.await.expect( "return error, don't drop connection" ).unwrap_err()
+			rx.await.expect( "return error, don't drop connection" ).unwrap_err(),
+			ConnectionError::Deserialize { .. }
 		);
 
-		// TODO: These sometimes arrive in opposite order. Can we make the order deterministic? Should we?
-		//
-		// assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::Deserialize) )                    , relay_evts.next().await );
-		// assert_eq!( Some( PeerEvent::RemoteError(ConnectionError::ServiceGone(bytes_sid.to_vec())) ), relay_evts.next().await );
 
-		for _ in 0..2usize
-		{
-			match relay_evts.next().await
-			{
-				Some(PeerEvent::RemoteError( ConnectionError::Deserialize    )) => {}                                  ,
-				Some(PeerEvent::RemoteError( ConnectionError::ServiceGone(s) )) => assert_eq!( bytes_sid.to_vec(), s ) ,
-				_                                                               => unreachable!()                      ,
-			}
-		}
-
+		assert_eq!( Some( PeerEvent::RemoteError( ConnectionError::ServiceGone(sid) ) ), relay_evts.next().await );
 
 
 		// The relay should have closed.
@@ -546,16 +518,16 @@ fn relay_disappeared_multi()
 		//
 		let rx = relay.call( Call::new( corrupt.clone() ) ).await
 
-			.expect( "call peer" )
+			.expect( "call peer"   )
 			.expect( "send out ms" )
 		;
 
 		// The service is no longer available
 		//
-		assert_eq!
+		assert_matches!
 		(
-			ConnectionError::UnknownService( bytes_sid.to_vec() ),
-			rx.await.expect( "return error, don't drop connection" ).unwrap_err()
+			rx.await.expect( "return error, don't drop connection" ).unwrap_err(),
+			ConnectionError::UnknownService { .. }
 		);
 
 		// End the program

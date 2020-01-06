@@ -51,7 +51,7 @@ fn close_connection()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), ex1.clone() );
+		let _ = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 	};
 
 
@@ -106,7 +106,7 @@ fn close_connection_call()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), ex1.clone() );
+		let _ = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 	};
 
 
@@ -161,9 +161,21 @@ fn header_unknown_service_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone() );
+		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
-		assert_eq!( PeerEvent::Error(ConnectionError::UnknownService( vec![3;16] )),  evts.next().await.unwrap() );
+		let sid = Some( ServiceID::from( Bytes::from( vec![3;16] ) ) );
+
+		match evts.next().await.unwrap()
+		{
+			PeerEvent::Error( ThesRemoteErr::UnknownService{ ctx } ) =>
+			{
+				assert_eq!( ctx.sid, sid );
+			}
+
+			_ => unreachable!(),
+		}
+
+
 	};
 
 
@@ -173,19 +185,16 @@ fn header_unknown_service_error()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid = ServiceID::try_from( Bytes::from( vec![3;16] ) )
-
-			.expect( "generate random sid" )
-		;
-
-		let ms  = WireFormat::create( sid, ConnID::null(), serde_cbor::to_vec( &Add(5) )
-
-			.expect( "serialize Add(5)" ).into() )
-		;
+		let sid = ServiceID::from( Bytes::from( vec![3;16] ) );
+		let ms  = WireFormat::create( sid.clone(), ConnID::null(), serde_cbor::to_vec( &Add(5) ).expect( "serialize Add(5)" ).into() );
 
 		peera.send( ms ).await.expect( "send ms to peera" );
 
-		assert_eq!( PeerEvent::RemoteError(ConnectionError::UnknownService( vec![3;16] )),  peera_evts.next().await.unwrap() );
+		assert_eq!
+		(
+			PeerEvent::RemoteError( ConnectionError::UnknownService{ sid: Some( sid ), cid: None } ),
+			peera_evts.next().await.unwrap()
+		);
 
 		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection" );
 	};
@@ -230,9 +239,18 @@ fn header_deserialize()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone() );
+		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
-		assert_eq!( PeerEvent::Error(ConnectionError::Deserialize),  evts.next().await.unwrap() );
+
+		match evts.next().await.unwrap()
+		{
+			PeerEvent::Error( ThesRemoteErr::Deserialize{ ctx } ) =>
+			{
+				assert_eq!( ctx.context.unwrap(), "Actor message in send_service" );
+			}
+
+			_ => unreachable!( "Should be PeerEvent::Error( ThesRemoteErr::Deserialize" )
+		}
 	};
 
 
@@ -260,7 +278,16 @@ fn header_deserialize()
 		let ms  = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
 		peera.call( ms ).await.expect( "send ms to peera" );
-		assert_eq!( PeerEvent::RemoteError(ConnectionError::Deserialize), peera_evts.next().await.unwrap() );
+
+		assert_eq!
+		(
+			PeerEvent::RemoteError(ConnectionError::Deserialize
+			{
+				context: "Could not deserialize your message Context: Actor message in send_service. sid: 0xbcc09d3812378e171ad366d75f687757. cid: 0x00000000000000000000000000000000.".into()
+			}),
+
+			peera_evts.next().await.unwrap()
+		);
 
 		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection" );
 	};
@@ -304,9 +331,17 @@ fn sm_deserialize_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone() );
+		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
-		assert_eq!( PeerEvent::Error(ConnectionError::Deserialize),  evts.next().await.unwrap() );
+		match evts.next().await.unwrap()
+		{
+			PeerEvent::Error( ThesRemoteErr::Deserialize{ ctx } ) =>
+			{
+				assert_eq!( ctx.context.unwrap(), "Actor message in send_service" );
+			}
+
+			_ => unreachable!( "Should be PeerEvent::Error( ThesRemoteErr::Deserialize" )
+		}
 	};
 
 
@@ -321,7 +356,15 @@ fn sm_deserialize_error()
 
 		peera.send( ms ).await.expect( "send ms to peera" );
 
-		assert_eq!( PeerEvent::RemoteError(ConnectionError::Deserialize),  peera_evts.next().await.unwrap() );
+		assert_eq!
+		(
+			PeerEvent::RemoteError(ConnectionError::Deserialize
+			{
+				context: "Could not deserialize your message Context: Actor message in send_service. sid: 0xbcc09d3812378e171ad366d75f687757. cid: 0x00000000000000000000000000000000.".into()
+			}),
+
+			peera_evts.next().await.unwrap()
+		);
 	};
 
 

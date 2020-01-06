@@ -36,7 +36,9 @@ pub mod import
 			executor:: { block_on                                                                } ,
 		},
 
-		pretty_assertions::{ assert_eq, assert_ne }
+		pretty_assertions :: { assert_eq, assert_ne } ,
+		assert_matches    :: { assert_matches       } ,
+
 	};
 }
 
@@ -66,7 +68,7 @@ pub use actors::*;
 pub type TheSink = SplitSink< Framed< Endpoint, ThesCodec >, WireFormat> ;
 
 
-pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: impl Spawn + Clone + Send + 'static ) -> (Addr<Peer>, Events<PeerEvent>)
+pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	let codec = ThesCodec::new(1024);
 
@@ -74,7 +76,7 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 
 	// Create mailbox for peer
 	//
-	let mb_peer  : Inbox<Peer> = Inbox::default()              ;
+	let mb_peer  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
 	let peer_addr              = Addr ::new( mb_peer.sender() );
 
 	// create peer with stream/sink
@@ -95,7 +97,7 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 
 
 
-pub async fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+pub async fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	// frame the connection with codec for multiservice
 	//
@@ -105,7 +107,7 @@ pub async fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + '
 
 	// Create mailbox for peer
 	//
-	let mb  : Inbox<Peer> = Inbox::new( name.into() );
+	let mb  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
 	let addr              = Addr ::new( mb.sender() );
 
 	// create peer with stream/sink + service map

@@ -1,6 +1,6 @@
 use
 {
-	crate :: { import::*, ThesRemoteErr },
+	crate :: { import::*                },
 	super :: { unique_id::UniqueID      },
 };
 
@@ -61,15 +61,11 @@ impl Into< Bytes > for ConnID
 
 /// The object will just keep the bytes as internal representation, no copies will be made
 //
-impl TryFrom< Bytes > for ConnID
+impl From< Bytes > for ConnID
 {
-	type Error = ThesRemoteErr;
-
-	fn try_from( bytes: Bytes ) -> Result<Self, ThesRemoteErr>
+	fn from( bytes: Bytes ) -> Self
 	{
-		UniqueID::try_from( bytes )
-
-			.map( |inner| Self{ inner } )
+		Self { inner: UniqueID::from( bytes ) }
 	}
 }
 
@@ -91,3 +87,4 @@ impl fmt::Debug for ConnID
 		self.inner.fmt( f )
 	}
 }
+

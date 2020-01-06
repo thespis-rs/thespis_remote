@@ -7,14 +7,13 @@
 
 
 #![ doc    ( html_root_url = "https://docs.rs/thespis_remote_impl" ) ]
-#![ deny   ( missing_docs, bare_trait_objects                      ) ]
+#![ deny   ( /*missing_docs,*/ bare_trait_objects                      ) ]
 #![ forbid ( unsafe_code                                           ) ]
 #![ allow  ( clippy::suspicious_else_formatting                    ) ]
 
 #![ warn
 (
 	missing_debug_implementations ,
-	missing_docs                  ,
 	nonstandard_style             ,
 	rust_2018_idioms              ,
 	trivial_casts                 ,
@@ -134,8 +133,7 @@ mod import
 	//
 	pub(crate) use
 	{
-		byteorder :: { ReadBytesExt } ,
-		bytes     :: { Buf          } ,
+		bytes:: { Buf } ,
 	};
 
 

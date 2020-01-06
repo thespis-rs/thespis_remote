@@ -10,6 +10,7 @@ mod peer_event        ;
 mod call              ;
 mod incoming          ;
 mod register_relay    ;
+mod request_error     ;
 
 pub use call              :: Call             ;
 pub use close_connection  :: CloseConnection  ;
@@ -18,6 +19,8 @@ pub use peer_event        :: PeerEvent        ;
 pub use register_relay    :: RegisterRelay    ;
     use incoming          :: Incoming         ;
     use peer_event        :: RelayEvent       ;
+    use request_error     :: RequestError     ;
+
 
 // Reduce trait bound boilerplate, since we have to repeat them all over
 //
@@ -117,9 +120,10 @@ pub struct Peer
 	///
 	/// These two fields should be kept in sync. Eg, we call unwrap on the get_mut on relays if
 	/// we found the id in relayed.
+	///
 	//
 	relayed       : HashMap< &'static ServiceID, usize >,
-	relays        : HashMap< usize, (Addr<Self>, RemoteHandle<()>)           >,
+	relays        : HashMap< usize, (Addr<Self>, RemoteHandle<()>) >,
 
 	/// We use onshot channels to give clients a future that will resolve to their response.
 	//
@@ -130,8 +134,9 @@ pub struct Peer
 	pharos        : Pharos<PeerEvent>,
 
 	// An executor to spawn tasks, for processing requests.
+	// TODO: make this an Arc.
 	//
-	exec          : Box< dyn Spawn + Send + 'static >,
+	exec          : Box< dyn Spawn + Send + Sync + 'static >,
 }
 
 
@@ -143,16 +148,16 @@ impl Peer
 	//
 	pub fn new
 	(
-		    addr    : Addr<Self>                  ,
-		mut incoming: impl BoundsIn               ,
-		    outgoing: impl BoundsOut              ,
-		    exec    : impl Spawn + Send + 'static ,
+		    addr    : Addr<Self>                         ,
+		mut incoming: impl BoundsIn                      ,
+		    outgoing: impl BoundsOut                     ,
+		    exec    : impl Spawn + Send + Sync + 'static ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
 
 	{
-		trace!( "create peer" );
+		trace!( "Create peer" );
 
 		// Hook up the incoming stream to our address.
 		//
@@ -170,11 +175,11 @@ impl Peer
 			//
 			while let Some(msg) = incoming.next().await
 			{
-				trace!( "incoming message for actor: {}", addr2.id() );
+				trace!( "Peer ({}{}): incoming message.", addr2.id(), addr2.string_name() );
 				addr2.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" )
 			}
 
-			trace!( "peer incoming stream end, closing out, peer: {}", addr2.id() );
+			trace!( "Peer ({}{}):  incoming stream end, closing out.", addr2.id(), addr2.string_name() );
 
 			// Same as above.
 			//
@@ -220,14 +225,15 @@ impl Peer
 	/// *socket*: The async stream to frame.
 	///
 	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
-	/// stream if it exceeds this size.
+	/// stream if it exceeds this size. Also used for encoding outgoing messages.
+	/// **Set the same max_size in the remote!**.
 	//
 	pub fn from_async_read
 	(
 		addr    : Addr<Self>                                                 ,
 		socket  : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static ,
 		max_size: usize                                                      ,
-		exec    : impl Spawn + Send + 'static                                ,
+		exec    : impl Spawn + Send + Sync + 'static                         ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -252,7 +258,7 @@ impl Peer
 
 		for sid in sm.services().iter()
 		{
-			trace!( "Register Service: {:?}", sid );
+			trace!( "{}: Register Service: {:?}", self.identify(), &sid );
 			self.services.insert( sid, id );
 		}
 
@@ -267,18 +273,20 @@ impl Peer
 	//
 	pub fn register_relayed_services
 	(
-		&mut self                                                        ,
-		     services    : Vec<&'static ServiceID>                       ,
+		&mut self                                  ,
+		     services    : Vec<&'static ServiceID> ,
 
 		     // TODO: provider might be a different type then Self?
 		     //
-		     provider    : Addr<Self>                                    ,
-		     peer_events : Events<PeerEvent>                             ,
+		     provider    : Addr<Self>              ,
+		     peer_events : Events<PeerEvent>       ,
 
 	) -> Result<(), ThesRemoteErr>
 
 	{
-		trace!( "peer: starting Handler<RegisterRelay>" );
+		let identity = self.identify();
+
+		trace!( "{}: starting register_relayed_services", &identity );
 
 		// When called from a RegisterRelay message, it's possible that in the mean time
 		// the connection closed. We should immediately return a ConnectionClosed error.
@@ -288,18 +296,29 @@ impl Peer
 			Some( addr ) => addr.clone(),
 
 			None =>
+			{
+				let ctx = ErrorContext
+				{
+					context  : Some( "register_relayed_services".to_string() ),
+					peer_id  : None ,
+					peer_name: None ,
+					sid      : None ,
+					cid      : None ,
+				};
 
-				return Err( ThesRemoteErr::ConnectionClosed( "register_relayed_services".to_string() ).into() ),
+				return Err( ThesRemoteErr::ConnectionClosed{ ctx } )
+			}
 		};
 
-		let peer_id = provider.id();
 
+		let provider_id = provider.id();
+		let identity2   = identity.clone();
 
 		let listen = async move
 		{
 			// We need to map this to a custom type, since we had to impl Message for it.
 			//
-			let stream = &mut peer_events.map( |evt| Ok( RelayEvent{ id: peer_id, evt } ) );
+			let stream = &mut peer_events.map( |evt| Ok( RelayEvent{ id: provider_id, evt } ) );
 
 			// This can fail if:
 			// - channel is full (for now we use unbounded)
@@ -319,9 +338,9 @@ impl Peer
 			//
 			let evt = PeerEvent::Closed;
 
-			self_addr.send( RelayEvent{ id: peer_id, evt } ).await.expect( "peer send to self");
+			self_addr.send( RelayEvent{ id: provider_id, evt } ).await.expect( "peer send to self");
 
-			trace!( "Stop listening to relay provider events: peer" );
+			trace!( "{}: Stop listening to relay provider events: peer", &identity2 );
 		};
 
 		// When we need to stop listening, we have to drop this future, because it contains
@@ -334,12 +353,12 @@ impl Peer
 			ThesErr::Spawn{ actor: "Stream of events from relay peer".to_string() }.into()
 		})?;
 
-		self.relays.insert( peer_id, (provider, handle) );
+		self.relays.insert( provider_id, (provider, handle) );
 
 		for sid in services
 		{
-			trace!( "Register relaying to: {}", sid );
-			self.relayed.insert( sid, peer_id );
+			trace!( "{}: Register relaying to: {}, provided by {}", &identity, sid, provider_id );
+			self.relayed.insert( sid, provider_id );
 		}
 
 		Ok(())
@@ -351,13 +370,24 @@ impl Peer
 	//
 	async fn send_msg( &mut self, msg: WireFormat ) -> Result<(), ThesRemoteErr>
 	{
+		trace!( "{}: sending OUT WireFormat", self.identify() );
+
 		match &mut self.outgoing
 		{
-			Some( out ) =>  out.send( msg ).await,
+			Some( out ) => out.send( msg ).await,
 
 			None =>
 			{
-				Err( ThesRemoteErr::ConnectionClosed( "send MultiService over network".to_string() ).into() )
+				let ctx = ErrorContext
+				{
+					context  : Some( "register_relayed_services".to_string() ),
+					peer_id  : None ,
+					peer_name: None ,
+					sid      : None ,
+					cid      : None ,
+				};
+
+				Err( ThesRemoteErr::ConnectionClosed{ ctx } )
 			}
 		}
 	}
@@ -366,6 +396,8 @@ impl Peer
 
 	// actually send the error accross the wire. This is for when errors happen on receiving
 	// messages (eg. Deserialization errors).
+	//
+	// sid null is important so the remote knows that this is an error.
 	//
 	async fn send_err<'a>
 	(
@@ -378,9 +410,22 @@ impl Peer
 		     close: bool                         ,
 	)
 	{
+		let identity = self.identify();
+
 		if let Some( ref mut out ) = self.outgoing
 		{
-			let msg = Self::prep_error( cid, err );
+			trace!( "{}: sending OUT ConnectionError", identity );
+
+			let serialized = serde_cbor::to_vec( err ).expect( "serialize response" );
+
+			// sid null is the marker that this is an error message.
+			//
+			let msg = WireFormat::create
+			(
+				ServiceID::null() ,
+				cid               ,
+				serialized.into() ,
+			);
 
 			let _ = out.send( msg ).await;
 
@@ -403,16 +448,63 @@ impl Peer
 	//
 	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> WireFormat
 	{
-		let serialized   = serde_cbor::to_vec( err ).expect( "serialize response" );
+		let serialized = serde_cbor::to_vec( err ).expect( "serialize response" );
 
 		// sid null is the marker that this is an error message.
 		//
 		WireFormat::create
 		(
 			ServiceID::null() ,
-			cid                                     ,
-			serialized.into()                       ,
+			cid               ,
+			serialized.into() ,
 		)
+	}
+
+
+	pub fn identify( &self ) -> String
+	{
+		match &self.addr
+		{
+			Some (addr) =>
+			{
+				let name = match addr.name()
+				{
+					Some( n ) => format!( ", name: {}", n ),
+					None      => "".to_string()            ,
+				};
+
+				format!( "Peer (actor_id: {}{})",  addr.id(), name )
+			}
+
+			None => "Peer (shutting down)".into(),
+		}
+	}
+
+
+
+	// Doesn't take &self, because it needs to be called from spawned tasks
+	// which have to be 'static.
+	//
+	#[ doc( hidden ) ]
+	//
+	pub fn err_ctx
+	(
+		addr   : &Addr<Self>                  ,
+		sid    : impl Into<Option<ServiceID>> ,
+		cid    : impl Into<Option<ConnID>>    ,
+		context: impl Into<Option<String>>    ,
+	)
+
+		-> ErrorContext
+	{
+		ErrorContext
+		{
+			peer_id  : addr.id().into()         ,
+			peer_name: addr.name().map( |n| n ) ,
+			context  : context.into()           ,
+			sid      : sid.into()               ,
+			cid      : cid.into()               ,
+		}
 	}
 }
 
@@ -427,7 +519,7 @@ impl Handler<WireFormat> for Peer
 	{
 		Box::pin( async move
 		{
-			trace!( "Peer sending OUT" );
+			trace!( "{}: sending OUT wireformat", self.identify() );
 
 			let _ = self.send_msg( msg ).await;
 

@@ -45,16 +45,14 @@ impl Handler<Call> for Peer
 {
 	fn handle( &mut self, call: Call ) -> Return< '_, <Call as Message>::Return >
 	{
-		trace!( "peer: starting Handler<Call>" );
+		trace!( "{}: starting Handler<Call>", self.identify());
 
 		Box::pin( async move
 		{
-			trace!( "peer: polled Handler<Call>" );
+			trace!( "{}: polled Handler<Call>", self.identify() );
 
-			// Fallible operations first
-			// Can fail to deserialize connection id from the outgoing call.
-			//
-			let conn_id = call.mesg.conn_id()?;
+			let conn_id = call.mesg.conn_id();
+
 			self.send_msg( call.mesg ).await?;
 
 			// If the above succeeded, store the other end of the channel

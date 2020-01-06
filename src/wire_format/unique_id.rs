@@ -1,4 +1,4 @@
-use crate::{ import::*, ThesRemoteErr };
+use crate::{ import::* };
 
 
 /// A unique identifier for a service that is exposed to other processes. This will allow
@@ -109,13 +109,11 @@ impl Into< Bytes > for UniqueID
 
 /// The object will just keep the bytes as internal representation, no copies will be made
 //
-impl TryFrom< Bytes > for UniqueID
+impl From< Bytes > for UniqueID
 {
-	type Error = ThesRemoteErr;
-
-	fn try_from( bytes: Bytes ) -> Result<Self, ThesRemoteErr>
+	fn from( bytes: Bytes ) -> Self
 	{
-		Ok( Self { bytes } )
+		Self { bytes }
 	}
 }
 
