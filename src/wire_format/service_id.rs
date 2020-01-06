@@ -24,9 +24,9 @@ impl ServiceID
 	/// Seed the ServiceID. It might be data that will be hashed to generate the id.
 	/// An identical input here should always give an identical ServiceID.
 	//
-	pub fn from_seed( data: &[u8] ) -> Self
+	pub fn from_seed( namespace: &[u8], typename: &[u8] ) -> Self
 	{
-		Self{ inner: UniqueID::from_seed( data ) }
+		Self{ inner: UniqueID::from_seed( namespace, typename ) }
 	}
 
 

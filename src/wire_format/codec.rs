@@ -195,7 +195,7 @@ mod tests
 		let mut buf = BytesMut::with_capacity( 1 );
 		buf.put( &[0u8;1][..] );
 
-		let m = WireFormat::create( ServiceID::from_seed( b"Empty Message" ), ConnID::random(), buf.freeze() );
+		let m = WireFormat::create( ServiceID::from_seed( b"codec_tests", b"Empty Message" ), ConnID::random(), buf.freeze() );
 
 		m
 	}
@@ -205,7 +205,7 @@ mod tests
 		let mut buf = BytesMut::with_capacity( 5 );
 		buf.put( "hello".as_bytes() );
 
-		WireFormat::create( ServiceID::from_seed( b"Full Message" ), ConnID::random(), buf.freeze() )
+		WireFormat::create( ServiceID::from_seed( b"codec_tests", b"Full Message" ), ConnID::random(), buf.freeze() )
 	}
 
 

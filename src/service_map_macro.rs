@@ -156,7 +156,7 @@ $(
 
 			INSTANCE.get_or_init( ||
 			{
-				ServiceID::from_seed( stringify!( $ns::$services ).as_bytes() )
+				ServiceID::from_seed( stringify!( $ns ).as_bytes(), stringify!( $services ).as_bytes() )
 			})
 		}
 	}

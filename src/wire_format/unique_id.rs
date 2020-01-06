@@ -40,24 +40,34 @@ impl UniqueID
 	}
 
 
-	/// Seed the UniqueID. It might be data that will be hashed to generate the id.
+	/// Seed the UniqueID. The data will be hashed with xxhash. The UniqueID is 128 bits and currently
+	/// xxhash only supports hashing to 64bit output. We take 2 seeds, one for each 64bit hash.
+	/// Parameter high will be the most significant bytes in the output in little endian (msb is highest offset).
+	///
 	/// An identical input here should always give an identical UniqueID.
 	//
-	pub(crate) fn from_seed( data: &[u8] ) -> Self
+	pub(crate) fn from_seed( high: &[u8], low: &[u8] ) -> Self
 	{
 		let mut h = XxHash::default();
+		let mut l = XxHash::default();
 
-		for byte in data
+		for byte in high
 		{
 			h.write_u8( *byte );
 		}
 
+		for byte in low
+		{
+			l.write_u8( *byte );
+		}
+
 		// The format of the multiservice message requires this to be 128 bits, so add a zero
 		// We will have 128bit hash here when xxhash supports 128bit output.
+		// TODO: keep an eye on xxh3 support.
 		//
 		let mut wtr = vec![];
+		wtr.write_u64::<LittleEndian>( l.finish() ).unwrap();
 		wtr.write_u64::<LittleEndian>( h.finish() ).unwrap();
-		wtr.write_u64::<LittleEndian>( 0          ).unwrap();
 
 		Self { bytes: Bytes::from( wtr ) }
 	}
@@ -114,7 +124,7 @@ impl fmt::Display for UniqueID
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
-		write!( f, "{:?}", self )
+		<Self as fmt::Debug>::fmt( self, f )
 	}
 }
 
@@ -124,7 +134,11 @@ impl fmt::Debug for UniqueID
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
-		for byte in &self.bytes
+		write!( f, "0x" )?;
+
+		// Reverse because we are in little endian, and hexadecimal numbers are commonly written in big-endian.
+		//
+		for byte in self.bytes.iter().rev()
 		{
 			write!( f, "{:02x}", byte )?
 		}
@@ -172,8 +186,8 @@ mod tests
 	//
 	fn identical()
 	{
-		let sid  = UniqueID::from_seed( b"hi from seed" );
-		let sid2 = UniqueID::from_seed( b"hi from seed" );
+		let sid  = UniqueID::from_seed( b"namespace", b"Typename" );
+		let sid2 = UniqueID::from_seed( b"namespace", b"Typename" );
 
 		assert_eq!( sid, sid2 );
 	}
@@ -186,7 +200,7 @@ mod tests
 		let bytes: Bytes = vec![ 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, ].into();
 		let sid = UniqueID::try_from( bytes ).unwrap();
 
-		assert_eq!( "000102030405060708090a0b0c0d0e0f", &format!( "{:?}", sid ) );
+		assert_eq!( "0x0f0e0d0c0b0a09080706050403020100", &format!( "{:?}", sid ) );
 	}
 }
 
