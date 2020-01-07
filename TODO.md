@@ -13,9 +13,7 @@
 	- tokio support
 
 - rewrite peer incoming:
-  - logging, are parameters to macros lazily evaluated?
   - do not close stream when the actor message cannot be deserialized. only when the wireformat can't be deserialized.
-  - let ServiceID display as typename, and debug as both number and type name.
   - let call_service and send_service be async directly instead of returning a result to an async.
   - make sure all logging includes peer.identity()
   - have an actor for handling each incoming request, since it has to run concurrently

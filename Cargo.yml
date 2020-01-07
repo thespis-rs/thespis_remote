@@ -76,7 +76,7 @@ dependencies:
   pharos              : { version: ^0.4, path: ../../pharos                                 }
   thiserror           : ^1
   thespis             : { path: ../thespis                                                  }
-
+  paste               : ^0.1
 
   # private deps. TODO: verify for thespis_impl before release.
   #

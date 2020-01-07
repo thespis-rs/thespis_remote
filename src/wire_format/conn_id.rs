@@ -88,3 +88,11 @@ impl fmt::Debug for ConnID
 	}
 }
 
+
+impl fmt::LowerHex for ConnID
+{
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
+	{
+		fmt::LowerHex::fmt( &self.inner, f )
+	}
+}

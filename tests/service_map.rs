@@ -7,6 +7,7 @@
 // - ✔ Verify that the same      service, in the same      namespace but in different servicemap has identical sid
 // - ✔ Test clone.
 // - ✔ Test Debug.
+// - Test ServiceID::Debug
 //
 
 
@@ -119,11 +120,8 @@ fn debug()
 	//
 	let addr_handler = Addr::try_from( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
-	// Create a service map
-	//
 	let mut sm = remotes::Services::new();
-	// Register our handlers
-	//
+
 	sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
 	sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
 
@@ -143,6 +141,23 @@ fn debug()
 );
 
 	assert_eq!( txt, format!( "{:?}", sm ) );
+}
+
+
+
+// Test debug implementation of ServiceID
+//
+#[test]
+//
+fn debug_service_id()
+{
+	// Unfortunately we can only register the service in Services::new. TODO: document this.
+	//
+	let _sm = remotes::Services::new();
+
+	use remotes::Service;
+
+	assert_eq!( "ServiceID: remotes::Add (0xbcc09d3812378e171ad366d75f687757)", format!( "{:?}", Add::sid() ) );
 }
 
 

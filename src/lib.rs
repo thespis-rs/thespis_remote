@@ -4,8 +4,6 @@
 //!
 //! - tokio: makes the tokio executor available. enabled by default.
 
-
-
 #![ doc    ( html_root_url = "https://docs.rs/thespis_remote_impl" ) ]
 #![ deny   ( /*missing_docs,*/ bare_trait_objects                      ) ]
 #![ forbid ( unsafe_code                                           ) ]
@@ -55,6 +53,7 @@ pub mod external_deps
 	pub use serde          ;
 	pub use thespis        ;
 	pub use thespis_impl   ;
+	pub use paste          ;
 }
 
 
@@ -73,11 +72,12 @@ mod import
 		byteorder      :: { LittleEndian, WriteBytesExt                 } ,
 		bytes          :: { Bytes, BytesMut, BufMut                     } ,
 		rand           :: { Rng                                         } ,
-		std            :: { hash::{ Hasher }, any::Any                  } ,
-		twox_hash      :: { XxHash                                      } ,
+		std            :: { hash::{ Hasher }, any::Any, sync::Mutex     } ,
+		twox_hash      :: { XxHash64                                    } ,
 		pharos         :: { Pharos, Observable, ObserveConfig, Events   } ,
 		serde          :: { Serialize, Deserialize                      } ,
 		thiserror      :: { Error                                       } ,
+		once_cell      :: { sync::Lazy as SyncLazy                      } ,
 
 
 		std ::

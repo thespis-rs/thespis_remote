@@ -283,7 +283,7 @@ fn header_deserialize()
 		(
 			PeerEvent::RemoteError(ConnectionError::Deserialize
 			{
-				context: "Could not deserialize your message Context: Actor message in send_service. sid: 0xbcc09d3812378e171ad366d75f687757. cid: 0x00000000000000000000000000000000.".into()
+				context: "Could not deserialize your message Context: Actor message in send_service. sid: remotes::Add. cid: 0x00000000000000000000000000000000.".into()
 			}),
 
 			peera_evts.next().await.unwrap()
@@ -360,7 +360,7 @@ fn sm_deserialize_error()
 		(
 			PeerEvent::RemoteError(ConnectionError::Deserialize
 			{
-				context: "Could not deserialize your message Context: Actor message in send_service. sid: 0xbcc09d3812378e171ad366d75f687757. cid: 0x00000000000000000000000000000000.".into()
+				context: "Could not deserialize your message Context: Actor message in send_service. sid: remotes::Add. cid: 0x00000000000000000000000000000000.".into()
 			}),
 
 			peera_evts.next().await.unwrap()

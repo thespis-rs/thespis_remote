@@ -48,18 +48,11 @@ impl UniqueID
 	//
 	pub(crate) fn from_seed( high: &[u8], low: &[u8] ) -> Self
 	{
-		let mut h = XxHash::default();
-		let mut l = XxHash::default();
+		let mut h = XxHash64::default();
+		let mut l = XxHash64::default();
 
-		for byte in high
-		{
-			h.write_u8( *byte );
-		}
-
-		for byte in low
-		{
-			l.write_u8( *byte );
-		}
+		h.write( high );
+		l.write( low  );
 
 		// The format of the multiservice message requires this to be 128 bits, so add a zero
 		// We will have 128bit hash here when xxhash supports 128bit output.
@@ -134,11 +127,20 @@ impl fmt::Debug for UniqueID
 	{
 		write!( f, "0x" )?;
 
+		fmt::LowerHex::fmt( &self, f )
+	}
+}
+
+
+impl fmt::LowerHex for UniqueID
+{
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
+	{
 		// Reverse because we are in little endian, and hexadecimal numbers are commonly written in big-endian.
 		//
 		for byte in self.bytes.iter().rev()
 		{
-			write!( f, "{:02x}", byte )?
+			write!( f, "{:02x}", &byte )?
 		}
 
 		Ok(())

@@ -100,19 +100,20 @@ use
 	// we should not have a leading comma before the next item, but if the comma is after the closing
 	// parenthesis, it will not output a trailing comma, which will be needed to separate from the next item.
 	//
-	super :: { $( $services, )+ Peer                         } ,
-	$crate:: { *                                             } ,
-	std   :: { pin::Pin, collections::HashMap, fmt, any::Any } ,
+	super :: { $( $services, )+ Peer                                     } ,
+	$crate:: { *                                                         } ,
+	std   :: { pin::Pin, collections::HashMap, fmt, any::Any, sync::Once } ,
 
 	$crate::external_deps::
 	{
-		once_cell       :: { sync::OnceCell                               } ,
+		once_cell       :: { sync::Lazy                                   } ,
 		futures         :: { future::FutureExt, task::{ Context, Poll }   } ,
 		thespis         :: { *                                            } ,
 		thespis_impl    :: { Addr, Receiver, ThesErr, ThesRes             } ,
 		serde_cbor      :: { self, from_slice as des                      } ,
 		serde           :: { Serialize, Deserialize, de::DeserializeOwned } ,
 		log             :: { error                                        } ,
+		paste,
 	},
 };
 
@@ -148,18 +149,20 @@ pub trait Service
 
 
 $(
+
 	impl Service for $services
 	{
 		fn sid() -> &'static ServiceID
 		{
-			static INSTANCE: OnceCell< ServiceID > = OnceCell::new();
+			static INSTANCE : Lazy< ServiceID > = Lazy::new( ||
 
-			INSTANCE.get_or_init( ||
-			{
 				ServiceID::from_seed( stringify!( $ns ).as_bytes(), stringify!( $services ).as_bytes() )
-			})
+			);
+
+			&INSTANCE
 		}
 	}
+
 )+
 
 
@@ -195,14 +198,17 @@ impl fmt::Debug for Services
 			width = std::cmp::max( width, stringify!( $services ).len() );
 		)+
 
-		let mut accu = String::new();
+		write!( f, "{}::Services\n{{\n", stringify!( $ns ) )?;
+
 
 		$(
 			let sid = <$services as Service>::sid();
 
-			accu += &format!
+			write!
 			(
-				"\t{:width$} - sid: {:?} - handler (actor_id): {}\n",
+				f,
+
+				"\t{:width$} - sid: 0x{:02x} - handler (actor_id): {}\n",
 
 				stringify!( $services ),
 				sid,
@@ -221,10 +227,10 @@ impl fmt::Debug for Services
 				},
 
 				width = width
-			);
+			)?;
 		)+
 
-		write!( f, "{}::Services\n{{\n{}}}", stringify!( $ns ), accu )
+		write!( f, "}}" )
 	}
 }
 
@@ -275,6 +281,18 @@ impl Services
 	//
 	pub fn new() -> Self
 	{
+		$(
+			paste::expr!
+			{
+				static [< __ONCE__ $services >]: Once = Once::new();
+
+				[< __ONCE__ $services >].call_once( ||
+				{
+					ServiceID::register_service( $services::sid(), concat!( stringify!($ns) , "::", stringify!($services) ) );
+				});
+			}
+		)+
+
 		Self{ handlers: HashMap::new() }
 	}
 
