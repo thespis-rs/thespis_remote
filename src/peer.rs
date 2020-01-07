@@ -4,13 +4,13 @@
 use crate :: { import::*, * };
 
 
-mod close_connection  ;
-mod connection_error  ;
-mod peer_event        ;
-mod call              ;
-mod incoming          ;
-mod register_relay    ;
-mod request_error     ;
+    mod close_connection  ;
+    mod connection_error  ;
+    mod peer_event        ;
+    mod call              ;
+    mod incoming          ;
+    mod register_relay    ;
+pub mod request_error     ;
 
 pub use call              :: Call             ;
 pub use close_connection  :: CloseConnection  ;

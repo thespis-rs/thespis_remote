@@ -42,7 +42,7 @@ use crate::{ import::*, * };
 //
 #[ derive( Debug, Clone ) ]
 //
-pub(super) struct RequestError
+pub struct RequestError
 {
 	pub(crate) error: ThesRemoteErr
 }
@@ -155,7 +155,7 @@ impl Handler<RequestError> for Peer
 
 
 
-impl From<ThesRemoteErr > for RequestError
+impl From<ThesRemoteErr> for RequestError
 {
 	fn from( error: ThesRemoteErr ) -> Self
 	{

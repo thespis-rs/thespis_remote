@@ -209,72 +209,38 @@ impl Peer
 		frame   : WireFormat ,
 	)
 	{
-		trace!( "{}: Incoming Send, sid: {}", self.identify(), &sid );
+		let identity = self.identify();
 
-		let self_addr = self.addr.as_ref().expect( "Peer not closing down" );
+		trace!( "{}: Incoming Send, sid: {}", identity, &sid );
+
+		let self_addr = self.addr.as_mut().take().expect( "Peer not closing down" );
 
 
 		if let Some( typeid ) = self.services.get( &sid )
 		{
-			trace!( "{}: Incoming Send for local Actor", self.identify() );
+			trace!( "{}: Incoming Send for local Actor", identity );
 
 			// unwrap: We are keeping our internal state consistent, if it's in
 			// self.services, it's in self.service_maps.
 			//
 			let sm = &mut self.service_maps.get( &typeid ).unwrap();
 
-			// expect: When we start processing the Incoming, we verify that we still have an
-			// addr.
-			// TODO: let sm have a copy so we don't clone the address every incoming message.
+			// Call handling actor,
 			//
-			match sm.send_service( self_addr.clone(), frame )
+			if self.exec.spawn( sm.send_service( frame, self_addr.clone() ) ).is_err()
 			{
-				Ok(fut) =>
+				let err = ThesRemoteErr::Spawn
 				{
-					let mut addr  = self_addr.clone();
-					let     addr2 = self_addr.clone();
-					let     sid2  = sid.clone();
-
-					let res = self.exec.spawn( async move
-					{
-						// Means the actor is dead.
-						//
-						if fut.await.is_err()
-						{
-							let err = ThesRemoteErr::HandlerDead
-							{
-								ctx: ErrorContext
-								{
-									peer_id   : addr.id().into()                           ,
-									peer_name : addr.name()                                ,
-									context   : "Process incoming Send".to_string().into() ,
-									sid       : sid.into()                                 ,
-									cid       : None                                       ,
-								},
-							};
+					ctx: Peer::err_ctx( &self_addr, sid, None, "sm.call_service".to_string() )
+				};
 
 
-							// If we are no longer around, just log the error.
-							//
-							if addr.send( RequestError::from( err.clone() ) ).await.is_err()
-							{
-								error!( "Peer ({}, {:?}): {}.", addr.id(), addr.name(), &err );
-							}
-						}
-					});
-
-					if res.is_err()
-					{
-						let err = ThesRemoteErr::Spawn
-						{
-							ctx: Peer::err_ctx( &addr2, sid2, None, "Process incoming Send".to_string() ),
-						};
-
-						self.handle( RequestError::from( err ) ).await;
-					}
+				// If we are no longer around, just log the error.
+				//
+				if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
+				{
+					error!( "Peer ({}, {:?}): {}.", self_addr.id(), self_addr.name(), &err );
 				}
-
-				Err(error) => self.handle( RequestError::from( error) ).await,
 			}
 		}
 
@@ -283,7 +249,7 @@ impl Peer
 		//
 		else if let Some( relay_id ) = self.relayed.get( &sid )
 		{
-			trace!( "{}: Incoming Send for relayed Actor", self.identify() );
+			trace!( "{}: Incoming Send for relayed Actor", identity );
 
 			// unwrap: We are keeping our internal state consistent, if it's in
 			// self.relayed, it's in peer.relays.
@@ -298,7 +264,7 @@ impl Peer
 			//       inbox if full, which will keep us from processing other incoming messages.
 			//
 			//
-			let ctx = Peer::err_ctx( self_addr, sid, None, "Process incoming Send to relay".to_string() );
+			let ctx = Peer::err_ctx( &self_addr, sid, None, "Process incoming Send to relay".to_string() );
 
 			//////////////////////////////////////////////////////////////////////
 			// TODO: this can block, in call we spawn a task to call the relay. //
@@ -324,7 +290,7 @@ impl Peer
 		//
 		else
 		{
-			let ctx = Peer::err_ctx( self_addr, sid, None, "Process incoming Send".to_string() );
+			let ctx = Peer::err_ctx( &self_addr, sid, None, "Process incoming Send".to_string() );
 
 			self.handle(
 			{
@@ -361,57 +327,20 @@ impl Peer
 			let sm = &mut self.service_maps.get( &typeid ).unwrap();
 
 			// Call handling actor,
-			// expect: When we started processing the Incoming message, we verified that we
-			// still have an address.
 			//
-			match sm.call_service( frame, self.addr.as_ref().expect( "Peer not closing" ).clone() )
+			if self.exec.spawn( sm.call_service( frame, self_addr.clone() ) ).is_err()
 			{
-				Ok(fut) =>
+				let err = ThesRemoteErr::Spawn
 				{
-					let mut addr2 = self_addr.clone();
-
-					let task = async move
-					{
-						// TODO: check the errors this returns, as there are two different
-						// ThesErr this can return which don't have the same meaning.
-						//
-						if let Err( err ) = fut.await
-						{
-							// If we are no longer around, just log the error.
-							//
-							if addr2.send( RequestError::from( err.clone() ) ).await.is_err()
-							{
-								error!( "Peer ({}, {:?}): {}.", addr2.id(), addr2.name(), &err );
-							}
-						}
-					};
+					ctx: Peer::err_ctx( &self_addr, sid, None, "sm.call_service".to_string() )
+				};
 
 
-					if self.exec.spawn( task ).is_err()
-					{
-						let err = ThesRemoteErr::Spawn
-						{
-							ctx: Peer::err_ctx( &self_addr, sid, None, "sm.call_service".to_string() )
-						};
-
-
-						// If we are no longer around, just log the error.
-						//
-						if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
-						{
-							error!( "Peer ({}, {:?}): {}.", self_addr.id(), self_addr.name(), &err );
-						}
-					}
-				}
-
-				Err(error) =>
+				// If we are no longer around, just log the error.
+				//
+				if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
 				{
-					// If we are no longer around, just log the error.
-					//
-					if self_addr.send( RequestError::from( error.clone() ) ).await.is_err()
-					{
-						error!( "Peer ({}, {:?}): {}.", self_addr.id(), self_addr.name(), &error );
-					}
+					error!( "Peer ({}, {:?}): {}.", self_addr.id(), self_addr.name(), &err );
 				}
 			}
 		}

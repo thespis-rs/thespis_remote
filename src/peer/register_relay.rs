@@ -2,8 +2,6 @@ use crate :: { import::*, * };
 
 
 /// Type for registering services to be relayed.
-///
-/// MS must be of the same type as the type parameter on [Peer].
 //
 #[ derive( Debug ) ]
 //
