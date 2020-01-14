@@ -49,7 +49,7 @@ impl Handler< RegisterRelay > for Peer
 {
 	fn handle( &mut self, msg: RegisterRelay ) -> Return< '_, <RegisterRelay as Message>::Return >
 	{
-		trace!( "peer: starting Handler<RegisterRelay>" );
+		trace!( "{}: starting Handler<RegisterRelay>", self.identify() );
 
 		let RegisterRelay { services, peer, peer_events } = msg;
 

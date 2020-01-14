@@ -218,7 +218,7 @@ impl Peer
 
 		if let Some( typeid ) = self.services.get( &sid )
 		{
-			trace!( "{}: Incoming Send for local Actor", identity );
+			trace!( "{}: Incoming Send for local Actor", &identity );
 
 			// unwrap: We are keeping our internal state consistent, if it's in
 			// self.services, it's in self.service_maps.
@@ -239,7 +239,7 @@ impl Peer
 				//
 				if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
 				{
-					error!( "Peer ({}, {:?}): {}.", self_addr.id(), self_addr.name(), &err );
+					error!( "{}: {}.", identity, &err );
 				}
 			}
 		}
@@ -313,13 +313,13 @@ impl Peer
 		trace!( "{}: Incoming Call", self.identify() );
 
 		let mut self_addr = self.addr.as_ref().expect( "Peer not closing down" ).clone();
-
+		let identity = self.identify();
 
 		// It's a call for a local actor
 		//
 		if let Some( typeid ) = self.services.get( &sid )
 		{
-			trace!( "{}: Incoming Call for local Actor", self.identify() );
+			trace!( "{}: Incoming Call for local Actor", &identity );
 
 			// We are keeping our internal state consistent, so the unwrap is fine. if it's in
 			// self.services, it's in self.service_maps.
@@ -340,7 +340,7 @@ impl Peer
 				//
 				if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
 				{
-					error!( "Peer ({}, {:?}): {}.", self_addr.id(), self_addr.name(), &err );
+					error!( "{}: {}.", &identity, &err );
 				}
 			}
 		}
@@ -392,7 +392,7 @@ impl Peer
 						//
 						if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
 						{
-							error!( "Peer ({}, {:?}): {}.", self_addr.id(), self_addr.name(), &err );
+							error!( "{}: {}.", self_addr.id(), &err );
 						}
 
 						return
@@ -422,13 +422,13 @@ impl Peer
 								//
 								Ok( resp ) =>
 								{
-									trace!( "Peer ({}, {:?}): Got response from relayed call, sending out.", self_addr.id(), self_addr.name() );
+									trace!( "{}: Got response from relayed call, sending out.", &identity );
 
 									// This can fail if we are no longer connected, in which case there isn't much to do.
 									//
 									if self_addr.send( resp ).await.is_err()
 									{
-										error!( "Peer: {}{:?}, processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", self_addr.id(), self_addr.name() );
+										error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
 									}
 
 									return
@@ -442,7 +442,7 @@ impl Peer
 
 									if self_addr.send( wire_format ).await.is_err()
 									{
-										error!( "Peer: {}{:?}, processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", self_addr.id(), self_addr.name() );
+										error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
 									}
 
 									return
@@ -468,7 +468,7 @@ impl Peer
 
 							if self_addr.send( err ).await.is_err()
 							{
-								error!( "Peer: {}{:?}, processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", self_addr.id(), self_addr.name() );
+								error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
 							}
 
 							return
@@ -491,7 +491,7 @@ impl Peer
 
 						if self_addr.send( err ).await.is_err()
 						{
-							error!( "Peer: {}{:?}, processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", self_addr.id(), self_addr.name() );
+							error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
 						}
 
 						return

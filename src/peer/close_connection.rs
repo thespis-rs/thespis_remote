@@ -38,12 +38,7 @@ impl Handler<CloseConnection> for Peer
 	{
 		Box::pin( async move
 		{
-			match &self.addr
-			{
-				Some(_) => trace!( "{}: CloseConnection, by remote: {}", self.identify(), msg.remote ),
-				None    => trace!( "CloseConnection in peer, by remote: {}", msg.remote ),
-			}
-
+			trace!( "{}: CloseConnection, by remote: {}", self.identify(), msg.remote );
 
 
 			if msg.remote { self.pharos.send( PeerEvent::ClosedByRemote ).await.expect( "pharos not closed" ) }

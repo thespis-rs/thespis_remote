@@ -122,9 +122,3 @@ profile:
     lto          : false
     debug        : true
 
-
-patch:
-
-  crates-io:
-
-    futures: { version: ^0.3, path: ../../RUST/futures-rs/futures }

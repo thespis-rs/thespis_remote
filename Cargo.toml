@@ -110,12 +110,6 @@ version = "0.1.0"
 [package.metadata.docs.rs]
 all-features = true
 
-[patch]
-[patch.crates-io]
-[patch.crates-io.futures]
-path = "../../RUST/futures-rs/futures"
-version = "^0.3"
-
 [profile]
 [profile.release]
 codegen-units = 1

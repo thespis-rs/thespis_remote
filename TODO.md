@@ -7,7 +7,6 @@
 	- tokio support
 
 - rewrite peer incoming:
-  - make sure all logging includes peer.identity()
   - do not close stream when the actor message cannot be deserialized. only when the wireformat can't be deserialized.
   - structured concurrency! All of these requests (at least calls) should stop when the connection
     closes. It makes no sense to process requests if we can't send a response anymore. Right now

@@ -157,7 +157,7 @@ impl Peer
 		-> Result< Self, ThesRemoteErr >
 
 	{
-		trace!( "Create peer" );
+		trace!( "{}: Create peer", addr.identity() );
 
 		// Hook up the incoming stream to our address.
 		//
@@ -175,11 +175,11 @@ impl Peer
 			//
 			while let Some(msg) = incoming.next().await
 			{
-				trace!( "Peer ({}{}): incoming message.", addr2.id(), addr2.string_name() );
+				trace!( "Peer ({}): incoming message.", addr2.identity() );
 				addr2.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" )
 			}
 
-			trace!( "Peer ({}{}):  incoming stream end, closing out.", addr2.id(), addr2.string_name() );
+			trace!( "{}:  incoming stream end, closing out.", addr2.identity() );
 
 			// Same as above.
 			//
@@ -557,7 +557,7 @@ impl fmt::Debug for Peer
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
-		write!( f, "Peer" )
+		write!( f, "{}", self.identify() )
 	}
 }
 
@@ -568,13 +568,6 @@ impl Drop for Peer
 	//
 	fn drop( &mut self )
 	{
-		let mut id = String::new();
-
-		if let Some( ref addr ) = self.addr
-		{
-			id = format!( ": {:?}", addr );
-		}
-
-		trace!( "Drop peer {}", id );
+		trace!( "Drop {}", self.identify() );
 	}
 }
