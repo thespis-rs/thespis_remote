@@ -429,6 +429,8 @@ impl Services
 
 impl ServiceMap for Services
 {
+	// We need to make a Vec here because the hashmap doesn't have a static lifetime.
+	//
 	fn services( &self ) -> Vec<&'static ServiceID>
 	{
 		let mut s: Vec<&'static ServiceID> = Vec::with_capacity( self.handlers.len() );

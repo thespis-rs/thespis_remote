@@ -13,14 +13,15 @@
     we have orphaned tasks that will keep running and keep processing.
 
 
+- take a closure in register_relayed_services so people can implement load balancing.
 - make sid's static references everywhere
-- keep people from relaying service id's they also provide in the local process
 - evaluate all places where peer can block while processing messages and document.
 - allow stopping actors?
 - allow replacing handlers?
 - do not depend on any thespis implementation, only on interface, so user can
   choose implementation (only matters for our public interface).
 - get rid of Send and Sync where possible
+- supervised actors and automatic reconnect?
 
 - TODO's and FIXME's
 - add tests

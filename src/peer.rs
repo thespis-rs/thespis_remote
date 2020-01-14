@@ -251,14 +251,36 @@ impl Peer
 
 	/// Register a service map as the handler for service ids that come in over the network. Normally you should
 	/// not call this directly, but use [´thespis_remote::ServiceMap::register_with_peer´].
+	///
+	/// Each service map and each service should be registered only once, including relayed services. Trying to
+	/// register them twice will panic in debug mode.
 	//
 	pub fn register_services( &mut self, sm: Arc< dyn ServiceMap + Send + Sync > )
 	{
 		let id = sm.type_id();
 
+		debug_assert!
+		(
+			!self.service_maps.contains_key( &id ),
+			"{}: Register Service: Can't register same service map twice. type_id: {:?}", self.identify(), &id ,
+		);
+
 		for sid in sm.services().iter()
 		{
 			trace!( "{}: Register Service: {:?}", self.identify(), &sid );
+
+			debug_assert!
+			(
+				!self.services.contains_key( sid ),
+				"{}: Register Service: Can't register same service twice. sid: {}", self.identify(), &sid ,
+			);
+
+			debug_assert!
+			(
+				!self.relayed.contains_key( sid ),
+				"{}: Register Service: Can't register same service twice. This service is also relayed. sid: {}", self.identify(), &sid ,
+			);
+
 			self.services.insert( sid, id );
 		}
 
@@ -269,7 +291,12 @@ impl Peer
 
 	/// Tell this peer to make a given service avaible to a remote, by forwarding incoming requests to the given
 	/// providing peer (connection to a remote provider).
-	/// For relaying services from other processes.
+	/// For relaying services from other processes. You don't need to use a service map to create a RemoteAddr
+	/// for these, however the compiler can't verify that the remote process actually accepts these Services,
+	/// so you have to make sure to relay to the correct connection manually.
+	///
+	/// Each service map and each service should be registered only once, including local (in process) services. Trying to
+	/// register them twice will panic in debug mode.
 	//
 	pub fn register_relayed_services
 	(
@@ -353,13 +380,27 @@ impl Peer
 			ThesErr::Spawn{ actor: "Stream of events from relay peer".to_string() }.into()
 		})?;
 
-		self.relays.insert( provider_id, (provider, handle) );
 
 		for sid in services
 		{
 			trace!( "{}: Register relaying to: {}, provided by {}", &identity, sid, provider_id );
+
+			debug_assert!
+			(
+				!self.services.contains_key( sid ),
+				"{}: Register Service: Can't register same service twice. sid: {}", self.identify(), &sid ,
+			);
+
+			debug_assert!
+			(
+				!self.relayed.contains_key( sid ),
+				"{}: Register Service: Can't register same service twice. This service is also relayed. sid: {}", self.identify(), &sid ,
+			);
+
 			self.relayed.insert( sid, provider_id );
 		}
+
+		self.relays.insert( provider_id, (provider, handle) );
 
 		Ok(())
 	}
