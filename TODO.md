@@ -16,7 +16,6 @@
 - make sid's static references everywhere
 - keep people from relaying service id's they also provide in the local process
 - evaluate all places where peer can block while processing messages and document.
-- refactor incoming to make the methods shorter
 - allow stopping actors?
 - allow replacing handlers?
 - do not depend on any thespis implementation, only on interface, so user can

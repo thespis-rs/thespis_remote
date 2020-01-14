@@ -360,149 +360,33 @@ impl Peer
 		else if let Some( actor_id ) = self.relayed.get( &sid )
 		{
 			trace!( "{}, Incoming Call for relayed Actor", self.identify() );
+			let identity = self.identify();
 
 			// The unwrap is safe, because we just checked self.relayed and we shall keep both
 			// in sync
 			//
-			let mut relay = self.relays.get_mut( &actor_id ).unwrap().0.clone();
+			let relay = self.relays.get_mut( &actor_id ).unwrap().0.clone();
+			let task  = Self::relayed_call( self_addr.clone(), relay, frame, sid.clone(), cid, identity.clone() );
 
-
-			self.exec.spawn( async move
+			// Call handling peer.
+			//
+			if self.exec.spawn( task ).is_err()
 			{
-				let called = match relay.call( Call::new( frame ) ).await
+				let err = ThesRemoteErr::Spawn
 				{
-					// Peer for relay still online.
-					//
-					Ok(c) => c,
-
-					// For now can only be mailbox closed.
-					//
-					Err(_) =>
-					{
-						let ctx = Peer::err_ctx( &self_addr, sid, None, "Process incoming Call to relay".to_string() );
-
-						let err = ThesRemoteErr::RelayGone
-						{
-							ctx                     ,
-							relay_id  : relay.id()  ,
-							relay_name: relay.name(),
-						};
-
-						// If we are no longer around, just log the error.
-						//
-						if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
-						{
-							error!( "{}: {}.", self_addr.id(), &err );
-						}
-
-						return
-					}
+					ctx: Peer::err_ctx( &self_addr, sid, None, "process relayed call".to_string() )
 				};
 
 
-				// TODO: Let the incoming remote know that their call failed
-				// not sure the current process wants to know much about this. We sure shouldn't
-				// crash.
+				// If we are no longer around, just log the error.
 				//
-				match called
+				if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
 				{
-					// Sending out over the sink (connection) didn't fail
-					//
-					Ok( receiver ) =>	{ match receiver.await
-					{
-						// The channel was not dropped before resolving, so the relayed connection didn't close
-						// until we got a response.
-						//
-						Ok( result ) =>
-						{
-							match result
-							{
-								// The remote managed to process the message and send a result back
-								// (no connection errors like deserialization failures etc)
-								//
-								Ok( resp ) =>
-								{
-									trace!( "{}: Got response from relayed call, sending out.", &identity );
-
-									// This can fail if we are no longer connected, in which case there isn't much to do.
-									//
-									if self_addr.send( resp ).await.is_err()
-									{
-										error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
-									}
-
-									return
-								},
-
-								// The relayed remote had errors while processing the request, such as deserialization.
-								//
-								Err(e) =>
-								{
-									let wire_format = Peer::prep_error( cid, &e );
-
-									if self_addr.send( wire_format ).await.is_err()
-									{
-										error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
-									}
-
-									return
-								},
-							}
-						},
-
-
-						// This can only happen if the sender got dropped. Eg, if the remote relay goes down
-						// Inform peer that their call failed because we lost connection to the relay after
-						// it was sent out.
-						//
-						Err(_) =>
-						{
-							let ctx = Self::err_ctx( &self_addr, sid, None, "Process incoming Call to relay".to_string() );
-
-							let err = RequestError::from( ThesRemoteErr::RelayGone
-							{
-								ctx                     ,
-								relay_id  : relay.id()  ,
-								relay_name: relay.name(),
-							});
-
-							if self_addr.send( err ).await.is_err()
-							{
-								error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
-							}
-
-							return
-						}
-					}},
-
-					// Sending out call to relayed failed. This normally only happens if the connection
-					// was closed, or a network transport malfunctioned.
-					//
-					Err(_) =>
-					{
-						let ctx = Peer::err_ctx( &self_addr, sid, None, "Process incoming Call to relay".to_string() );
-
-						let err = RequestError::from( ThesRemoteErr::RelayGone
-						{
-							ctx                     ,
-							relay_id  : relay.id()  ,
-							relay_name: relay.name(),
-						});
-
-						if self_addr.send( err ).await.is_err()
-						{
-							error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
-						}
-
-						return
-					}
+					error!( "{}: {}.", &identity, &err );
 				}
-
-			// TODO: Remove except
-			//
-			}).expect( "failed to spawn" );
-
+			}
 		}
+
 
 		// service_id unknown => send back and log error
 		//
@@ -516,5 +400,151 @@ impl Peer
 
 			}).await;
 		}
+	}
+
+
+	// Process an incoming relayed call. This method get's spawned to avoid blocking the incoming stream.
+	//
+	async fn relayed_call
+	(
+		mut self_addr: Addr<Peer> ,
+		mut relay    : Addr<Peer> ,
+		    frame    : WireFormat ,
+		    sid      : ServiceID  ,
+		    cid      : ConnID     ,
+		    identity : String     ,
+	)
+	{
+		let called = match relay.call( Call::new( frame ) ).await
+		{
+			// Peer for relay still online.
+			//
+			Ok(c) => c,
+
+			// For now can only be mailbox closed.
+			//
+			Err(_) =>
+			{
+				let ctx = Peer::err_ctx( &self_addr, sid, None, "Process incoming Call to relay".to_string() );
+
+				let err = ThesRemoteErr::RelayGone
+				{
+					ctx                     ,
+					relay_id  : relay.id()  ,
+					relay_name: relay.name(),
+				};
+
+				// If we are no longer around, just log the error.
+				//
+				if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
+				{
+					error!( "{}: {}.", self_addr.id(), &err );
+				}
+
+				return
+			}
+		};
+
+
+		// TODO: Let the incoming remote know that their call failed
+		// not sure the current process wants to know much about this. We sure shouldn't
+		// crash.
+		//
+		match called
+		{
+			// Sending out over the sink (connection) didn't fail
+			//
+			Ok( receiver ) =>	{ match receiver.await
+			{
+				// The channel was not dropped before resolving, so the relayed connection didn't close
+				// until we got a response.
+				//
+				Ok( result ) =>
+				{
+					match result
+					{
+						// The remote managed to process the message and send a result back
+						// (no connection errors like deserialization failures etc)
+						//
+						Ok( resp ) =>
+						{
+							trace!( "{}: Got response from relayed call, sending out.", &identity );
+
+							// This can fail if we are no longer connected, in which case there isn't much to do.
+							//
+							if self_addr.send( resp ).await.is_err()
+							{
+								error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
+							}
+
+							return
+						},
+
+						// The relayed remote had errors while processing the request, such as deserialization.
+						//
+						Err(e) =>
+						{
+							let wire_format = Peer::prep_error( cid, &e );
+
+							if self_addr.send( wire_format ).await.is_err()
+							{
+								error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
+							}
+
+							return
+						},
+					}
+				},
+
+
+				// This can only happen if the sender got dropped. Eg, if the remote relay goes down
+				// Inform peer that their call failed because we lost connection to the relay after
+				// it was sent out.
+				//
+				Err(_) =>
+				{
+					let ctx = Self::err_ctx( &self_addr, sid, None, "Process incoming Call to relay".to_string() );
+
+					let err = RequestError::from( ThesRemoteErr::RelayGone
+					{
+						ctx                     ,
+						relay_id  : relay.id()  ,
+						relay_name: relay.name(),
+					});
+
+					if self_addr.send( err ).await.is_err()
+					{
+						error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
+					}
+
+					return
+				}
+			}},
+
+			// Sending out call to relayed failed. This normally only happens if the connection
+			// was closed, or a network transport malfunctioned.
+			//
+			Err(_) =>
+			{
+				let ctx = Peer::err_ctx( &self_addr, sid, None, "Process incoming Call to relay".to_string() );
+
+				let err = RequestError::from( ThesRemoteErr::RelayGone
+				{
+					ctx                     ,
+					relay_id  : relay.id()  ,
+					relay_name: relay.name(),
+				});
+
+				if self_addr.send( err ).await.is_err()
+				{
+					error!( "{}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &identity );
+				}
+
+				return
+			}
+		}
+
+	// TODO: Remove except
+	//
 	}
 }
