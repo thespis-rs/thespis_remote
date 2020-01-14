@@ -117,8 +117,8 @@ fn relay_once()
 		//
 		let mut sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 
 		// get a framed connection
@@ -201,8 +201,8 @@ fn relay_multi()
 		//
 		let mut sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 
 		// get a framed connection
@@ -274,7 +274,7 @@ fn relay_unknown_service()
 		//
 		let mut sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 
 
 		// get a framed connection
@@ -367,7 +367,7 @@ fn relay_disappeared_single()
 		//
 		let mut sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 
 		// get a framed connection
 		//
@@ -473,7 +473,7 @@ fn relay_disappeared_multi()
 		//
 		let mut sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 
 		// get a framed connection
 		//

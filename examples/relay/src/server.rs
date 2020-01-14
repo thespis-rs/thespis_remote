@@ -41,8 +41,8 @@ fn main()
 		//
 		let mut sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 
 		// Register service map with peer

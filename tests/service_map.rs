@@ -94,8 +94,8 @@ fn clone()
 
 	// Register our handlers
 	//
-	sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
-	sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+	sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
+	sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 	let serial = format!( "{:?}", sm );
 
@@ -122,13 +122,13 @@ fn debug()
 
 	let mut sm = remotes::Services::new();
 
-	sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
-	sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+	sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
+	sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 	// All tests from the same file seem to run in the same process, so sometimes
 	// if the test for clone has run first, the ID will be 1.
 	//
-	let id = < Addr<Sum> as Recipient<Add> >::actor_id( &addr_handler );
+	let id = < Addr<Sum> as Address<Add> >::actor_id( &addr_handler );
 
 	let txt = format!
 ("remotes::Services

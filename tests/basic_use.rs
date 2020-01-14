@@ -40,8 +40,8 @@ fn remote()
 		let mut sm = remotes::Services::new();
 		// Register our handlers
 		//
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 		// get a framed connection
 		//
@@ -84,7 +84,7 @@ fn remote()
 //
 pub struct Parallel
 {
-	pub sum: Box< dyn Recipient<Show, Error=ThesRemoteErr> >,
+	pub sum: Box< dyn Address<Show, Error=ThesRemoteErr> >,
 }
 
 
@@ -147,7 +147,7 @@ fn parallel()
 		// register Sum with peer as handler for Add and Show
 		//
 		let mut sm = parallel::Services::new();
-		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 		peer.register_services( Arc::new( sm ) );
 
@@ -176,7 +176,7 @@ fn parallel()
 		// register Sum with peer as handler for Add and Show
 		//
 		let mut sm = remotes::Services::new();
-		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 		peer.register_services( Arc::new( sm ) );
 

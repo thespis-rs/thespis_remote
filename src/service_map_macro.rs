@@ -49,7 +49,7 @@
 ///       /// same way as if the actor was local. This is for the process that wants to use the services
 ///       /// not the one that provides them. For it to work, they must use the same namespace.
 ///       //
-///       pub fn recipient<S>( peer: Addr<Peer> ) -> impl Recipient<S> {...}
+///       pub fn recipient<S>( peer: Addr<Peer> ) -> impl Address<S> {...}
 ///
 ///       ...
 ///     }
@@ -60,7 +60,7 @@
 ///     //
 ///     impl ServiceMap for Services {...}
 ///
-///     // Some types to make the impl Recipient<S> in Services::recipient above.
+///     // Some types to make the impl Address<S> in Services::recipient above.
 /// }
 /// ```
 ///
@@ -605,7 +605,7 @@ impl ServiceMap for Services
 //
 pub struct RemoteAddr
 {
-	// TODO: do not rely on Addr, we should be generic over Recipient, but not
+	// TODO: do not rely on Addr, we should be generic over Address, but not
 	//       choose an implementation.
 	//
 	peer: Pin<Box< Addr<Peer> >>
@@ -651,7 +651,7 @@ impl RemoteAddr
 
 
 
-impl<S> Recipient<S> for RemoteAddr
+impl<S> Address<S> for RemoteAddr
 
 	where  S                    : Service + Send,
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -764,7 +764,7 @@ impl<S> Recipient<S> for RemoteAddr
 
 	/// Obtain a clone of this recipient as a trait object.
 	//
-	fn clone_box( &self ) -> BoxRecipient<S, ThesRemoteErr>
+	fn clone_box( &self ) -> BoxAddress<S, ThesRemoteErr>
 	{
 		Box::new( Self { peer: self.peer.clone() } )
 	}
@@ -776,7 +776,7 @@ impl<S> Recipient<S> for RemoteAddr
 	{
 		// TODO: self.peer.id()? and name?
 		//
-		< Addr<Peer> as Recipient<WireFormat> >::actor_id( &self.peer )
+		< Addr<Peer> as Address<WireFormat> >::actor_id( &self.peer )
 	}
 }
 

@@ -46,8 +46,8 @@ fn close_connection()
 		//
 		let mut sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 		// get a framed connection
 		//
@@ -101,8 +101,8 @@ fn close_connection_call()
 		//
 		let mut sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 		// get a framed connection
 		//
@@ -157,7 +157,7 @@ fn header_unknown_service_error()
 		// register Sum with peer as handler for Add and Show
 		//
 		let mut sm = remotes::Services::new();
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 
 		// get a framed connection
 		//
@@ -235,7 +235,7 @@ fn header_deserialize()
 		// register Sum with peer as handler for Add and Show
 		//
 		let mut sm = remotes::Services::new();
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 
 		// get a framed connection
 		//
@@ -327,7 +327,7 @@ fn sm_deserialize_error()
 		// register Sum with peer as handler for Add and Show
 		//
 		let mut sm = remotes::Services::new();
-		sm.register_handler::<Add >( Receiver::new( addr_handler.recipient() ) );
+		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 
 		// get a framed connection
 		//
