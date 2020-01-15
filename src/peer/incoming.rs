@@ -52,7 +52,7 @@ async move
 		{
 			// Can be:
 			// - MessageSizeExceeded (Codec)
-			// - Deserialize (WireFormat)
+			// - DeserializeWireFormat (WireFormat)
 			//
 			self.handle( RequestError::from( error ) ).await;
 

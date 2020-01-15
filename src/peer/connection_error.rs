@@ -10,10 +10,14 @@ use crate :: { import::*, ServiceID, ConnID };
 //
 pub enum ConnectionError
 {
-	/// An error deserializing the incoming message. This means the stream might be corrupt,
+	/// An error deserializing the incoming actor message. This means the stream might be corrupt,
 	/// so the connection will be closed.
 	//
-	Deserialize{ context: String },
+	Deserialize{ sid: Option<ServiceID>, cid: Option<ConnID> },
+
+	/// An error deserializing the incoming data.
+	//
+	DeserializeWireFormat{ context: String },
 
 	/// An error happend when trying to serialize a response.
 	//

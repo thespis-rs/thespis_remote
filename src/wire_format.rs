@@ -171,7 +171,7 @@ impl TryFrom< Bytes > for WireFormat
 		//
 		if bytes.len() < HEADER_LEN
 		{
-			return Err( ThesRemoteErr::Deserialize{ ctx: ErrorContext
+			return Err( ThesRemoteErr::DeserializeWireFormat{ ctx: ErrorContext
 			{
 				context  : "WireFormat: not enough bytes even for the header.".to_string().into() ,
 				sid      : None                                                                   ,
@@ -218,8 +218,8 @@ mod tests
 
 			Err(e) => match e
 			{
-				ThesRemoteErr::Deserialize{..} => assert!( true ),
-				_                              => assert!( false, "Wrong error type (should be Deserialize): {:?}", e ),
+				ThesRemoteErr::DeserializeWireFormat{..} => assert!( true ),
+				_                                        => assert!( false, "Wrong error type (should be DeserializeWireFormat): {:?}", e ),
 			}
 		}
 	}

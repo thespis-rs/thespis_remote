@@ -473,7 +473,7 @@ impl ServiceMap for Services
 
 			None =>
 			{
-				let ctx = Peer::err_ctx( &peer, sid, msg.conn_id(), "Processing incoming Send".to_string() );
+				let ctx = Peer::err_ctx( &peer, sid, None, "Processing incoming Send".to_string() );
 
 				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
 			}
@@ -493,7 +493,7 @@ impl ServiceMap for Services
 
 						None =>
 						{
-							let ctx = Peer::err_ctx( &peer, sid.clone(), msg.conn_id(), "Receiver in send_service".to_string() );
+							let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Receiver in send_service".to_string() );
 
 							return Self::handle_err( peer, ThesRemoteErr::Downcast{ ctx } ).boxed()
 						}
@@ -506,7 +506,7 @@ impl ServiceMap for Services
 
 						Err(_) =>
 						{
-							let ctx = Peer::err_ctx( &peer, sid, msg.conn_id(), "Actor message in send_service".to_string() );
+							let ctx = Peer::err_ctx( &peer, sid, None, "Actor message in send_service".to_string() );
 
 							return Self::handle_err( peer, ThesRemoteErr::Deserialize{ ctx } ).boxed()
 						}
@@ -532,7 +532,7 @@ impl ServiceMap for Services
 
 			_ =>
 			{
-				let ctx = Peer::err_ctx( &peer, sid, msg.conn_id(), "Processing incoming Send".to_string() );
+				let ctx = Peer::err_ctx( &peer, sid, None, "Processing incoming Send".to_string() );
 
 				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
 			}

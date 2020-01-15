@@ -75,24 +75,37 @@ impl Handler<RequestError> for Peer
 			{
 				// Report to remote and close connection as the stream is no longer coherent.
 				//
-				let err = ConnectionError::Deserialize{ context: msg.error.remote_err() };
+				let err = ConnectionError::DeserializeWireFormat{ context: msg.error.remote_err() };
 
 				self.send_err( ConnID::null(), &err, true ).await;
 			}
 
 
-			ThesRemoteErr::Deserialize{ ref ctx } =>
+			ThesRemoteErr::DeserializeWireFormat{ ref ctx } =>
 			{
 				let cid = ctx.cid.as_ref().map( |c| c.clone() ).unwrap_or( ConnID::null() );
 
 				// Report to remote and close connection as the stream is no longer coherent.
 				//
-				let err = ConnectionError::Deserialize{ context: msg.error.remote_err() };
+				let err = ConnectionError::DeserializeWireFormat{ context: msg.error.remote_err() };
 
 				// If the error happened in the codec, there won't be a cid, but if it happens
 				// while deserializing the actor message, we will already have a cid.
 				//
 				self.send_err( cid, &err, true ).await;
+			}
+
+
+			ThesRemoteErr::Deserialize{ ctx } =>
+			{
+				// Report to remote and close connection as the stream is no longer coherent.
+				//
+				let err = ConnectionError::Deserialize{ sid: ctx.sid, cid: ctx.cid.clone() };
+
+				// If the error happened in the codec, there won't be a cid, but if it happens
+				// while deserializing the actor message, we will already have a cid.
+				//
+				self.send_err( ctx.cid.unwrap_or( ConnID::null() ), &err, false ).await;
 			}
 
 

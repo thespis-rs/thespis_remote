@@ -58,11 +58,23 @@ pub enum ThesRemoteErr
 		max_size: usize  ,
 	},
 
-	/// Failed to deserialize.
+	/// Failed to deserialize an Actor message. The message data will be dropped and the remote will be notified of the error.
+	/// The connection shall remain functional.
 	//
-	#[ error( "Failed to deserialize{ctx}" ) ]
+	#[ error( "Failed to deserialize an Actor message{ctx}" ) ]
 	//
 	Deserialize
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: ErrorContext
+	},
+
+	/// Failed to deserialize incoming data. The connection will be closed because the stream integrity can no longer be assumed.
+	//
+	#[ error( "Failed to deserialize incoming data. The connection will be closed because the stream integrity can no longer be assumed{ctx}" ) ]
+	//
+	DeserializeWireFormat
 	{
 		/// The contex in which the error happened.
 		//
