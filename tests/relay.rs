@@ -39,8 +39,6 @@ async fn relay
 
 	let relay = async move
 	{
-		let (srv_sink, srv_stream) = connect_return_stream( listen ).await;
-
 		// Create mailbox for peer
 		//
 		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "relay_to_consumer".into() ) );
@@ -48,7 +46,7 @@ async fn relay
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::new( peer_addr, srv_stream, srv_sink, ex1 ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1 ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
@@ -141,7 +139,7 @@ fn relay_once()
 
 		// Call the service and receive the response
 		//
-		let mut addr  = remotes::RemoteAddr::new( to_relay.clone() );
+		let mut addr = remotes::RemoteAddr::new( to_relay.clone() );
 
 		let resp = addr.call( Add(5) ).await.expect( "Call failed" );
 		assert_eq!( (), resp );
@@ -149,6 +147,10 @@ fn relay_once()
 		addr.send( Add(5) ).await.expect( "Send failed" );
 
 		let resp = addr.call( Show ).await.expect( "Call failed" );
+
+		// TODO: This assert sometimes fails with 5, so an addition above didn't happen but didn't return an error.
+		//       To detect we should run in a loop with trace and debug.
+		//
 		assert_eq!( 10, resp );
 
 		warn!( "consumer end, telling relay to close connection" );

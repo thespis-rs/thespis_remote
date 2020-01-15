@@ -102,6 +102,7 @@ impl ThesCodec
 }
 
 
+
 #[ cfg( feature = "futures_codec" ) ]
 //
 impl FutDecoder for ThesCodec
@@ -124,8 +125,8 @@ impl FutDecoder for ThesCodec
 //
 impl FutEncoder for ThesCodec
 {
-	type Item  = WireFormat ;
-	type Error = ThesRemoteErr    ;
+	type Item  = WireFormat    ;
+	type Error = ThesRemoteErr ;
 
 	fn encode( &mut self, item: Self::Item, buf: &mut BytesMut ) -> Result<(), Self::Error>
 	{
@@ -138,8 +139,8 @@ impl FutEncoder for ThesCodec
 //
 impl TokioDecoder for ThesCodec
 {
-	type Item  = WireFormat ;
-	type Error = ThesRemoteErr    ;
+	type Item  = WireFormat    ;
+	type Error = ThesRemoteErr ;
 
 	fn decode( &mut self, buf: &mut BytesMut ) -> Result< Option<Self::Item>, Self::Error >
 	{
@@ -156,8 +157,8 @@ impl TokioDecoder for ThesCodec
 //
 impl TokioEncoder for ThesCodec
 {
-	type Item  = WireFormat ;
-	type Error = ThesRemoteErr    ;
+	type Item  = WireFormat    ;
+	type Error = ThesRemoteErr ;
 
 	fn encode( &mut self, item: Self::Item, buf: &mut BytesMut ) -> Result<(), Self::Error>
 	{

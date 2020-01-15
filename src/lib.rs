@@ -106,8 +106,8 @@ mod import
 	//
 	pub(crate) use
 	{
-		// tokio :: { prelude::{ AsyncRead as TokioAsyncR, AsyncWrite as TokioAsyncW }                                      } ,
-		tokio :: { codec::{ Decoder as TokioDecoder, Encoder as TokioEncoder, /*Framed as TokioFramed, FramedParts, FramedRead, FramedWrite*/ } } ,
+		tokio      :: { prelude::{ AsyncRead as TokioAsyncR, AsyncWrite as TokioAsyncW }                                      } ,
+		tokio_util :: { codec::{ Decoder as TokioDecoder, Encoder as TokioEncoder, Framed as TokioFramed /*, FramedParts, FramedRead, FramedWrite*/ } } ,
 	};
 
 

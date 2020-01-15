@@ -248,6 +248,39 @@ impl Peer
 
 
 
+	#[ cfg( feature = "tokio_codec" ) ]
+	//
+	/// Create a Peer directly from a tokio asynchronous stream. This is a convenience wrapper around Peer::new so
+	/// you don't have to bother with framing the connection.
+	///
+	/// *addr*: This peers own adress.
+	///
+	/// *socket*: The async stream to frame.
+	///
+	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
+	/// stream if it exceeds this size. Also used for encoding outgoing messages.
+	/// **Set the same max_size in the remote!**.
+	//
+	pub fn from_tokio_async_read
+	(
+		addr    : Addr<Self>                                              ,
+		socket  : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static ,
+		max_size: usize                                                   ,
+		exec    : impl Spawn + Send + Sync + 'static                      ,
+	)
+
+		-> Result< Self, ThesRemoteErr >
+
+	{
+		let codec = ThesCodec::new(max_size);
+
+		let (sink, stream) = TokioFramed::new( socket, codec ).split();
+
+		Peer::new( addr.clone(), stream, sink, exec )
+	}
+
+
+
 
 	/// Register a service map as the handler for service ids that come in over the network. Normally you should
 	/// not call this directly, but use [´thespis_remote::ServiceMap::register_with_peer´].

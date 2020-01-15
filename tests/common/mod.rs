@@ -42,38 +42,13 @@ pub mod import
 	};
 }
 
-#[ cfg( feature = "tokio_codec" ) ]
-//
-pub(crate) use
-{
-	tokio::
-	{
-		prelude :: { Stream as TokStream, stream::{ SplitStream as TokSplitStream, SplitSink as TokSplitSink } } ,
-	},
-};
-
-
-#[ cfg( feature = "futures_codec" ) ]
-//
-pub(crate) use
-{
-	futures_codec_crate :: { Framed } ,
-};
-
-
 
     use import::*;
 pub use actors::*;
 
-pub type TheSink = SplitSink< Framed< Endpoint, ThesCodec >, WireFormat> ;
-
 
 pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
-	let codec = ThesCodec::new(1024);
-
-	let (sink, stream) = Framed::new( socket, codec ).split();
-
 	// Create mailbox for peer
 	//
 	let mb_peer  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
@@ -81,7 +56,7 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 
 	// create peer with stream/sink
 	//
-	let mut peer = Peer::new( peer_addr.clone(), stream, sink, exec.clone() ).expect( "create peer" );
+	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, exec.clone() ).expect( "spawn peer" );
 
 	let peer_evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
@@ -99,12 +74,6 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 
 pub async fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
-	// frame the connection with codec for multiservice
-	//
-	let codec: ThesCodec = ThesCodec::new(1024);
-
-	let (sink_a, stream_a) = Framed::new( socket, codec ).split();
-
 	// Create mailbox for peer
 	//
 	let mb  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
@@ -112,7 +81,7 @@ pub async fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + S
 
 	// create peer with stream/sink + service map
 	//
-	let mut peer = Peer::new( addr.clone(), stream_a, sink_a, exec.clone() ).expect( "spawn peer" );
+	let mut peer = Peer::from_async_read( addr.clone(), socket, 1024, exec.clone() ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
@@ -122,22 +91,6 @@ pub async fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + S
 
 	(addr, evts)
 }
-
-
-
-pub async fn connect_return_stream( socket: Endpoint ) ->
-
-	(SplitSink<Framed<Endpoint, ThesCodec>, WireFormat>, SplitStream<Framed<Endpoint, ThesCodec>>)
-
-{
-	// frame the connection with codec for multiservice
-	//
-	let codec: ThesCodec = ThesCodec::new(1024);
-
-	Framed::new( socket, codec ).split()
-}
-
-
 
 
 service_map!

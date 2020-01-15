@@ -1,9 +1,14 @@
-#![ cfg( feature = "futures_codec" ) ]
+#![ cfg( feature = "tokio_codec" ) ]
 
 mod common;
 
-use common::*                       ;
-use common::import::{ *, assert_eq };
+use
+{
+	common::{ remotes, Add, Sum, Show, import::{ *, assert_eq } } ,
+	futures_ringbuf::TokioEndpoint ,
+	tokio_util::codec::{ Framed } ,
+	tokio::io::{ AsyncWriteExt } ,
+};
 
 
 // Tests:
@@ -11,6 +16,49 @@ use common::import::{ *, assert_eq };
 // - ✔ basic remote funcionality: intertwined sends and calls.
 // - ✔ correct async behavior: verify that a peer can continue to send/receive while waiting for the response to a call.
 // - ✔ call a remote service after the connection has closed: verify peer event and error kind.
+
+pub fn peer_listen( socket: TokioEndpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+{
+	// Create mailbox for peer
+	//
+	let mb_peer  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
+	let peer_addr              = Addr ::new( mb_peer.sender() );
+
+	// create peer with stream/sink
+	//
+	let mut peer = Peer::from_tokio_async_read( peer_addr.clone(), socket, 1024, exec.clone() ).expect( "spawn peer" );
+
+	let peer_evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
+
+	// register service map with peer
+	//
+	peer.register_services( sm );
+
+	exec.spawn( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
+
+	(peer_addr, peer_evts)
+}
+
+
+pub async fn peer_connect( socket: TokioEndpoint, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+{
+	// Create mailbox for peer
+	//
+	let mb  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
+	let addr              = Addr ::new( mb.sender() );
+
+	// create peer with stream/sink + service map
+	//
+	let mut peer = Peer::from_tokio_async_read( addr.clone(), socket, 1024, exec.clone() ).expect( "spawn peer" );
+
+	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
+
+	debug!( "start mailbox for [{}] in peer_connect", name );
+
+	exec.spawn( mb.start_fut(peer) ).expect( "start mailbox of Peer" );
+
+	(addr, evts)
+}
 
 
 
@@ -22,7 +70,7 @@ fn remote()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
-	let (server, client) = Endpoint::pair( 64, 64 );
+	let (server, client) = TokioEndpoint::pair( 64, 64 );
 
 	let exec = ThreadPool::new().expect( "create threadpool" );
 	let ex1  = exec.clone();
@@ -113,7 +161,7 @@ service_map!
 //
 fn parallel()
 {
-	let (server, client) = Endpoint::pair( 64, 64 );
+	let (server, client) = TokioEndpoint::pair( 64, 64 );
 
 	let exec = ThreadPool::new().expect( "create threadpool" );
 	let ex1  = exec.clone();
@@ -121,14 +169,20 @@ fn parallel()
 
 	let peera = async move
 	{
+		let codec: ThesCodec = ThesCodec::new(1024);
+
+		// get a framed connection
+		//
+		let (sink_a, stream_a) = Framed::new( server, codec ).split();
+
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "peera".into() ) );
+		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "peera".into() )  );
 		let peer_addr              = Addr ::new( mb_peer.sender() );
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr.clone(), server, 1024, ex1.clone() ).expect( "spawn peer" );
+		let mut peer = Peer::new( peer_addr.clone(), stream_a, sink_a, ex1.clone() ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -158,7 +212,7 @@ fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr.clone(), client, 1024, ex2.clone() ).expect( "spawn peer" );
+		let mut peer = Peer::from_tokio_async_read( peer_addr.clone(), client, 1024, ex2.clone() ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//
@@ -201,14 +255,14 @@ fn call_after_close_connection()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
-	let (mut server, client) = Endpoint::pair( 64, 64 );
+	let (mut server, client) = TokioEndpoint::pair( 64, 64 );
 
 	let exec = ThreadPool::new().expect( "create threadpool" );
 	let ex1  = exec.clone();
 
 	let nodea = async move
 	{
-		server.close().await.expect( "close connection" );
+		server.shutdown().await.expect( "close connection" );
 	};
 
 
