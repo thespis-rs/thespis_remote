@@ -1,7 +1,7 @@
 use
 {
-	crate :: { import::* },
-	super :: { unique_id::UniqueID      },
+	crate :: { import::*           } ,
+	super :: { unique_id::UniqueID } ,
 };
 
 

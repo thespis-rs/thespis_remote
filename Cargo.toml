@@ -33,8 +33,10 @@ optional = true
 package = "futures_codec"
 version = "^0.3"
 
+[dependencies.parking_lot]
+version = "^0.10"
+
 [dependencies.pharos]
-path = "../../pharos"
 version = "^0.4"
 
 [dependencies.rand]

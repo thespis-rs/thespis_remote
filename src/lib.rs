@@ -29,6 +29,7 @@ pub mod peer              ;
 pub mod wire_format       ;
     mod service_map_macro ;
     mod service_map       ;
+    mod relay_map         ;
 
 pub use
 {
@@ -37,6 +38,7 @@ pub use
 	wire_format       :: * ,
 	service_map       :: * ,
 	service_map_macro :: * ,
+	relay_map         :: * ,
 };
 
 
@@ -54,6 +56,7 @@ pub mod external_deps
 	pub use thespis        ;
 	pub use thespis_impl   ;
 	pub use paste          ;
+	// pub use parking_lot    ; // TODO: will this make it a public dep?
 }
 
 
@@ -72,21 +75,20 @@ mod import
 		byteorder      :: { LittleEndian, WriteBytesExt                 } ,
 		bytes          :: { Bytes, BytesMut, BufMut                     } ,
 		rand           :: { Rng                                         } ,
-		std            :: { hash::{ Hasher }, any::Any, sync::Mutex     } ,
 		twox_hash      :: { XxHash64                                    } ,
 		pharos         :: { Pharos, Observable, ObserveConfig, Events   } ,
 		serde          :: { Serialize, Deserialize                      } ,
 		thiserror      :: { Error                                       } ,
 		once_cell      :: { sync::Lazy as SyncLazy                      } ,
-
+		parking_lot    :: { RwLock                                      } ,
 
 		std ::
 		{
 			fmt                            ,
-			any         :: { TypeId      } ,
 			convert     :: { TryFrom     } ,
 			collections :: { HashMap     } ,
-			sync        :: { Arc         } ,
+			sync        :: { Arc, Mutex  } ,
+			hash        :: { Hasher      } ,
 		},
 
 

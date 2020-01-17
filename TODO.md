@@ -6,18 +6,18 @@
  we have orphaned tasks that will keep running and keep processing.
 
 
-- take a closure in register_relayed_services so people can implement load balancing.
-- make sid's static references everywhere
+- abstract out identify trait
+- clean up log statements as to no longer need to manually insert both id and name.
+- allow both closures and fixed addresses, in both relay_map and service_map_macro.
 - evaluate all places where peer can block while processing messages and document/test.
-- allow stopping actors?
-- allow replacing handlers?
+- TODO's and FIXME's
+- add tests and comments for everything (especially error handling.)
 - do not depend on any thespis implementation, only on interface, so user can
   choose implementation (only matters for our public interface).
+- take a closure in register_relayed_services so people can implement load balancing.
 - get rid of Send and Sync where possible
 - supervised actors and automatic reconnect?
 
-- TODO's and FIXME's
-- add tests and comments for everything (especially error handling.)
 - fix examples
 - verify stability of UniqueID and generate one from a different programming language to be sure.
 - documentation

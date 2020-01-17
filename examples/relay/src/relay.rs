@@ -7,9 +7,7 @@ fn main()
 {
 	flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
-	rt::init( rt::Config::ThreadPool ).expect( "start threadpool" );
-
-	let mut exec = LocalPool::default();
+	let exec = ThreadPool::new().expect( "create threadpool" );
 	let     ex2  = exec.clone();
 
 	let relays = async move
@@ -27,7 +25,7 @@ fn main()
 		warn!( "relays end" );
 	};
 
-	exec.run_until( relays );
+	block_on( relays );
 }
 
 
@@ -39,17 +37,19 @@ async fn relay
 	connect   : TcpStream,
 	listen    : TcpStream,
 	relay_show: bool,
-	exec      : impl SpawnHandle
+	exec      : impl SpawnHandle + Send + Sync + Clone + 'static
 )
 {
 	debug!( "start mailbox for relay_to_provider" );
 
-	let (mut provider_addr, provider_evts) = peer_connect( connect, &exec, "relay_to_provider" ).await;
+	let (mut provider_addr, _provider_evts) = peer_connect( connect, exec.clone(), "relay_to_provider" ).await;
 	let provider_addr2                     = provider_addr.clone();
 
 	debug!( "Actor for relay_to_provider is {}", provider_addr2.id() );
 
 	// Relay part ---------------------
+
+	let ex2 = exec.clone();
 
 	let relay = async move
 	{
@@ -59,26 +59,28 @@ async fn relay
 
 		// Create mailbox for the client peer
 		//
-		let mb_peer  : Inbox<Peer> = Inbox::new( "relay_to_consumer".into() );
+		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "relay_to_consumer".into() ) );
 		let peer_addr              = Addr ::new( mb_peer.sender() );
 
 		// This peer is listening for the connection from the client.
 		//
-		let mut peer = Peer::new( peer_addr, client_stream, client_sink ).expect( "spawn peer" );
+		let mut peer = Peer::new( peer_addr, client_stream, client_sink, ex2 ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
 
-		let relayed = if relay_show
+		let rm      = Arc::new( RelayMap::new() );
+		let closure = Box::new( move |_: &ServiceID| Some( Box::new(provider_addr2.clone()) as Box<dyn Relay> ) );
+
+		rm.register_handler( add.clone(), closure.clone() );
+
+		if relay_show
 		{
-			vec![ add, show ]
+			rm.register_handler( show.clone(), closure );
 		}
 
-		else { vec![ add ] };
 
-		// Tell the peer the addr of the peer talking to the provider to relay the services to.
-		//
-		peer.register_relayed_services( relayed, provider_addr2, provider_evts ).expect( "register relayed" );
+		peer.register_services( rm );
 
 		debug!( "start mailbox for relay_to_consumer" );
 		mb_peer.start_fut( peer ).await;

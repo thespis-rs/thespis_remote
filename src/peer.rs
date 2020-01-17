@@ -9,16 +9,13 @@ use crate :: { import::*, * };
     mod peer_event        ;
     mod call              ;
     mod incoming          ;
-    mod register_relay    ;
 pub mod request_error     ;
 
 pub use call              :: Call             ;
 pub use close_connection  :: CloseConnection  ;
 pub use connection_error  :: ConnectionError  ;
 pub use peer_event        :: PeerEvent        ;
-pub use register_relay    :: RegisterRelay    ;
     use incoming          :: Incoming         ;
-    use peer_event        :: RelayEvent       ;
     use request_error     :: RequestError     ;
 
 
@@ -109,23 +106,9 @@ pub struct Peer
 	// to `Servicemap::call_service`. TODO: In principle we should be generic over recipient type, but for now
 	// I have put ThesErr, because it's getting to complex.
 	//
-	services      : HashMap<&'static ServiceID, TypeId>,
-	service_maps  : HashMap<TypeId, Arc<dyn ServiceMap + Send + Sync > >,
+	services      : HashMap< ServiceID, Arc<dyn ServiceMap + Send + Sync > >,
 
-	/// All services that we relay to another peer. It has to be of the same type for now since there is
-	/// no trait for peers.
-	///
-	/// We store a map of the sid to the actor_id and then a map from actor_id to both addr and
-	/// remote handle for the PeerEvents.
-	///
-	/// These two fields should be kept in sync. Eg, we call unwrap on the get_mut on relays if
-	/// we found the id in relayed.
-	///
-	//
-	relayed       : HashMap< &'static ServiceID, usize >,
-	relays        : HashMap< usize, (Addr<Self>, RemoteHandle<()>) >,
-
-	/// We use onshot channels to give clients a future that will resolve to their response.
+	/// We use oneshot channels to give clients a future that will resolve to their response.
 	//
 	responses     : HashMap< ConnID, oneshot::Sender<Result<WireFormat, ConnectionError>> >,
 
@@ -176,7 +159,7 @@ impl Peer
 			while let Some(msg) = incoming.next().await
 			{
 				trace!( "Peer ({}): incoming message.", addr2.identity() );
-				addr2.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" )
+				addr2.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" );
 			}
 
 			trace!( "{}:  incoming stream end, closing out.", addr2.identity() );
@@ -204,9 +187,6 @@ impl Peer
 			addr         : Some( addr )               ,
 			responses    : HashMap::new()             ,
 			services     : HashMap::new()             ,
-			service_maps : HashMap::new()             ,
-			relayed      : HashMap::new()             ,
-			relays       : HashMap::new()             ,
 			listen_handle: Some( handle )             ,
 			pharos       : Pharos::default()          ,
 			exec         : Box::new( exec )           ,
@@ -290,154 +270,19 @@ impl Peer
 	//
 	pub fn register_services( &mut self, sm: Arc< dyn ServiceMap + Send + Sync > )
 	{
-		let id = sm.type_id();
-
-		debug_assert!
-		(
-			!self.service_maps.contains_key( &id ),
-			"{}: Register Service: Can't register same service map twice. type_id: {:?}", self.identify(), &id ,
-		);
-
-		for sid in sm.services().iter()
+		for sid in sm.services().into_iter()
 		{
 			trace!( "{}: Register Service: {:?}", self.identify(), &sid );
 
 			debug_assert!
 			(
-				!self.services.contains_key( sid ),
+				!self.services.contains_key( &sid ),
 				"{}: Register Service: Can't register same service twice. sid: {}", self.identify(), &sid ,
 			);
 
-			debug_assert!
-			(
-				!self.relayed.contains_key( sid ),
-				"{}: Register Service: Can't register same service twice. This service is also relayed. sid: {}", self.identify(), &sid ,
-			);
-
-			self.services.insert( sid, id );
+			self.services.insert( sid, sm.clone() );
 		}
-
-		self.service_maps.insert( id, sm );
 	}
-
-
-
-	/// Tell this peer to make a given service avaible to a remote, by forwarding incoming requests to the given
-	/// providing peer (connection to a remote provider).
-	/// For relaying services from other processes. You don't need to use a service map to create a RemoteAddr
-	/// for these, however the compiler can't verify that the remote process actually accepts these Services,
-	/// so you have to make sure to relay to the correct connection manually.
-	///
-	/// Each service map and each service should be registered only once, including local (in process) services. Trying to
-	/// register them twice will panic in debug mode.
-	//
-	pub fn register_relayed_services
-	(
-		&mut self                                  ,
-		     services    : Vec<&'static ServiceID> ,
-
-		     // TODO: provider might be a different type then Self?
-		     //
-		     provider    : Addr<Self>              ,
-		     peer_events : Events<PeerEvent>       ,
-
-	) -> Result<(), ThesRemoteErr>
-
-	{
-		let identity = self.identify();
-
-		trace!( "{}: starting register_relayed_services", &identity );
-
-		// When called from a RegisterRelay message, it's possible that in the mean time
-		// the connection closed. We should immediately return a ConnectionClosed error.
-		//
-		let mut self_addr = match &self.addr
-		{
-			Some( addr ) => addr.clone(),
-
-			None =>
-			{
-				let ctx = ErrorContext
-				{
-					context  : Some( "register_relayed_services".to_string() ),
-					peer_id  : None ,
-					peer_name: None ,
-					sid      : None ,
-					cid      : None ,
-				};
-
-				return Err( ThesRemoteErr::ConnectionClosed{ ctx } )
-			}
-		};
-
-
-		let provider_id = provider.id();
-		let identity2   = identity.clone();
-
-		let listen = async move
-		{
-			// We need to map this to a custom type, since we had to impl Message for it.
-			//
-			let stream = &mut peer_events.map( |evt| Ok( RelayEvent{ id: provider_id, evt } ) );
-
-			// This can fail if:
-			// - channel is full (for now we use unbounded)
-			// - the receiver is dropped. The receiver is our mailbox, so it should never be dropped
-			//   as long as we have an address to it.
-			//
-			// So, I think we can unwrap for now.
-			//
-			self_addr.send_all( stream ).await.expect( "peer send to self" );
-
-			// Same as above.
-			// Normally relays shouldn't just dissappear, without notifying us, but it could
-			// happen for example that the peer already shut down and the above stream was already
-			// finished, we would immediately be here, so we do need to clean up.
-			// Since we are doing multi threading it's possible to receive the peers address,
-			// but it's no longer valid. So send ourselves a message.
-			//
-			let evt = PeerEvent::Closed;
-
-			self_addr.send( RelayEvent{ id: provider_id, evt } ).await.expect( "peer send to self");
-
-			trace!( "{}: Stop listening to relay provider events: peer", &identity2 );
-		};
-
-		// When we need to stop listening, we have to drop this future, because it contains
-		// our address, and we won't be dropped as long as there are adresses around.
-		//
-		let (remote, handle) = listen.remote_handle();
-
-		self.exec.spawn( remote ).map_err( |_| -> ThesRemoteErr
-		{
-			ThesErr::Spawn{ actor: "Stream of events from relay peer".to_string() }.into()
-		})?;
-
-
-		for sid in services
-		{
-			trace!( "{}: Register relaying to: {}, provided by {}", &identity, sid, provider_id );
-
-			debug_assert!
-			(
-				!self.services.contains_key( sid ),
-				"{}: Register Service: Can't register same service twice. sid: {}", self.identify(), &sid ,
-			);
-
-			debug_assert!
-			(
-				!self.relayed.contains_key( sid ),
-				"{}: Register Service: Can't register same service twice. This service is also relayed. sid: {}", self.identify(), &sid ,
-			);
-
-			self.relayed.insert( sid, provider_id );
-		}
-
-		self.relays.insert( provider_id, (provider, handle) );
-
-		Ok(())
-	}
-
 
 
 	// actually send the message accross the wire
@@ -541,7 +386,7 @@ impl Peer
 		{
 			Some (addr) =>
 			{
-				let name = match addr.name()
+				let name = match Address::<Call>::name( addr )
 				{
 					Some( n ) => format!( ", name: {}", n ),
 					None      => "".to_string()            ,
@@ -574,7 +419,7 @@ impl Peer
 		ErrorContext
 		{
 			peer_id  : addr.id().into()         ,
-			peer_name: addr.name().map( |n| n ) ,
+			peer_name: Address::<Call>::name( addr ).map( |n| n ) ,
 			context  : context.into()           ,
 			sid      : sid.into()               ,
 			cid      : cid.into()               ,

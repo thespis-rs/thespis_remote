@@ -7,9 +7,7 @@ fn main()
 {
 	flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
-	rt::init( rt::Config::ThreadPool ).expect( "start threadpool" );
-
-	let mut exec = LocalPool::default();
+	let exec = ThreadPool::new().expect( "create threadpool" );
 	let     ex2  = exec.clone();
 
 
@@ -29,12 +27,12 @@ fn main()
 
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer> = Inbox::new( "server".into()  );
+		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "server".into() ) );
 		let peer_addr              = Addr ::new( mb_peer.sender() );
 
 		// Create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr, socket, 1024 ).expect( "create peer" );
+		let mut peer = Peer::from_async_read( peer_addr, socket, 1024, ex2.clone() ).expect( "create peer" );
 
 
 		// Register Sum with peer as handler for Add and Show
@@ -66,5 +64,5 @@ fn main()
 	// --------------------------------------
 
 
-	exec.run_until( server );
+	block_on( server );
 }

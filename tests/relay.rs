@@ -31,9 +31,9 @@ async fn relay
 {
 	debug!( "start mailbox for relay_to_provider" );
 
-	let (mut provider_addr, provider_evts) = peer_connect( connect, exec.clone(), "relay_to_provider" ).await;
-	let provider_addr2                     = provider_addr.clone();
-	let ex1                                = exec.clone();
+	let (mut provider_addr, _provider_evts) = peer_connect( connect, exec.clone(), "relay_to_provider" ).await;
+	let provider_addr2 = provider_addr.clone();
+	let ex1                                 = exec.clone();
 
 	// Relay part ---------------------
 
@@ -51,14 +51,18 @@ async fn relay
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
 
-		let relayed = if relay_show
+		let rm      = Arc::new( RelayMap::new() );
+		let closure = Box::new( move |_: &ServiceID| Some( Box::new(provider_addr2.clone()) as Box<dyn Relay> ) );
+
+		rm.register_handler( add.clone(), closure.clone() );
+
+		if relay_show
 		{
-			vec![ add, show ]
+			rm.register_handler( show.clone(), closure );
 		}
 
-		else { vec![ add ] };
 
-		peer.register_relayed_services( relayed, provider_addr2, provider_evts ).expect( "register relayed" );
+		peer.register_services( rm );
 
 		debug!( "start mailbox for relay_to_consumer" );
 		mb_peer.start_fut( peer ).await;
@@ -69,12 +73,12 @@ async fn relay
 	let (relay_fut, relay_outcome) = relay.remote_handle();
 	exec.spawn( relay_fut ).expect( "failed to spawn server" );
 
-	// we need to spawn this after peerb, otherwise peerb is not listening yet when we try to connect.
+	// we need to spawn this after this relay, otherwise this relay is not listening yet when we try to connect.
 	//
 	exec.spawn( next ).expect( "Spawn next" );
 
 
-	// If the nodec closes the connection, close our connection to provider.
+	// If the consumer closes the connection, close our connection to provider.
 	//
 	relay_outcome.await;
 	warn!( "relay finished, closing connection" );
@@ -97,7 +101,8 @@ fn relay_once()
 	let (ab, ba) = Endpoint::pair( 64, 64 );
 	let (bc, cb) = Endpoint::pair( 64, 64 );
 
-	let exec = AsyncStd::default();
+	let exec = ThreadPool::new().expect( "create threadpool" );
+	// let exec = AsyncStd::default();
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 	let ex3  = exec.clone();

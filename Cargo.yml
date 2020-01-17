@@ -73,7 +73,7 @@ dependencies:
   futures             : { version: ^0.3, features: [ std, compat ], default-features: false }
   futures_codec_crate : { version: ^0.3, optional: true, package: futures_codec             }
   futures_cbor_codec  : { version: ^0.2, optional: true                                     }
-  pharos              : { version: ^0.4, path: ../../pharos                                 }
+  pharos              : { version: ^0.4                                                     }
   thiserror           : ^1
   thespis             : { path: ../thespis                                                  }
   paste               : ^0.1
@@ -91,10 +91,10 @@ dependencies:
   log                 : ^0.4
   regex               : { version: ^1, features: [ pattern ] }
   once_cell           : ^1
-  byteorder         : { version: ^1                            }
-  rand              : { version: ^0.7, default-features: false }
-
-  tokio-serde-cbor   : { version: ^0.4, optional: true }
+  byteorder           : { version: ^1                            }
+  rand                : { version: ^0.7, default-features: false }
+  parking_lot         : { version: ^0.10 }
+  tokio-serde-cbor    : { version: ^0.4, optional: true }
 
 
 dev-dependencies:

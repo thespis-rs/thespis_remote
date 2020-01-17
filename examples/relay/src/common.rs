@@ -6,7 +6,6 @@ pub mod import
 {
 	pub use
 	{
-		async_runtime as rt,
 		async_std           :: { net::{ TcpListener, TcpStream }, io::{ Read as _, Write as _ }             } ,
 		async_executors     :: { LocalPool, AsyncStd, ThreadPool, JoinHandle, SpawnHandle, LocalSpawnHandle } ,
 		futures_ringbuf     :: { Endpoint                                                                   } ,
@@ -87,16 +86,16 @@ impl Handler< Show > for Sum
 
 
 
-pub async fn peer_connect( socket: TcpStream, exec: &impl Spawn, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+pub async fn peer_connect( socket: TcpStream, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	// Create mailbox for peer
 	//
-	let mb  : Inbox<Peer> = Inbox::new( name.into() );
+	let mb  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
 	let addr              = Addr ::new( mb.sender() );
 
 	// create peer with stream/sink + service map
 	//
-	let mut peer = Peer::from_async_read( addr.clone(), socket, 1024 ).expect( "create peer" );
+	let mut peer = Peer::from_async_read( addr.clone(), socket, 1024, exec.clone() ).expect( "create peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 

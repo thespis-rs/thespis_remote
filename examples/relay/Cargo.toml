@@ -15,9 +15,11 @@ path = "src/relay.rs"
 flexi_logger = "^0.14"
 futures_cbor_codec = "^0.2"
 futures_codec = "^0.3"
+futures_ringbuf = "^0.2"
 hex = "^0.4"
 log = "^0.4"
 once_cell = "^1"
+pharos = "^0.4"
 simple_logger = "^1"
 
 [dependencies.async-std]
@@ -27,11 +29,6 @@ version = "^1"
 [dependencies.async_executors]
 features = ["localpool", "threadpool", "async_std"]
 path = "../../../../async_executors"
-
-[dependencies.async_runtime]
-features = ["threadpool"]
-package = "naja_async_runtime"
-path = "../../../../async_runtime"
 
 [dependencies.byteorder]
 version = "^1.3"
@@ -44,18 +41,11 @@ default-features = false
 features = ["std", "compat"]
 version = "^0.3"
 
-[dependencies.futures_ringbuf]
-path = "../../../../futures_ringbuf"
-
 [dependencies.num-derive]
 version = "^0.3"
 
 [dependencies.num-traits]
 version = "^0.2"
-
-[dependencies.pharos]
-path = "../../../../pharos"
-version = "^0.4"
 
 [dependencies.rand]
 default-features = false
@@ -81,7 +71,7 @@ path = "../../../thespis_impl"
 
 [dependencies.thespis_remote_impl]
 features = ["futures_codec"]
-path = "../../../thespis_remote_impl"
+path = "../../../thespis_remote"
 
 [dependencies.twox-hash]
 version = "^1.1"
@@ -99,17 +89,3 @@ name = "thespis_remote_impl_relay_example"
 readme = "README.md"
 repository = "https://github.com/thespis-rs/thespis_remote_impl"
 version = "0.1.0"
-
-[patch]
-[patch.crates-io]
-[patch.crates-io.futures]
-path = "../../../../RUST/futures-rs/futures"
-version = "^0.3"
-
-[patch.crates-io.futures-core]
-path = "../../../../RUST/futures-rs/futures-core"
-version = "^0.3"
-
-[patch.crates-io.futures-io]
-path = "../../../../RUST/futures-rs/futures-io"
-version = "^0.3"

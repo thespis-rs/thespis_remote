@@ -100,9 +100,9 @@ use
 	// we should not have a leading comma before the next item, but if the comma is after the closing
 	// parenthesis, it will not output a trailing comma, which will be needed to separate from the next item.
 	//
-	super :: { $( $services, )+ Peer                                     } ,
-	$crate:: { *, peer::request_error::RequestError                      } ,
-	std   :: { pin::Pin, collections::HashMap, fmt, any::Any, sync::Once } ,
+	super :: { $( $services, )+ Peer                                              } ,
+	$crate:: { *, peer::request_error::RequestError                               } ,
+	std   :: { pin::Pin, collections::HashMap, fmt, any::Any, sync::{ Arc, Once } } ,
 
 	$crate::external_deps::
 	{
@@ -192,7 +192,7 @@ pub struct Services
 //
 impl fmt::Debug for Services
 {
-	fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
 		let mut width: usize = 0;
 
@@ -403,7 +403,12 @@ impl Services
 			//
 			if peer.send( response ).await.is_err()
 			{
-				error!( "Peer: {}{:?}, processing incoming call: peer to client is closed before we finished sending a response to a request.", peer.id(), peer.name() );
+				error!
+				(
+					"Peer: {}{:?}, processing incoming call: peer to client is closed before we finished sending a response to a request.",
+					peer.id(),
+					Address::<Call>::name( &peer )
+				);
 			}
 
 		}.boxed()
@@ -418,7 +423,7 @@ impl Services
 			(
 				"Peer ({}, {:?}): Processing incoming call: peer to client is closed, but processing request errored on: {}.",
 				peer.id(),
-				peer.name(),
+				Address::<Call>::name( &peer ),
 				&err
 			);
 		}
@@ -429,15 +434,15 @@ impl Services
 
 impl ServiceMap for Services
 {
-	// We need to make a Vec here because the hashmap doesn't have a static lifetime.
+	// We need to make a Vec here because the hashmap.keys() doesn't have a static lifetime.
 	//
-	fn services( &self ) -> Vec<&'static ServiceID>
+	fn services( &self ) -> Vec<ServiceID>
 	{
-		let mut s: Vec<&'static ServiceID> = Vec::with_capacity( self.handlers.len() );
+		let mut s: Vec<ServiceID> = Vec::with_capacity( self.handlers.len() );
 
 		for sid in self.handlers.keys()
 		{
-			s.push( sid );
+			s.push( (*sid).clone() );
 		}
 
 		s
@@ -452,10 +457,8 @@ impl ServiceMap for Services
 	/// - ThesRemoteErr::UnknownService
 	/// - ThesRemoteErr::Deserialize
 	///
-	/// # Panics
-	/// For the moment this can panic if the downcast to Receiver fails. It should never happen unless there
-	/// is a programmer error, but even then, it should be type checked, so for now I have decided to leave
-	/// the expect in there. See if anyone manages to trigger it, we can take it from there.
+	/// TODO: This should never block, so can't we access self.handlers inside the future returned if we
+	///       make it's lifetime '_, then we can make this a normal async method.
 	///
 	//
 	fn send_service( &self, msg: WireFormat, peer: Addr<Peer> )
@@ -649,7 +652,7 @@ impl RemoteAddr
 }
 
 
-
+use std::ops::Deref;
 
 impl<S> Address<S> for RemoteAddr
 
@@ -685,7 +688,7 @@ impl<S> Address<S> for RemoteAddr
 				{
 					context  : Some( "Call remote service".to_string() ) ,
 					peer_id  : self.peer.id().into()                     ,
-					peer_name: self.peer.name()                          ,
+					peer_name: Address::<Call>::name( self.peer.deref() )        ,
 					sid      : <S as Service>::sid().clone().into()      ,
 					cid      : cid.clone().into()                        ,
 				};
@@ -705,7 +708,7 @@ impl<S> Address<S> for RemoteAddr
 				{
 					context  : Some( "Peer stopped before receiving response from remote call".to_string() ) ,
 					peer_id  : self.peer.id().into()                                                         ,
-					peer_name: self.peer.name()                                                              ,
+					peer_name: Address::<Call>::name( self.peer.deref() )                                            ,
 					sid      : <S as Service>::sid().clone().into()                                          ,
 					cid      : cid.clone().into()                                                            ,
 				};
@@ -731,7 +734,7 @@ impl<S> Address<S> for RemoteAddr
 						{
 							context  : Some( "Response to call from remote actor".to_string() ) ,
 							peer_id  : self.peer.id().into()                                    ,
-							peer_name: self.peer.name()                                         ,
+							peer_name: Address::<Call>::name( self.peer.deref() )                       ,
 							sid      : <S as Service>::sid().clone().into()                     ,
 							cid      : cid.clone().into()                                       ,
 						};
@@ -750,7 +753,7 @@ impl<S> Address<S> for RemoteAddr
 				{
 					context  : Some( "Remote could not process our message".to_string() ) ,
 					peer_id  : self.peer.id().into()                                      ,
-					peer_name: self.peer.name()                                           ,
+					peer_name: Address::<Call>::name( self.peer.deref() )                         ,
 					sid      : <S as Service>::sid().clone().into()                       ,
 					cid      : cid.into()                                                 ,
 				};
@@ -777,6 +780,15 @@ impl<S> Address<S> for RemoteAddr
 		// TODO: self.peer.id()? and name?
 		//
 		< Addr<Peer> as Address<WireFormat> >::actor_id( &self.peer )
+	}
+
+	/// Unique id of the peer this sends over
+	//
+	fn name( &self ) -> Option<Arc<str>>
+	{
+		// TODO: self.peer.id()? and name?
+		//
+		< Addr<Peer> as Address<WireFormat> >::name( &self.peer )
 	}
 }
 
@@ -811,7 +823,7 @@ impl<S> Sink<S> for RemoteAddr
 				{
 					context  : Some( "Send to remote service".to_string() ) ,
 					peer_id  : self.peer.id().into()                        ,
-					peer_name: self.peer.name()                             ,
+					peer_name: Address::<Call>::name( self.peer.deref() )           ,
 					sid      : <S as Service>::sid().clone().into()         ,
 					cid      : None                                         ,
 				};
