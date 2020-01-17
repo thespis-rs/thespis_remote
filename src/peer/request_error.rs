@@ -122,6 +122,7 @@ impl Handler<RequestError> for Peer
 
 
 			  ThesRemoteErr::RelayGone  { ctx, .. }
+			| ThesRemoteErr::NoHandler  { ctx     }
 			| ThesRemoteErr::HandlerDead{ ctx     } =>
 			{
 				// Report to remote, we don't close the connection because we might expose other

@@ -26,19 +26,21 @@
 
     mod error             ;
 pub mod peer              ;
-pub mod wire_format       ;
+    mod relay_map         ;
     mod service_map_macro ;
     mod service_map       ;
-    mod relay_map         ;
+    mod service_handler   ;
+pub mod wire_format       ;
 
 pub use
 {
 	error             :: * ,
 	peer              :: * ,
-	wire_format       :: * ,
+	relay_map         :: * ,
 	service_map       :: * ,
 	service_map_macro :: * ,
-	relay_map         :: * ,
+	service_handler   :: * ,
+	wire_format       :: * ,
 };
 
 

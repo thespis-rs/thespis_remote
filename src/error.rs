@@ -104,6 +104,8 @@ pub enum ThesRemoteErr
 	},
 
 	/// No handler has been set for this service.
+	/// TODO: prevent this from happening by running a debug_assert in `services` that guarantees that a handler
+	/// is set for every sid.
 	//
 	#[ error( "No handler has been set for this service{ctx}" ) ]
 	//
@@ -114,7 +116,7 @@ pub enum ThesRemoteErr
 		ctx: ErrorContext
 	},
 
-	/// Cannot deliver message to unknown service.
+	/// Cannot deliver because the handling actor is no longer running.
 	//
 	#[ error( "Cannot deliver because the handling actor is no longer running.{ctx}" ) ]
 	//

@@ -51,14 +51,16 @@ async fn relay
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
 
-		let rm      = Arc::new( RelayMap::new() );
-		let closure = Box::new( move |_: &ServiceID| Some( Box::new(provider_addr2.clone()) as Box<dyn Relay> ) );
+		let rm   = Arc::new( RelayMap::new() );
 
-		rm.register_handler( add.clone(), closure.clone() );
+		let h1: Box<dyn Relay> = Box::new( provider_addr2.clone() );
+		let h2: Box<dyn Relay> = Box::new( provider_addr2         );
+
+		rm.register_handler( add.clone(), ServiceHandler::from( h1 ) );
 
 		if relay_show
 		{
-			rm.register_handler( show.clone(), closure );
+			rm.register_handler( show.clone(), ServiceHandler::from( h2 ) );
 		}
 
 

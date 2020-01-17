@@ -7,12 +7,10 @@
 
 
 - allow both closures and fixed addresses, in both relay_map and service_map_macro.
+
 - evaluate all places where peer can block while processing messages and document/test.
 - TODO's and FIXME's
 - add tests and comments for everything (especially error handling.)
-- do not depend on any thespis implementation, only on interface, so user can
-  choose implementation (only matters for our public interface).
-- take a closure in register_relayed_services so people can implement load balancing.
 - get rid of Send and Sync where possible
 - supervised actors and automatic reconnect?
 
@@ -22,3 +20,6 @@
 - user guide
 
 - find a way to separate logs per task
+- publish async_executors
+- abstract channels (can pharos benefit as well)
+- cleanup thespis and thespis_impl
