@@ -185,8 +185,8 @@ pub struct Services
 /// ```ignore
 /// remotes::Services
 /// {
-///    Add  - sid: c5c22cab4f2d334e0000000000000000 - handler (actor_id): 0
-///    Show - sid: 0617b1cfb55b99700000000000000000 - handler (actor_id): 0
+///    Add  - sid: c5c22cab4f2d334e0000000000000000 - handler id: 0
+///    Show - sid: 0617b1cfb55b99700000000000000000 - handler id: 0
 /// }
 /// ```
 //
@@ -210,7 +210,7 @@ impl fmt::Debug for Services
 			(
 				f,
 
-				"\t{:width$} - sid: 0x{:02x} - handler (actor_id): {}\n",
+				"\t{:width$} - sid: 0x{:02x} - handler id: {}\n",
 
 				stringify!( $services ),
 				sid,
@@ -220,7 +220,7 @@ impl fmt::Debug for Services
 					// TODO, don't expect?
 					//
 					let handler: &Receiver<$services> = h.downcast_ref().expect( "downcast receiver in Debug for Services" );
-					format!( "{:?}", handler.actor_id() )
+					format!( "{:?}", handler.id() )
 				}
 
 				else
@@ -406,8 +406,8 @@ impl Services
 				error!
 				(
 					"Peer: {}{:?}, processing incoming call: peer to client is closed before we finished sending a response to a request.",
-					peer.id(),
-					Address::<Call>::name( &peer )
+					peer.id()   ,
+					peer.name() ,
 				);
 			}
 
@@ -422,8 +422,8 @@ impl Services
 			error!
 			(
 				"Peer ({}, {:?}): Processing incoming call: peer to client is closed, but processing request errored on: {}.",
-				peer.id(),
-				Address::<Call>::name( &peer ),
+				peer.id()   ,
+				peer.name() ,
 				&err
 			);
 		}
@@ -652,7 +652,6 @@ impl RemoteAddr
 }
 
 
-use std::ops::Deref;
 
 impl<S> Address<S> for RemoteAddr
 
@@ -688,7 +687,7 @@ impl<S> Address<S> for RemoteAddr
 				{
 					context  : Some( "Call remote service".to_string() ) ,
 					peer_id  : self.peer.id().into()                     ,
-					peer_name: Address::<Call>::name( self.peer.deref() )        ,
+					peer_name: self.peer.name()                          ,
 					sid      : <S as Service>::sid().clone().into()      ,
 					cid      : cid.clone().into()                        ,
 				};
@@ -708,7 +707,7 @@ impl<S> Address<S> for RemoteAddr
 				{
 					context  : Some( "Peer stopped before receiving response from remote call".to_string() ) ,
 					peer_id  : self.peer.id().into()                                                         ,
-					peer_name: Address::<Call>::name( self.peer.deref() )                                            ,
+					peer_name: self.peer.name()                                                              ,
 					sid      : <S as Service>::sid().clone().into()                                          ,
 					cid      : cid.clone().into()                                                            ,
 				};
@@ -734,7 +733,7 @@ impl<S> Address<S> for RemoteAddr
 						{
 							context  : Some( "Response to call from remote actor".to_string() ) ,
 							peer_id  : self.peer.id().into()                                    ,
-							peer_name: Address::<Call>::name( self.peer.deref() )                       ,
+							peer_name: self.peer.name()                                         ,
 							sid      : <S as Service>::sid().clone().into()                     ,
 							cid      : cid.clone().into()                                       ,
 						};
@@ -753,7 +752,7 @@ impl<S> Address<S> for RemoteAddr
 				{
 					context  : Some( "Remote could not process our message".to_string() ) ,
 					peer_id  : self.peer.id().into()                                      ,
-					peer_name: Address::<Call>::name( self.peer.deref() )                         ,
+					peer_name: self.peer.name()                                           ,
 					sid      : <S as Service>::sid().clone().into()                       ,
 					cid      : cid.into()                                                 ,
 				};
@@ -770,25 +769,6 @@ impl<S> Address<S> for RemoteAddr
 	fn clone_box( &self ) -> BoxAddress<S, ThesRemoteErr>
 	{
 		Box::new( Self { peer: self.peer.clone() } )
-	}
-
-
-	/// Unique id of the peer this sends over
-	//
-	fn actor_id( &self ) -> usize
-	{
-		// TODO: self.peer.id()? and name?
-		//
-		< Addr<Peer> as Address<WireFormat> >::actor_id( &self.peer )
-	}
-
-	/// Unique id of the peer this sends over
-	//
-	fn name( &self ) -> Option<Arc<str>>
-	{
-		// TODO: self.peer.id()? and name?
-		//
-		< Addr<Peer> as Address<WireFormat> >::name( &self.peer )
 	}
 }
 
@@ -807,7 +787,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		< Addr<Peer> as Sink<WireFormat> >::poll_ready( self.peer.as_mut(), cx )
+		Sink::<WireFormat>::poll_ready( self.peer.as_mut(), cx )
 
 			.map_err( Into::into )
 	}
@@ -815,7 +795,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
-		< Addr<Peer> as Sink<WireFormat> >::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? )
+		Sink::<WireFormat>::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? )
 
 			.map_err( |_|
 			{
@@ -823,7 +803,7 @@ impl<S> Sink<S> for RemoteAddr
 				{
 					context  : Some( "Send to remote service".to_string() ) ,
 					peer_id  : self.peer.id().into()                        ,
-					peer_name: Address::<Call>::name( self.peer.deref() )           ,
+					peer_name: self.peer.name()                             ,
 					sid      : <S as Service>::sid().clone().into()         ,
 					cid      : None                                         ,
 				};
@@ -835,7 +815,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		< Addr<Peer> as Sink<WireFormat> >::poll_flush( self.peer.as_mut(), cx )
+		Sink::<WireFormat>::poll_flush( self.peer.as_mut(), cx )
 
 			.map_err( Into::into )
 	}
@@ -850,5 +830,21 @@ impl<S> Sink<S> for RemoteAddr
 }
 
 
+impl Identify for RemoteAddr
+{
+	/// Unique id of the peer this sends over
+	//
+	fn id( &self ) -> usize
+	{
+		self.peer.id()
+	}
+
+	/// Unique id of the peer this sends over
+	//
+	fn name( &self ) -> Option<Arc<str>>
+	{
+		self.peer.name()
+	}
+}
 
 }}} // End of macro

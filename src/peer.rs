@@ -140,7 +140,7 @@ impl Peer
 		-> Result< Self, ThesRemoteErr >
 
 	{
-		trace!( "{}: Create peer", addr.identity() );
+		trace!( "{}: Create peer", &addr );
 
 		// Hook up the incoming stream to our address.
 		//
@@ -158,11 +158,11 @@ impl Peer
 			//
 			while let Some(msg) = incoming.next().await
 			{
-				trace!( "Peer ({}): incoming message.", addr2.identity() );
+				trace!( "{}: incoming message.", &addr2 );
 				addr2.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" );
 			}
 
-			trace!( "{}:  incoming stream end, closing out.", addr2.identity() );
+			trace!( "{}:  incoming stream end, closing out.", &addr2 );
 
 			// Same as above.
 			//
@@ -384,18 +384,8 @@ impl Peer
 	{
 		match &self.addr
 		{
-			Some (addr) =>
-			{
-				let name = match Address::<Call>::name( addr )
-				{
-					Some( n ) => format!( ", name: {}", n ),
-					None      => "".to_string()            ,
-				};
-
-				format!( "Peer (actor_id: {}{})",  addr.id(), name )
-			}
-
-			None => "Peer (shutting down)".into(),
+			Some (addr) => format!( "{}", addr )         ,
+			None        => "Peer (shutting down)".into() ,
 		}
 	}
 
@@ -419,7 +409,7 @@ impl Peer
 		ErrorContext
 		{
 			peer_id  : addr.id().into()         ,
-			peer_name: Address::<Call>::name( addr ).map( |n| n ) ,
+			peer_name: addr.name()              ,
 			context  : context.into()           ,
 			sid      : sid.into()               ,
 			cid      : cid.into()               ,

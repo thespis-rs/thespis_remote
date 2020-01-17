@@ -1,12 +1,11 @@
 use crate :: { import::*, *, peer::request_error::RequestError };
-use std::ops::Deref;
 
 
 /// Convenience trait specifying that some address can deliver both WireFormat and peer::Call messages.
 //
-pub trait Relay: Address<WireFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Send {}
+pub trait Relay: Address<WireFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Identify + Send {}
 
-impl<T> Relay for T where T: Address<WireFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Send {}
+impl<T> Relay for T where T: Address<WireFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Identify + Send {}
 
 
 /// Register services to be relayed to other backend providers. The difference with the `service_map` macro, which is
@@ -53,7 +52,7 @@ impl RelayMap
 			(
 				"Peer ({}, {:?}): Processing incoming call: peer to client is closed, but processing request errored on: {}.",
 				peer.id(),
-				Address::<WireFormat>::name( &peer ),
+				peer.name(),
 				&err
 			);
 		}
@@ -145,12 +144,7 @@ impl ServiceMap for RelayMap
 				{
 					let ctx = Peer::err_ctx( &peer, sid, cid, "Process incoming Call to relay".to_string() );
 
-					let err = ThesRemoteErr::RelayGone
-					{
-						ctx                          ,
-						relay_id  : Address::<Call>::actor_id( relay.deref() ),
-						relay_name: Address::<Call>::name    ( relay.deref() ),
-					};
+					let err = ThesRemoteErr::RelayGone{ ctx, relay_id: relay.id(), relay_name: relay.name() };
 
 					// If we are no longer around, just log the error.
 					//
@@ -222,12 +216,9 @@ impl ServiceMap for RelayMap
 					{
 						let ctx = Peer::err_ctx( &peer, sid, cid, "Process incoming Call to relay".to_string() );
 
-						let err = RequestError::from( ThesRemoteErr::RelayGone
-						{
-							ctx                                                   ,
-							relay_id  : Address::<Call>::actor_id( relay.deref() ),
-							relay_name: Address::<Call>::name    ( relay.deref() ),
-						});
+						let err = ThesRemoteErr::RelayGone{ ctx, relay_id: relay.id(), relay_name: relay.name() };
+						let err = RequestError::from( err );
+
 
 						if peer.send( err ).await.is_err()
 						{
@@ -245,12 +236,8 @@ impl ServiceMap for RelayMap
 				{
 					let ctx = Peer::err_ctx( &peer, sid, cid, "Process incoming Call to relay".to_string() );
 
-					let err = RequestError::from( ThesRemoteErr::RelayGone
-					{
-						ctx                                                   ,
-						relay_id  : Address::<Call>::actor_id( relay.deref() ),
-						relay_name: Address::<Call>::name    ( relay.deref() ),
-					});
+					let err = ThesRemoteErr::RelayGone{ ctx, relay_id: relay.id(), relay_name: relay.name() };
+					let err = RequestError::from( err );
 
 					if peer.send( err ).await.is_err()
 					{

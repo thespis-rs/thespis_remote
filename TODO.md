@@ -6,8 +6,6 @@
  we have orphaned tasks that will keep running and keep processing.
 
 
-- abstract out identify trait
-- clean up log statements as to no longer need to manually insert both id and name.
 - allow both closures and fixed addresses, in both relay_map and service_map_macro.
 - evaluate all places where peer can block while processing messages and document/test.
 - TODO's and FIXME's

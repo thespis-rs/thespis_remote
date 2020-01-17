@@ -128,13 +128,13 @@ fn debug()
 	// All tests from the same file seem to run in the same process, so sometimes
 	// if the test for clone has run first, the ID will be 1.
 	//
-	let id = < Addr<Sum> as Address<Add> >::actor_id( &addr_handler );
+	let id = addr_handler.id();
 
 	let txt = format!
 ("remotes::Services
 {{
-	Add  - sid: 0xbcc09d3812378e171ad366d75f687757 - handler (actor_id): {:?}
-	Show - sid: 0xbcc09d3812378e17e1a1e89b512c025a - handler (actor_id): {:?}
+	Add  - sid: 0xbcc09d3812378e171ad366d75f687757 - handler id: {:?}
+	Show - sid: 0xbcc09d3812378e17e1a1e89b512c025a - handler id: {:?}
 }}",
 &id,
 &id,
