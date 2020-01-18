@@ -14,9 +14,10 @@
 - Send, Call and Broadcast?
 
 - TODO's and FIXME's
+- supervised actors and automatic reconnect? (resilliance, start a new actor or reconnect to a backend and try again before reporting error to client?)
 - get rid of Send and Sync where possible
 - add tests and comments for everything (especially error handling.)
-- supervised actors and automatic reconnect? (resilliance, start a new actor or reconnect to a backend and try again before reporting error to client?)
+- fuzz
 
 - fix examples
 - verify stability of UniqueID and generate one from a different programming language to be sure.

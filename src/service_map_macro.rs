@@ -100,9 +100,9 @@ use
 	// we should not have a leading comma before the next item, but if the comma is after the closing
 	// parenthesis, it will not output a trailing comma, which will be needed to separate from the next item.
 	//
-	super :: { $( $services, )+ Peer                                              } ,
-	$crate:: { *, peer::request_error::RequestError                               } ,
-	std   :: { pin::Pin, collections::HashMap, fmt, any::Any, sync::{ Arc, Once } } ,
+	super :: { $( $services, )+ Peer                                                          } ,
+	$crate:: { *, peer::request_error::RequestError                                           } ,
+	std   :: { pin::Pin, collections::HashMap, fmt, any::Any, sync::{ Arc, Once }, ops::Deref } ,
 
 	$crate::external_deps::
 	{
@@ -113,6 +113,7 @@ use
 		serde_cbor      :: { self, from_slice as des                      } ,
 		serde           :: { Serialize, Deserialize, de::DeserializeOwned } ,
 		log             :: { error                                        } ,
+		parking_lot     :: { RwLock                                       } ,
 		paste,
 	},
 };
@@ -173,7 +174,7 @@ pub struct Services
 {
 	// The addresses to the actors that handle incoming messages.
 	//
-	handlers: HashMap< &'static ServiceID, Box< dyn Any + Send + Sync > >,
+	handlers: RwLock<HashMap< &'static ServiceID, Box< dyn Any + Send + Sync > >>,
 }
 
 
@@ -195,6 +196,7 @@ impl fmt::Debug for Services
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
 		let mut width: usize = 0;
+		let handlers = self.handlers.read();
 
 		$(
 			width = std::cmp::max( width, stringify!( $services ).len() );
@@ -215,7 +217,8 @@ impl fmt::Debug for Services
 				stringify!( $services ),
 				sid,
 
-				if let Some(h) = self.handlers.get( sid )
+
+				if let Some(h) = handlers.get( sid )
 				{
 					// TODO, don't expect?
 					//
@@ -246,8 +249,10 @@ impl Clone for Services
 	{
 		let mut map: HashMap<&'static ServiceID, Box< dyn Any + Send + Sync >> = HashMap::new();
 
+		let handlers = self.handlers.read();
 
-		for (k, v) in &self.handlers
+
+		for (k, v) in handlers.deref()
 		{
 			match k
 			{
@@ -271,7 +276,7 @@ impl Clone for Services
 
 		}
 
-		Self { handlers: map }
+		Self { handlers: RwLock::new( map ) }
 	}
 }
 
@@ -295,7 +300,7 @@ impl Services
 			}
 		)+
 
-		Self{ handlers: HashMap::new() }
+		Self{ handlers: RwLock::new( HashMap::new() ) }
 	}
 
 
@@ -303,12 +308,12 @@ impl Services
 	/// Calling this method twice for the same type will override the first handler.
 	/// TODO: avoid obliging the user to make a receiver, just make it here and avoid double boxing if possible.
 	//
-	pub fn register_handler<S>( &mut self, handler: Receiver<S> )
+	pub fn register_handler<S>( &self, handler: Receiver<S> )
 
 		where  S                    : Service,
 		      <S as Message>::Return: Serialize + DeserializeOwned,
 	{
-		self.handlers.insert( <S as Service>::sid(), Box::new( handler ) );
+		self.handlers.write().insert( <S as Service>::sid(), Box::new( handler ) );
 	}
 
 
@@ -439,9 +444,11 @@ impl ServiceMap for Services
 	//
 	fn services( &self ) -> Vec<ServiceID>
 	{
-		let mut s: Vec<ServiceID> = Vec::with_capacity( self.handlers.len() );
+		let handlers = self.handlers.read();
 
-		for sid in self.handlers.keys()
+		let mut s: Vec<ServiceID> = Vec::with_capacity( handlers.len() );
+
+		for sid in handlers.keys()
 		{
 			s.push( (*sid).clone() );
 		}
@@ -467,11 +474,12 @@ impl ServiceMap for Services
 		-> Return<'static, ()>
 
 	{
-		let sid = msg.service();
+		let sid      = msg.service();
+		let handlers = self.handlers.read();
 
 		// This sid should be in our map.
 		//
-		let receiver = match self.handlers.get( &sid )
+		let receiver = match handlers.get( &sid )
 		{
 			Some(x) => x,
 
@@ -567,9 +575,10 @@ impl ServiceMap for Services
 
 	) -> Return<'static, ()>
 	{
-		let sid = msg.service();
+		let sid      = msg.service();
+		let handlers = self.handlers.read();
 
-		let receiver = match self.handlers.get( &sid )
+		let receiver = match handlers.get( &sid )
 		{
 			Some(x) => x,
 

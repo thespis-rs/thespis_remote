@@ -85,7 +85,7 @@ fn remote()
 
 		// Create a service map
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
@@ -138,10 +138,11 @@ pub struct Parallel
 
 impl Handler< Show > for Parallel
 {
-	fn handle( &mut self, _: Show ) -> Return<u64> { Box::pin( async move
+	fn handle( &mut self, _: Show ) -> Return<i64> { async move
 	{
 		self.sum.call( Show ).await.expect( "call sum" )
-	})}
+
+	}.boxed() }
 }
 
 
@@ -194,7 +195,7 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = parallel::Services::new();
+		let sm = parallel::Services::new();
 		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 		peer.register_services( Arc::new( sm ) );
@@ -221,7 +222,7 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
 
 		peer.register_services( Arc::new( sm ) );

@@ -32,46 +32,46 @@ pub struct CloseConnection
 
 impl Message for CloseConnection { type Return = (); }
 
+
+
 impl Handler<CloseConnection> for Peer
 {
-	fn handle( &mut self, msg: CloseConnection ) -> Return<'_, ()>
+	fn handle( &mut self, msg: CloseConnection ) -> Return<'_, ()> { async move
 	{
-		Box::pin( async move
+		trace!( "{}: CloseConnection, by remote: {}", self.identify(), msg.remote );
+
+
+		if msg.remote { self.pharos.send( PeerEvent::ClosedByRemote ).await.expect( "pharos not closed" ) }
+		else          { self.pharos.send( PeerEvent::Closed         ).await.expect( "pharos not closed" ) }
+
+
+		// Try to close the connection properly
+		//
+		match &mut self.outgoing
 		{
-			trace!( "{}: CloseConnection, by remote: {}", self.identify(), msg.remote );
-
-
-			if msg.remote { self.pharos.send( PeerEvent::ClosedByRemote ).await.expect( "pharos not closed" ) }
-			else          { self.pharos.send( PeerEvent::Closed         ).await.expect( "pharos not closed" ) }
-
-
-			// Try to close the connection properly
-			//
-			match &mut self.outgoing
+			Some( out ) =>
 			{
-				Some( out ) =>
-				{
-					out.close().await.expect( "CloseConnection: close sink for peer" );
-					self.outgoing = None;
-				},
+				out.close().await.expect( "CloseConnection: close sink for peer" );
+				self.outgoing = None;
+			},
 
-				None => {},
-			};
+			None => {},
+		};
 
 
-			// try to drop close our mailbox and drop ourselves
-			//
-			drop( self.addr.take() );
-			// self.addr          = None;
-			self.listen_handle = None;
+		// try to drop close our mailbox and drop ourselves
+		//
+		drop( self.addr.take() );
+		// self.addr          = None;
+		self.listen_handle = None;
 
 
-			// Also clear everything else, because services might have our address, because they
-			// want to send stuff over the network, so if we keep them alive, they will keep us
-			// alive. This breaks that cycle.
-			//
-			self.services .clear();
-			self.responses.clear();
-		})
-	}
+		// Also clear everything else, because services might have our address, because they
+		// want to send stuff over the network, so if we keep them alive, they will keep us
+		// alive. This breaks that cycle.
+		//
+		self.services .clear();
+		self.responses.clear();
+
+	}.boxed() }
 }

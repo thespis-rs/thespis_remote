@@ -4,13 +4,15 @@ use serde:: { Serialize, Deserialize };
 
 
 
-#[ derive( Actor ) ] pub struct Sum( pub u64 );
+#[ derive( Actor ) ] pub struct Sum( pub i64 );
 
-#[ derive( Serialize, Deserialize, Debug ) ] pub struct Add( pub u64 );
+#[ derive( Serialize, Deserialize, Debug ) ] pub struct Add( pub i64 );
+#[ derive( Serialize, Deserialize, Debug ) ] pub struct Sub( pub i64 );
 #[ derive( Serialize, Deserialize, Debug ) ] pub struct Show;
 
 impl Message for Add  { type Return = ();  }
-impl Message for Show { type Return = u64; }
+impl Message for Sub  { type Return = ();  }
+impl Message for Show { type Return = i64; }
 
 
 
@@ -27,9 +29,22 @@ impl Handler< Add > for Sum
 
 
 
+impl Handler< Sub > for Sum
+{
+	fn handle( &mut self, msg: Sub ) -> Return<()> { Box::pin( async move
+	{
+		trace!( "called sum with: {:?}", msg );
+
+		self.0 -= msg.0;
+
+	})}
+}
+
+
+
 impl Handler< Show > for Sum
 {
-	fn handle( &mut self, _msg: Show ) -> Return<u64> { Box::pin( async move
+	fn handle( &mut self, _msg: Show ) -> Return<i64> { Box::pin( async move
 	{
 		trace!( "called sum with: Show" );
 

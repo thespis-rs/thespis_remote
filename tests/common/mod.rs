@@ -109,7 +109,7 @@ pub fn provider( name: Option<Arc<str>>, exec: impl Spawn + Clone + Send + Sync 
 
 	// register Sum with peer as handler for Add and Show
 	//
-	let mut sm = remotes::Services::new();
+	let sm = remotes::Services::new();
 
 	sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 	sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
@@ -301,7 +301,7 @@ pub async fn relay_closure
 
 service_map!
 (
-	namespace: remotes   ;
-	services : Add, Show ;
+	namespace: remotes        ;
+	services : Add, Sub, Show ;
 );
 

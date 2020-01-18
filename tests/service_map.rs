@@ -8,6 +8,7 @@
 // - ✔ Test clone.
 // - ✔ Test Debug.
 // - Test ServiceID::Debug
+// - Test adding services at runtime.
 //
 
 
@@ -90,7 +91,7 @@ fn clone()
 
 	// Create a service map
 	//
-	let mut sm = remotes::Services::new();
+	let sm = remotes::Services::new();
 
 	// Register our handlers
 	//
@@ -120,7 +121,7 @@ fn debug()
 	//
 	let addr_handler = Addr::try_from( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
-	let mut sm = remotes::Services::new();
+	let sm = remotes::Services::new();
 
 	sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 	sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
@@ -134,6 +135,7 @@ fn debug()
 ("remotes::Services
 {{
 	Add  - sid: 0xbcc09d3812378e171ad366d75f687757 - handler id: {:?}
+	Sub  - sid: 0xbcc09d3812378e179c6a3582c2729a7c - handler id: none
 	Show - sid: 0xbcc09d3812378e17e1a1e89b512c025a - handler id: {:?}
 }}",
 &id,

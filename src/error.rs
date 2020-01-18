@@ -104,8 +104,7 @@ pub enum ThesRemoteErr
 	},
 
 	/// No handler has been set for this service.
-	/// TODO: prevent this from happening by running a debug_assert in `services` that guarantees that a handler
-	/// is set for every sid.
+	/// TODO: in which cases can this happen, since servicemap doesn't advertise services unless it has a handler.
 	//
 	#[ error( "No handler has been set for this service{ctx}" ) ]
 	//

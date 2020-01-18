@@ -46,7 +46,7 @@ fn relay_once()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 
 		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
@@ -137,7 +137,7 @@ fn relay_multi()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 
 		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
@@ -212,7 +212,7 @@ fn relay_unknown_service()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 
 		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
 

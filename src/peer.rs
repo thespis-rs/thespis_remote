@@ -4,17 +4,21 @@
 use crate :: { import::*, * };
 
 
+    mod add_services      ;
     mod close_connection  ;
     mod connection_error  ;
     mod peer_event        ;
     mod call              ;
     mod incoming          ;
+    mod remove_services   ;
 pub mod request_error     ;
 
+pub use add_services      :: AddServices      ;
 pub use call              :: Call             ;
 pub use close_connection  :: CloseConnection  ;
 pub use connection_error  :: ConnectionError  ;
 pub use peer_event        :: PeerEvent        ;
+pub use remove_services   :: RemoveServices   ;
     use incoming          :: Incoming         ;
     use request_error     :: RequestError     ;
 
@@ -42,7 +46,58 @@ impl<T> BoundsOut for T
 
 
 
-/// Represents a connection to another process over which you can send actor messages.
+/// Represents a connection to another process over which you can send/receive actor messages.
+///
+/// ### Defining which services to expose.
+///
+/// Peer can make use of any type that implements [ServiceMap]. The ServiceMap knows which services
+/// it provides and how to deliver messages to the handling actors. You could implement ServiceMap
+/// on your own types, but thespis_remote provides you with 2 implementations out of the box. One
+/// for delivery to actors in the local process (requires the macro `service_map!`) and one for
+/// relaying messages to other processes.
+///
+/// The general workflow requires you to specify to the ServiceMap which actors/connections handle
+/// certain services, pass it to the peer in `register_services` and the lauch the mailbox for the
+/// peer.
+///
+/// Runtime modification is provided. You can tell the ServiceMap to start delivering to another
+/// actor/connection, and you can tell the peer to start/stop exposing a certain service. Once
+/// the mailbox for the peer has been started, you can only communicate to it by means of messages,
+/// so the messages `AddServices` and `RemoveServices` can be used to convey runtime instructions.
+///
+/// In principle you setup the peer with at least one ServiceMap before starting it, that way it
+/// is fully operational before it receives the first incoming message. `service_map!` let's you
+/// set a `dyn Address<S>` as handler, whereas `RelayMap` can accept both an address that receives
+/// both `WireFormat` (for Sends) and `peer::Call` for calls, but also a closure that let's you
+/// provide such address on a per message basis, which allows you to implement load balancing
+/// to several backends providing the same service. Neither of these maps allow you to "unset"
+/// a handler, only replace it with a new one. The point is a difference in error messages. It
+/// is part of the contract of a ServiceMap that it knows how to deliver messages of all types
+/// for which it advertised earlier. Thus if no handler can be found, the remote will receive
+/// a `ConnectionError::InternalServer`. When a service isn't present for the peer however
+/// (such as after removing it with `RemoveServices`) the remote will receive a
+/// `ConnectionError::UnknownService`.
+///
+///  You can check the documentation of both [`RelayMap`] and [`service_map!`] for more information
+///  on their usage.
+///
+///  You can supply several service maps with different services to Peer. They will only advertise
+///  services for which you have actually set handlers. When you later want to add services with
+///  `AddServices`, you can pass in the same service map if you want, as long as you have added
+///  handlers for all the services you wish to add. When seeding before starting the peer, only
+///  one service map may claim to provide a given service. Peer only delivers the message to exactly
+///  one handler.
+///
+///  ### Sending messages to remote processes.
+///
+///  As far as the Peer type is concerned sending actor messages to a remote is relatively simple.
+///  Once you have serialized a message as `WireFormat`, sending that directly to `Peer` will be considered
+///  a Send to a remote actor and it will just be sent out. For a Call, there is the Call message type,
+///  which will resolve to a channel you can await in order to get your response from the remote process.
+///  The `service_map!` macro provides a `RemoteAddress` type which acts much the same as a local actor address
+///  and will accept messages of all services that are defined in the service map.
+///
+///
 ///
 /// ### Closing the connection
 ///
