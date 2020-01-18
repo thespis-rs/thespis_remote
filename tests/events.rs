@@ -59,7 +59,7 @@ fn close_connection()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
 
 		// Close the connection and check the event
 		//
@@ -116,7 +116,7 @@ fn close_connection_call()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
 
 		// Close the connection and check the event
 		//
@@ -185,7 +185,7 @@ fn header_unknown_service_error()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -262,7 +262,7 @@ fn header_deserialize()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" ).await;
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -356,7 +356,7 @@ fn sm_deserialize_error()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts) = peer_connect( client, ex2.clone(), "nodeb_to_nodea" ).await;
+		let (mut peera, mut peera_evts) = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
 
 		// Create some random data that shouldn't deserialize
 		//

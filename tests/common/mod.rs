@@ -47,7 +47,7 @@ pub mod import
 pub use actors::*;
 
 
-pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str )
+pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: impl Spawn + Clone + Send + Sync + 'static, name: &str )
 
 	-> (Addr<Peer>, Events<PeerEvent>, RemoteHandle<()>)
 {
@@ -76,7 +76,7 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 
 
 
-pub async fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+pub fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + Sync + 'static, name: &str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	// Create mailbox for peer
 	//
@@ -112,7 +112,7 @@ pub async fn relay
 {
 	debug!( "start mailbox for relay_to_provider" );
 
-	let (mut provider_addr, _provider_evts) = peer_connect( connect, exec.clone(), "relay_to_provider" ).await;
+	let (mut provider_addr, _provider_evts) = peer_connect( connect, exec.clone(), "relay_to_provider" );
 	let provider_addr2                      = provider_addr.clone();
 	let ex1                                 = exec.clone();
 

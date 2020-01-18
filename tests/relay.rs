@@ -73,7 +73,7 @@ fn relay_once()
 	{
 		debug!( "start mailbox for consumer_to_relay" );
 
-		let (mut to_relay, _)  = peer_connect( cb, ex2.clone(), "consumer_to_relay" ).await;
+		let (mut to_relay, _)  = peer_connect( cb, ex2.clone(), "consumer_to_relay" );
 
 		// Call the service and receive the response
 		//
@@ -159,7 +159,7 @@ fn relay_multi()
 
 	let consumer = async move
 	{
-		let (mut relay, _)  = peer_connect( fe, ex2.clone(), "consumer_to_relay" ).await;
+		let (mut relay, _)  = peer_connect( fe, ex2.clone(), "consumer_to_relay" );
 
 		// Call the service and receive the response
 		//
@@ -233,7 +233,7 @@ fn relay_unknown_service()
 
 	let consumer = async move
 	{
-		let (mut relay, _relay_evts) = peer_connect( cb, ex2.clone(), "consumer_to_relay" ).await;
+		let (mut relay, _relay_evts) = peer_connect( cb, ex2.clone(), "consumer_to_relay" );
 
 		// Create some random data that shouldn't deserialize
 		//

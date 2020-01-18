@@ -55,7 +55,7 @@ fn remote()
 
 	let peerb = async move
 	{
-		let (mut peera, _)  = peer_connect( client, ex2, "peer_b_to_peera" ).await;
+		let (mut peera, _)  = peer_connect( client, ex2, "peer_b_to_peera" );
 
 		// Call the service and receive the response
 		//
@@ -216,7 +216,7 @@ fn call_after_close_connection()
 
 	let nodeb = async move
 	{
-		let (peera, mut peera_evts) = peer_connect( client, ex1, "nodeb_to_node_a" ).await;
+		let (peera, mut peera_evts) = peer_connect( client, ex1, "nodeb_to_node_a" );
 
 		// Call the service and receive the response
 		//
