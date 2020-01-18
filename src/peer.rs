@@ -106,7 +106,7 @@ pub struct Peer
 	// to `Servicemap::call_service`. TODO: In principle we should be generic over recipient type, but for now
 	// I have put ThesErr, because it's getting to complex.
 	//
-	services      : HashMap< ServiceID, Arc<dyn ServiceMap + Send + Sync > >,
+	services      : HashMap< ServiceID, Arc<dyn ServiceMap> >,
 
 	/// We use oneshot channels to give clients a future that will resolve to their response.
 	//
@@ -268,7 +268,7 @@ impl Peer
 	/// Each service map and each service should be registered only once, including relayed services. Trying to
 	/// register them twice will panic in debug mode.
 	//
-	pub fn register_services( &mut self, sm: Arc< dyn ServiceMap + Send + Sync > )
+	pub fn register_services( &mut self, sm: Arc< dyn ServiceMap> )
 	{
 		for sid in sm.services().into_iter()
 		{

@@ -7,7 +7,7 @@ use crate::{ *, import::* } ;
 /// RelayMap also implements this for relaying certain services to remote providers.
 ///
 //
-pub trait ServiceMap
+pub trait ServiceMap: Send + Sync
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//
