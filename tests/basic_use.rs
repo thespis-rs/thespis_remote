@@ -45,7 +45,9 @@ fn remote()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), ex1.clone(), "peera" );
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "peera" );
+
+		handle.await;
 
 		trace!( "end of peera" );
 	};

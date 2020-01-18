@@ -7,12 +7,19 @@
 
 
 - allow both closures and fixed addresses, in both relay_map and service_map_macro.
+  - Think of all the scenarios and error handling/reporting -> still based on our older not so flexible model.
+  - what to do with service_map_macro.
+  - tests
 
 - evaluate all places where peer can block while processing messages and document/test.
+  - the opposite, flow control and back pressure?
+
+- Send, Call and Broadcast?
+
 - TODO's and FIXME's
 - add tests and comments for everything (especially error handling.)
 - get rid of Send and Sync where possible
-- supervised actors and automatic reconnect?
+- supervised actors and automatic reconnect? (resilliance, start a new actor or reconnect to a backend and try again before reporting error to client?)
 
 - fix examples
 - verify stability of UniqueID and generate one from a different programming language to be sure.

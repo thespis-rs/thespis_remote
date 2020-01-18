@@ -51,7 +51,9 @@ fn close_connection()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+
+		handle.await;
 	};
 
 
@@ -106,7 +108,9 @@ fn close_connection_call()
 
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+
+		handle.await;
 	};
 
 
@@ -161,7 +165,7 @@ fn header_unknown_service_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
 		let sid = Some( ServiceID::from( Bytes::from( vec![3;16] ) ) );
 
@@ -175,7 +179,7 @@ fn header_unknown_service_error()
 			_ => unreachable!(),
 		}
 
-
+		handle.await;
 	};
 
 
@@ -239,7 +243,7 @@ fn header_deserialize()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
 
 		match evts.next().await.unwrap()
@@ -251,6 +255,8 @@ fn header_deserialize()
 
 			_ => unreachable!( "Should be PeerEvent::Error( ThesRemoteErr::Deserialize" )
 		}
+
+		handle.await;
 	};
 
 
@@ -332,7 +338,7 @@ fn sm_deserialize_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
 		match evts.next().await.unwrap()
 		{
@@ -343,6 +349,8 @@ fn sm_deserialize_error()
 
 			_ => unreachable!( "Should be PeerEvent::Error( ThesRemoteErr::Deserialize" )
 		}
+
+		handle.await;
 	};
 
 
@@ -367,6 +375,8 @@ fn sm_deserialize_error()
 
 			peera_evts.next().await.unwrap()
 		);
+
+		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection" );
 	};
 
 
