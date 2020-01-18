@@ -18,11 +18,12 @@ pub mod import
 
 		std::
 		{
-			net     :: SocketAddr ,
-			convert :: TryFrom    ,
-			future  :: Future     ,
-			pin     :: Pin        ,
-			sync    :: Arc        ,
+			net          :: SocketAddr ,
+			convert      :: TryFrom    ,
+			future       :: Future     ,
+			pin          :: Pin        ,
+			sync         :: Arc        ,
+			sync::atomic :: { AtomicUsize, Ordering::Relaxed } ,
 		},
 
 		futures::
@@ -31,7 +32,7 @@ pub mod import
 			io      :: { AsyncWriteExt                                                           } ,
 			compat  :: { Compat01As03Sink, Stream01CompatExt, Sink01CompatExt, Future01CompatExt } ,
 			stream  :: { StreamExt, SplitSink, SplitStream                                       } ,
-			future  :: { FutureExt, join, RemoteHandle                                           } ,
+			future  :: { FutureExt, join, join3, RemoteHandle                                    } ,
 			task    :: { SpawnExt, LocalSpawnExt, Spawn                                          } ,
 			executor:: { block_on                                                                } ,
 		},
@@ -96,6 +97,36 @@ pub fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + Sync + 
 	(addr, evts)
 }
 
+
+pub fn provider( name: Option<Arc<str>>, exec: impl Spawn + Clone + Send + Sync + 'static ) -> (Endpoint, RemoteHandle<()>)
+{
+	let name = name.map( |n| n.to_string() ).unwrap_or( "unnamed".to_string() );
+	// Create mailbox for our handler
+	//
+	debug!( "start mailbox for Sum handler in provider: {}", name );
+	let addr_handler = Addr::try_from( Sum(0), &exec ).expect( "spawn actor mailbox" );
+
+
+	// register Sum with peer as handler for Add and Show
+	//
+	let mut sm = remotes::Services::new();
+
+	sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
+	sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+
+
+	// get a framed connection
+	//
+	let (ab, ba) = Endpoint::pair( 128, 128 );
+
+	debug!( "start mailbox for provider" );
+	let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), exec, "provider" );
+
+	drop( peer_addr );
+	trace!( "End of provider" );
+
+	(ba, handle)
+}
 
 
 
@@ -167,6 +198,101 @@ pub async fn relay
 	warn!( "relay finished, closing connection" );
 
 	provider_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to provider" );
+}
+
+
+
+// Helper method to create relays
+//
+pub async fn relay_closure
+(
+	connect   : Vec<Endpoint>                              ,
+	listen    : Endpoint                                   ,
+	next      : Pin<Box< dyn Future<Output=()> + Send >>   ,
+	relay_show: bool                                       ,
+	exec      : impl Spawn + Clone + Send + Sync + 'static ,
+)
+{
+	debug!( "start mailbox for relay_to_provider" );
+
+	let mut providers: Vec<Addr<Peer>> = Vec::new();
+
+	for (idx, endpoint) in connect.into_iter().enumerate()
+	{
+		let name = format!( "relay_to_provider{}", idx );
+		let (provider_addr, _provider_evts) = peer_connect( endpoint, exec.clone(), &name );
+
+		providers.push( provider_addr );
+	}
+
+	let providers2 = providers.clone();
+	let ex1        = exec.clone();
+
+	// Relay part ---------------------
+
+	let relay = async move
+	{
+		// Create mailbox for peer
+		//
+		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "relay_to_consumer".into() ) );
+		let peer_addr              = Addr ::new( mb_peer.sender()                   );
+
+		// create peer with stream/sink + service map
+		//
+		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1 ).expect( "spawn peer" );
+
+		let add  = <Add  as remotes::Service>::sid();
+		let show = <Show as remotes::Service>::sid();
+
+		let rm   = Arc::new( RelayMap::new() );
+
+		let closure = Box::new( move |_: &ServiceID| -> Option<Box<dyn Relay>>
+		{
+			static IDX: AtomicUsize = AtomicUsize::new( 0 );
+
+			let   i  = IDX.fetch_add( 1, Relaxed );
+			let addr = &providers2[ i % providers2.len() ];
+
+			Some( Box::new( addr.clone() ) )
+
+		});
+
+		let sh1 = ServiceHandler::Closure( closure.clone() );
+		let sh2 = ServiceHandler::Closure( closure         );
+
+		rm.register_handler( add.clone(), sh1 );
+
+		if relay_show
+		{
+			rm.register_handler( show.clone(), sh2 );
+		}
+
+
+		peer.register_services( rm );
+
+		debug!( "start mailbox for relay_to_consumer" );
+		mb_peer.start_fut( peer ).await;
+		warn!( "relay async block finished" );
+	};
+
+
+	let (relay_fut, relay_outcome) = relay.remote_handle();
+	exec.spawn( relay_fut ).expect( "failed to spawn server" );
+
+	// we need to spawn this after this relay, otherwise this relay is not listening yet when we try to connect.
+	//
+	exec.spawn( next ).expect( "Spawn next" );
+
+
+	// If the consumer closes the connection, close our connection to provider.
+	//
+	relay_outcome.await;
+	warn!( "relay finished, closing connection" );
+
+	for mut addr in providers
+	{
+		addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to provider" );
+	}
 }
 
 

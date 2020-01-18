@@ -301,6 +301,7 @@ impl Services
 
 	/// Register a handler for a given service type
 	/// Calling this method twice for the same type will override the first handler.
+	/// TODO: avoid obliging the user to make a receiver, just make it here and avoid double boxing if possible.
 	//
 	pub fn register_handler<S>( &mut self, handler: Receiver<S> )
 

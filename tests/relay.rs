@@ -2,21 +2,19 @@
 
 // Tests:
 //
-// - ✔ Basic relaying
-// - ✔ relay multi deep
-// - ✔ Test unknown service error in a relay
-// - ✔ Relay dissapeared event
-// - ✔ try to send after relay has dissapeared (should give mailboxclosed)
-// - ✔ relay call error from relay
-// - ✔ propagating errors over several relays deep -> TODO, see test, some errors are in non determined order
+// ✔ Basic relaying
+// ✔ relay multi deep
+// ✔ Test unknown service error in a relay
+// ✔ Relay dissapeared event
+// ✔ try to send after relay has dissapeared (should give mailboxclosed)
+// ✔ relay call error from relay
+// ✔ propagating errors over several relays deep -> TODO, see test, some errors are in non determined order
 
 
 mod common;
 
 use common::*                       ;
 use common::import::{ *, assert_eq };
-
-
 
 
 
