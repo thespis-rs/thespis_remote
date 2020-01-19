@@ -29,7 +29,7 @@ fn relay_once()
 	let (ab, ba) = Endpoint::pair( 64, 64 );
 	let (bc, cb) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	// let exec = AsyncStd::default();
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
@@ -122,7 +122,7 @@ fn relay_multi()
 	let (de, ed) = Endpoint::pair( 64, 64 );
 	let (ef, fe) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 	let ex3  = exec.clone();
@@ -198,7 +198,7 @@ fn relay_unknown_service()
 	let (ab, ba) = Endpoint::pair( 64, 64 );
 	let (bc, cb) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 	let ex3  = exec.clone();

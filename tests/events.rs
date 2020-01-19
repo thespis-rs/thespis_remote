@@ -31,7 +31,7 @@ fn close_connection()
 {
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -88,7 +88,7 @@ fn close_connection_call()
 {
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -147,7 +147,7 @@ fn header_unknown_service_error()
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -226,7 +226,7 @@ fn header_deserialize()
 	//
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -321,7 +321,7 @@ fn sm_deserialize_error()
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 

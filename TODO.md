@@ -30,3 +30,4 @@
 - publish async_executors
 - abstract channels (can pharos benefit as well)
 - cleanup thespis and thespis_impl
+- CI, look at the futures .travis.json for better configuration

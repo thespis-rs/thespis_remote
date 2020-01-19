@@ -170,7 +170,7 @@ pub struct Peer
 	// An executor to spawn tasks, for processing requests.
 	// TODO: make this an Arc.
 	//
-	exec          : Box< dyn Spawn + Send + Sync + 'static >,
+	exec          : Arc< dyn Spawn + Send + Sync + 'static >,
 }
 
 
@@ -182,10 +182,10 @@ impl Peer
 	//
 	pub fn new
 	(
-		    addr    : Addr<Self>                         ,
-		mut incoming: impl BoundsIn                      ,
-		    outgoing: impl BoundsOut                     ,
-		    exec    : impl Spawn + Send + Sync + 'static ,
+		    addr    : Addr<Self>                              ,
+		mut incoming: impl BoundsIn                           ,
+		    outgoing: impl BoundsOut                          ,
+		    exec    : Arc<dyn Spawn + Send + Sync + 'static > ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -240,7 +240,7 @@ impl Peer
 			services     : HashMap::new()             ,
 			listen_handle: Some( handle )             ,
 			pharos       : Pharos::default()          ,
-			exec         : Box::new( exec )           ,
+			exec         : exec                       ,
 		})
 	}
 
@@ -264,7 +264,7 @@ impl Peer
 		addr    : Addr<Self>                                                 ,
 		socket  : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static ,
 		max_size: usize                                                      ,
-		exec    : impl Spawn + Send + Sync + 'static                         ,
+		exec    : Arc<dyn Spawn + Send + Sync + 'static >                    ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -297,7 +297,7 @@ impl Peer
 		addr    : Addr<Self>                                              ,
 		socket  : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static ,
 		max_size: usize                                                   ,
-		exec    : impl Spawn + Send + Sync + 'static                      ,
+		exec    : Arc<dyn Spawn + Send + Sync + 'static >                 ,
 	)
 
 		-> Result< Self, ThesRemoteErr >

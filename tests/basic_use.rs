@@ -24,7 +24,7 @@ fn remote()
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -117,7 +117,7 @@ fn parallel()
 {
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -205,7 +205,7 @@ fn call_after_close_connection()
 
 	let (mut server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 
 	let nodea = async move

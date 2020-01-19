@@ -23,7 +23,7 @@ fn relay_once_load_balance()
 
 	let (bc, cb) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	// let exec = AsyncStd::default();
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();

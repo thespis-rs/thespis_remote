@@ -48,7 +48,7 @@ pub mod import
 pub use actors::*;
 
 
-pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: impl Spawn + Clone + Send + Sync + 'static, name: &str )
+pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: Arc<dyn Spawn + Send + Sync + 'static >, name: &str )
 
 	-> (Addr<Peer>, Events<PeerEvent>, RemoteHandle<()>)
 {
@@ -77,7 +77,7 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 
 
 
-pub fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + Sync + 'static, name: &str ) -> (Addr<Peer>, Events<PeerEvent>)
+pub fn peer_connect( socket: Endpoint, exec: Arc<dyn Spawn + Send + Sync + 'static >, name: &str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	// Create mailbox for peer
 	//
@@ -98,7 +98,7 @@ pub fn peer_connect( socket: Endpoint, exec: impl Spawn + Clone + Send + Sync + 
 }
 
 
-pub fn provider( name: Option<Arc<str>>, exec: impl Spawn + Clone + Send + Sync + 'static ) -> (Endpoint, RemoteHandle<()>)
+pub fn provider( name: Option<Arc<str>>, exec: Arc<dyn Spawn + Send + Sync + 'static > ) -> (Endpoint, RemoteHandle<()>)
 {
 	let name = name.map( |n| n.to_string() ).unwrap_or( "unnamed".to_string() );
 	// Create mailbox for our handler
@@ -134,11 +134,11 @@ pub fn provider( name: Option<Arc<str>>, exec: impl Spawn + Clone + Send + Sync 
 //
 pub async fn relay
 (
-	connect   : Endpoint                                   ,
-	listen    : Endpoint                                   ,
-	next      : Pin<Box< dyn Future<Output=()> + Send >>   ,
-	relay_show: bool                                       ,
-	exec      : impl Spawn + Clone + Send + Sync + 'static ,
+	connect   : Endpoint                                 ,
+	listen    : Endpoint                                 ,
+	next      : Pin<Box< dyn Future<Output=()> + Send >> ,
+	relay_show: bool                                     ,
+	exec      : Arc<dyn Spawn + Send + Sync + 'static >  ,
 )
 {
 	debug!( "start mailbox for relay_to_provider" );
@@ -206,11 +206,11 @@ pub async fn relay
 //
 pub async fn relay_closure
 (
-	connect   : Vec<Endpoint>                              ,
-	listen    : Endpoint                                   ,
-	next      : Pin<Box< dyn Future<Output=()> + Send >>   ,
-	relay_show: bool                                       ,
-	exec      : impl Spawn + Clone + Send + Sync + 'static ,
+	connect   : Vec<Endpoint>                            ,
+	listen    : Endpoint                                 ,
+	next      : Pin<Box< dyn Future<Output=()> + Send >> ,
+	relay_show: bool                                     ,
+	exec      : Arc<dyn Spawn + Send + Sync + 'static >  ,
 )
 {
 	debug!( "start mailbox for relay_to_provider" );

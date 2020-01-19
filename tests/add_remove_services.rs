@@ -29,7 +29,7 @@ fn start_empty()
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -92,7 +92,7 @@ fn adding_starts_providing()
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -163,7 +163,7 @@ fn add_empty()
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -225,7 +225,7 @@ fn remove_should_stop_providing()
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -291,7 +291,7 @@ fn remove_non_existing()
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -356,7 +356,7 @@ fn update_to_new_handler()
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
