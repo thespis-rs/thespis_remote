@@ -5,6 +5,8 @@ use crate::{ import::*, ConnID, ServiceID, ConnectionError };
 //
 #[ derive( Debug, Error, Clone, PartialEq, Eq ) ]
 //
+#[ non_exhaustive ]
+//
 pub enum ThesRemoteErr
 {
 	/// Cannot use peer after the connection is closed.
@@ -171,11 +173,6 @@ pub enum ThesRemoteErr
 		//
 		context: std::io::ErrorKind
 	},
-
-
-	#[ error( "__NonExhaustive" ) ]
-	//
-	__NonExhaustive,
 }
 
 
