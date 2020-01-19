@@ -50,15 +50,15 @@ pub use
 //
 pub mod external_deps
 {
-	pub use futures        ;
-	pub use log            ;
-	pub use once_cell      ;
-	pub use serde_cbor     ;
-	pub use serde          ;
-	pub use thespis        ;
-	pub use thespis_impl   ;
-	pub use paste          ;
-	pub use parking_lot    ; // TODO: will this make it a public dep?
+	pub use futures      ;
+	pub use log          ;
+	pub use once_cell    ;
+	pub use serde_cbor   ;
+	pub use serde        ;
+	pub use thespis      ;
+	pub use thespis_impl ;
+	pub use paste        ;
+	pub use parking_lot  ;
 }
 
 

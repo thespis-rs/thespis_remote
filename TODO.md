@@ -12,6 +12,7 @@
     - tests + benchmarks for flow control and back pressure.
 
 - Send, Call and Broadcast?
+- impl Serialize in for Addr behind feature flag.
 
 - TODO's and FIXME's
 - supervised actors and automatic reconnect? (resilliance, start a new actor or reconnect to a backend and try again before reporting error to client?)

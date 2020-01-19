@@ -104,7 +104,9 @@ pub enum ThesRemoteErr
 	},
 
 	/// No handler has been set for this service.
-	/// TODO: in which cases can this happen, since servicemap doesn't advertise services unless it has a handler.
+	/// If you use the provided ServiceMap implementations, you should only see this if you
+	/// use a closure with RelayMap and it returns `None`, because otherwise they don't
+	/// advertise services for which they haven't got a handler.
 	//
 	#[ error( "No handler has been set for this service{ctx}" ) ]
 	//
@@ -148,12 +150,6 @@ pub enum ThesRemoteErr
 		relay_name: Option<Arc<str>> ,
 	},
 
-	/// Tokio codec requires that we implement From TokioIoError for the error type of the codec.
-	//  TODO: integrate the tokio IO error in here.
-	//
-	#[ error( "TokioIoError: Tokio IO Error" ) ]
-	//
-	TokioIoError,
 
 	/// This allows also returning all ThesRemoteErr kinds when returning a ThesRemoteErr. eg. Often
 	/// operations from remote will use call and send which give mailbox errors, so it's good to
@@ -163,6 +159,7 @@ pub enum ThesRemoteErr
 	#[ error( "ThesRemoteErr in context: {}", _0 ) ]
 	//
 	ThesErr( ThesErr ),
+
 
 	/// An io::Error happenend in the underlying network connection.
 	//
@@ -174,6 +171,7 @@ pub enum ThesRemoteErr
 		//
 		context: std::io::ErrorKind
 	},
+
 
 	#[ error( "__NonExhaustive" ) ]
 	//
@@ -218,19 +216,6 @@ impl From<ThesErr> for ThesRemoteErr
 	}
 }
 
-
-// /// Tokio codec requires an error type which impl this from and our peer impl
-// /// requires a sink that has error type ThesRemoteErr, so here we go:
-// //
-// #[ cfg( feature = "tokio" ) ]
-// //
-// impl From<tokio::io::Error> for ThesRemoteErr
-// {
-// 	fn from( e: tokio::io::Error ) -> ThesRemoteErr
-// 	{
-// 		ThesRemoteErr::TokioIoError
-// 	}
-// }
 
 
 impl From< std::io::Error > for ThesRemoteErr

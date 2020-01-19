@@ -157,10 +157,6 @@ pub struct Peer
 	/// Information required to process incoming messages. The first element is a boxed Receiver, and the second is
 	/// the service map that takes care of this service type.
 	//
-	// The error type here needs to correspond to the error type of the recipient we are going to pass
-	// to `Servicemap::call_service`. TODO: In principle we should be generic over recipient type, but for now
-	// I have put ThesErr, because it's getting to complex.
-	//
 	services      : HashMap< ServiceID, Arc<dyn ServiceMap> >,
 
 	/// We use oneshot channels to give clients a future that will resolve to their response.

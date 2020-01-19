@@ -60,26 +60,27 @@ dependencies:
 
   # public dependencies (bump major if you change their version number here)
   #
-  # One major consideration is the ServiceID hash it must be stable.
-  # Codec related stuff is another, since we make public our codec impl.
-  # Pharos events are public on peer
-  # thiserror shouldn't have any public impact, but if they make a breaking change, take care to double check.
+  # The ServiceID hash must be stable.
   #
   twox-hash           : { version: ^1                                                       }
   serde               : { version: ^1  , default-features: false, features: [ derive ]      }
   serde_bytes         : ^0.11
   serde_cbor          : { version: ^0.11                                                    }
-  bytes               : { version: ^0.5                                                     }
   futures             : { version: ^0.3, features: [ std, compat ], default-features: false }
   futures_codec_crate : { version: ^0.3, optional: true, package: futures_codec             }
   futures_cbor_codec  : { version: ^0.2, optional: true                                     }
-  pharos              : { version: ^0.4                                                     }
-  thiserror           : ^1
-  thespis             : { path: ../thespis                                                  }
-  paste               : ^0.1
+
+  # Bytes is a public dep of futures_codec
+  #
+  bytes               : { version: ^0.5    }
+
+  # Pharos events are public on Peer
+  #
+  pharos              : { version: ^0.4    }
+  thespis             : { path: ../thespis }
 
 
-  # tokio stuff
+  # tokio stuff, AsyncRead/Write and Codecs are in the public API
   #
   tokio     : { version: ^0.2, features: [ io-util ], optional: true }
   tokio-util: { version: ^0.2, features: [ codec   ], optional: true }
@@ -95,6 +96,11 @@ dependencies:
   rand                : { version: ^0.7, default-features: false }
   parking_lot         : { version: ^0.10 }
   tokio-serde-cbor    : { version: ^0.4, optional: true }
+
+  # thiserror shouldn't have any public impact, but if they make a breaking change, take care to double check.
+  #
+  thiserror           : ^1
+  paste               : ^0.1
 
 
 dev-dependencies:
