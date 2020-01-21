@@ -92,9 +92,6 @@ async move
 	// safer to assume that if these do fail we close the connection because all bet's are off for following
 	// messages.
 	//
-	// TODO: This next block is what requires that MS is Sync. I don't understand why. It says there is a
-	// requirement of Send for &MS. Probably it's the call frame.service() which takes &self.
-	//
 	let sid = frame.service();
 	let cid = frame.conn_id();
 
@@ -151,8 +148,6 @@ impl Peer
 	// It's a connection error from the remote peer
 	//
 	// This includes failing to deserialize our messages, failing to relay, unknown service, ...
-	// TODO: when we sent a Call, it will have the cid in frame, so we should correctly react
-	// to that and forward it to the original caller.
 	//
 	async fn remote_conn_err( &mut self, msg: Bytes, cid: ConnID )
 	{
@@ -178,23 +173,19 @@ impl Peer
 			error!( "{}: Remote error: {:?}", self.identify(), &err );
 
 			// Notify observers
-			// TODO: don't await pharos? it can block processing of incoming messages.
-			// On the other hand, if pharos can't follow maybe we should consider it backpressure.
 			//
 			let shine = PeerEvent::RemoteError( err.clone() );
 			self.pharos.send( shine ).await.expect( "pharos not closed" );
 
 		}
 
-		// TODO
+		// Since we can't deserialize it, we can't do much except log.
 		//
 		else
 		{
 			error!( "{}: We received an error message from a remote peer, \
 				      but couldn't deserialize it", self.identify() )
 			;
-
-			unimplemented!();
 		}
 	}
 
