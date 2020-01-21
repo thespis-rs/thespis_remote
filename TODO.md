@@ -15,6 +15,7 @@
 - impl Serialize in for Addr behind feature flag.
 
 - TODO's and FIXME's
+- timeout mechanism for outgoing calls.
 - supervised actors and automatic reconnect? (resilliance, start a new actor or reconnect to a backend and try again before reporting error to client?)
 - get rid of Send and Sync where possible
 - add tests and comments for everything (especially error handling.)
@@ -23,6 +24,7 @@
 - fix examples
 - verify stability of UniqueID and generate one from a different programming language to be sure.
 - benchmark
+- test system limits/memory consumption in relation to backpressure settings/max open connections...
 - documentation
 - user guide
 

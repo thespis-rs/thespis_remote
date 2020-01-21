@@ -63,7 +63,7 @@ fn close_connection()
 
 		// Close the connection and check the event
 		//
-		peera.send( peer::CloseConnection{ remote: false } ).await.expect( "Send CloseConnection" );
+		peera.send( peer::CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "Send CloseConnection" );
 
 		assert_eq!( PeerEvent::Closed,  peera_evts.next().await.unwrap() );
 	};
@@ -120,7 +120,7 @@ fn close_connection_call()
 
 		// Close the connection and check the event
 		//
-		peera.call( peer::CloseConnection{ remote: false } ).await.expect( "Send CloseConnection" );
+		peera.call( peer::CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "Send CloseConnection" );
 
 		assert_eq!( PeerEvent::Closed, peera_evts.next().await.unwrap() );
 	};
@@ -200,7 +200,7 @@ fn header_unknown_service_error()
 			peera_evts.next().await.unwrap()
 		);
 
-		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection" );
+		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection" );
 	};
 
 
@@ -296,7 +296,7 @@ fn header_deserialize()
 			peera_evts.next().await.unwrap()
 		);
 
-		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection" );
+		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection" );
 	};
 
 
@@ -376,7 +376,7 @@ fn sm_deserialize_error()
 			peera_evts.next().await.unwrap()
 		);
 
-		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection" );
+		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection" );
 	};
 
 

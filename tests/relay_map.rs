@@ -72,7 +72,7 @@ fn relay_once_load_balance()
 
 		warn!( "consumer end, telling relay to close connection" );
 
-		to_relay.call( CloseConnection{ remote: false } ).await.expect( "close connection to relay" );
+		to_relay.call( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to relay" );
 
 		warn!( "consumer end, relay processed CloseConnection" );
 	};

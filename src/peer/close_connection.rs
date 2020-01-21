@@ -28,6 +28,7 @@ pub struct CloseConnection
 	/// PeerEvents::ConnectionClosedByRemote to observers instead of PeerEvent::ConnectionClosed.
 	//
 	pub remote: bool,
+	pub reason: String,
 }
 
 impl Message for CloseConnection { type Return = (); }
@@ -38,7 +39,7 @@ impl Handler<CloseConnection> for Peer
 {
 	fn handle( &mut self, msg: CloseConnection ) -> Return<'_, ()> { async move
 	{
-		trace!( "{}: CloseConnection, by remote: {}", self.identify(), msg.remote );
+		trace!( "{}: CloseConnection, by remote: {}, reason: {}", self.identify(), msg.remote, &msg.reason );
 
 
 		if msg.remote { self.pharos.send( PeerEvent::ClosedByRemote ).await.expect( "pharos not closed" ) }
@@ -61,8 +62,7 @@ impl Handler<CloseConnection> for Peer
 
 		// try to drop close our mailbox and drop ourselves
 		//
-		drop( self.addr.take() );
-		// self.addr          = None;
+		self.addr          = None;
 		self.listen_handle = None;
 
 

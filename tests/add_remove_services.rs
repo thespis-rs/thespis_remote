@@ -69,7 +69,7 @@ fn start_empty()
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 5, resp );
 
-		provider_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
+		provider_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 
 		drop( provider_addr );
 		provider_handle.await;
@@ -141,7 +141,7 @@ fn adding_starts_providing()
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 4, resp );
 
-		provider_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
+		provider_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 
 		drop( provider_addr );
 		provider_handle.await;
@@ -203,7 +203,7 @@ fn add_empty()
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 5, resp );
 
-		provider_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
+		provider_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 
 		drop( provider_addr );
 		provider_handle.await;
@@ -267,7 +267,7 @@ fn remove_should_stop_providing()
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 5, resp );
 
-		provider_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
+		provider_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 
 		drop( provider_addr );
 		provider_handle.await;
@@ -333,7 +333,7 @@ fn remove_non_existing()
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 6, resp );
 
-		provider_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
+		provider_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 
 		drop( provider_addr );
 		provider_handle.await;
@@ -412,7 +412,7 @@ fn update_to_new_handler()
 		assert_eq!( 3, resp );
 
 
-		provider_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
+		provider_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 
 		drop( provider_addr );
 		provider_handle.await;

@@ -1,5 +1,8 @@
 use crate :: { import::*, ServiceID, ConnID };
 
+// TODO: - verify that all of the variants are still in use, and that we have everything we need.
+//       - display impl?
+//
 /// All errors that can happen when receiving messages over the wire
 /// These will be broadcast to observers, so you can act upon them if necessary.
 /// This type is a bit special as an error type, as here it is not being returned
@@ -35,17 +38,6 @@ pub enum ConnectionError
 	/// ConnectionError::ServiceUnknown
 	//
 	ServiceGone( ServiceID ),
-
-	/// Sending out your message on the connection to the relayed peer failed. If this is
-	/// a permanent failure, eg. ConnectionClosed, you should also get RelayGone errors
-	/// for all the services that are lost.
-	//
-	FailedToRelay(Vec<u8>),
-
-	/// Whilst waiting for the response to your call, the connection to the relay was lost.
-	/// You should also get RelayGone errors  for all the services that are lost.
-	//
-	LostRelayBeforeResponse,
 
 	/// We don't provide this service.
 	//

@@ -197,7 +197,7 @@ pub async fn relay
 	relay_outcome.await;
 	warn!( "relay finished, closing connection" );
 
-	provider_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to provider" );
+	provider_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to provider" );
 }
 
 
@@ -291,7 +291,7 @@ pub async fn relay_closure
 
 	for mut addr in providers
 	{
-		addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to provider" );
+		addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to provider" );
 	}
 }
 

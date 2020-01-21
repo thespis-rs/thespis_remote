@@ -47,7 +47,7 @@ impl Handler<Call> for Peer
 	{
 		trace!( "{}: starting Handler<Call>", self.identify());
 
-		Box::pin( async move
+		async move
 		{
 			trace!( "{}: polled Handler<Call>", self.identify() );
 
@@ -60,11 +60,12 @@ impl Handler<Call> for Peer
 			let (sender, receiver) = oneshot::channel::< Result<WireFormat, ConnectionError> >() ;
 
 			// TODO: Probably need to keep some timeout mechanism for when responses never come...
+			//       Also how do we handle backpressure, limit the number of open requests?
 			//
 			self.responses.insert( conn_id, sender );
 
 			Ok( receiver )
 
-		})
+		}.boxed()
 	}
 }

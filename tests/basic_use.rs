@@ -69,7 +69,7 @@ fn remote()
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 10, resp );
 
-		peera.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
+		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 	};
 
 
@@ -186,7 +186,7 @@ fn parallel()
 
 		// dbg!( resp );
 
-		peer_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to peera" );
+		peer_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 	};
 
 	block_on( join( peera, peerb ) );

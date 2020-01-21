@@ -215,7 +215,7 @@ impl Peer
 
 			// Same as above.
 			//
-			addr2.send( CloseConnection{ remote: true } ).await.expect( "peer send to self");
+			addr2.send( CloseConnection{ remote: true, reason: "Connection closed by remote.".to_string() } ).await.expect( "peer send to self");
 		};
 
 		// When we need to stop listening, we have to drop this future, because it contains
@@ -400,9 +400,9 @@ impl Peer
 			if close {
 			if let Some( ref mut addr ) = self.addr
 			{
-				// until we have bounded channels, this should never fail, so I'm leaving the expect.
+				// this should never fail, since we hold our address, the mailbox should be open, so I'm leaving the expect.
 				//
-				addr.send( CloseConnection{ remote: false } ).await.expect( "send close connection" );
+				addr.send( CloseConnection{ remote: false, reason: format!( "{:?}", err ) } ).await.expect( "send close connection" );
 			}}
 		}
 	}
@@ -522,8 +522,6 @@ impl fmt::Debug for Peer
 
 impl Drop for Peer
 {
-	// TODO: only do processing if logging is on.
-	//
 	fn drop( &mut self )
 	{
 		trace!( "Drop {}", self.identify() );
