@@ -16,7 +16,8 @@ pub struct RelayMap
 	//       - closure vs fn pointer, Fn, FnOnce or FnMut?
 	//       - what about inherently concurrent hashmaps like evmap, dashmap?
 	//
-	handlers: RwLock<HashMap< ServiceID, ServiceHandler >>
+	handler : ServiceHandler ,
+	services: Vec<ServiceID> ,
 }
 
 
@@ -24,17 +25,9 @@ impl RelayMap
 {
 	/// Create a RelayMap.
 	//
-	pub fn new() -> Self
+	pub fn new( handler: ServiceHandler, services: Vec<ServiceID> ) -> Self
 	{
-		Self { handlers: RwLock::new( HashMap::new() ) }
-	}
-
-
-	/// Register a handler for a given sid.
-	//
-	pub fn register_handler( &self, sid: ServiceID, handler: ServiceHandler )
-	{
-		self.handlers.write().insert( sid, handler );
+		Self { handler, services }
 	}
 
 
@@ -67,67 +60,50 @@ impl ServiceMap for RelayMap
 
 		// This sid should be in our map.
 		//
-		match self.handlers.read().get( &sid )
+		match &self.handler
 		{
-			Some(sh) =>
+			ServiceHandler::Address( a ) =>
 			{
-				match sh
+				let mut a = a.clone_box();
+
+				async move
 				{
-					ServiceHandler::Address( a ) =>
+					if a.send( msg ).await.is_err()
 					{
-						let mut a = a.clone_box();
+						let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Process send to relayed Actor".to_string() );
 
-						async move
-						{
-							if a.send( msg ).await.is_err()
-							{
-								let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Process send to relayed Actor".to_string() );
-
-								return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
-							}
-
-						}.boxed()
+						return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
 					}
 
+				}.boxed()
+			}
 
 
-					ServiceHandler::Closure( c ) =>
+
+			ServiceHandler::Closure( c ) =>
+			{
+				match c(&sid)
+				{
+					Some(mut a) => async move
 					{
-						match c(&sid)
+						if a.send( msg ).await.is_err()
 						{
-							Some(mut a) => async move
-							{
-								if a.send( msg ).await.is_err()
-								{
-									let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Process send to relayed Actor".to_string() );
+							let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Process send to relayed Actor".to_string() );
 
-									return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
-								}
-
-							}.boxed(),
-
-							None =>
-							{
-								let ctx = Peer::err_ctx( &peer, sid, None, "Process call for relayed Actor".to_string() );
-
-								return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
-							}
+							return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
 						}
+
+					}.boxed(),
+
+					None =>
+					{
+						let ctx = Peer::err_ctx( &peer, sid, None, "Process call for relayed Actor".to_string() );
+
+						return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
 					}
 				}
 			}
-
-			None =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid, None, "Process call for relayed Actor".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
-			}
 		}
-
-
-
-
 	}
 
 
@@ -143,38 +119,23 @@ impl ServiceMap for RelayMap
 		let cid = frame.conn_id();
 
 
-		// This sid should be in our map.
-		//
-		match self.handlers.read().get( &sid )
+		match &self.handler
 		{
-			Some(sh) =>
+			ServiceHandler::Address( a ) => make_call( a.clone_box(), frame, peer ).boxed(),
+
+			ServiceHandler::Closure( c ) =>
 			{
-				match sh
+				match c(&sid)
 				{
-					ServiceHandler::Address( a ) => make_call( a.clone_box(), frame, peer ).boxed(),
+					Some(a) => make_call( a, frame, peer ).boxed(),
 
-					ServiceHandler::Closure( c ) =>
+					None =>
 					{
-						match c(&sid)
-						{
-							Some(a) => make_call( a, frame, peer ).boxed(),
+						let ctx = Peer::err_ctx( &peer, sid, cid, "Process call for relayed Actor".to_string() );
 
-							None =>
-							{
-								let ctx = Peer::err_ctx( &peer, sid, cid, "Process call for relayed Actor".to_string() );
-
-								return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
-							}
-						}
+						return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
 					}
 				}
-			}
-
-			None =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid, cid, "Process call for relayed Actor".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
 			}
 		}
 	}
@@ -183,16 +144,7 @@ impl ServiceMap for RelayMap
 	//
 	fn services( &self ) -> Vec<ServiceID>
 	{
-		let handlers = self.handlers.read();
-
-		let mut s: Vec<ServiceID> = Vec::with_capacity( handlers.len() );
-
-		for sid in handlers.keys()
-		{
-			s.push( sid.clone() );
-		}
-
-		s
+		self.services.clone()
 	}
 }
 

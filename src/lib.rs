@@ -82,7 +82,6 @@ mod import
 		serde          :: { Serialize, Deserialize                      } ,
 		thiserror      :: { Error                                       } ,
 		once_cell      :: { sync::Lazy as SyncLazy                      } ,
-		parking_lot    :: { RwLock                                      } ,
 
 		std ::
 		{

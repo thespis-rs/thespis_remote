@@ -163,19 +163,16 @@ pub async fn relay
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
 
-		let rm   = Arc::new( RelayMap::new() );
+		let handler: Box<dyn Relay> = Box::new( provider_addr2 );
 
-		let h1: Box<dyn Relay> = Box::new( provider_addr2.clone() );
-		let h2: Box<dyn Relay> = Box::new( provider_addr2         );
-
-		rm.register_handler( add.clone(), ServiceHandler::from( h1 ) );
+		let mut relayed = vec![ add.clone() ];
 
 		if relay_show
 		{
-			rm.register_handler( show.clone(), ServiceHandler::from( h2 ) );
+			relayed.push( show.clone() );
 		}
 
-
+		let rm = Arc::new( RelayMap::new( handler.into(), relayed ) );
 		peer.register_services( rm );
 
 		debug!( "start mailbox for relay_to_consumer" );
@@ -244,9 +241,8 @@ pub async fn relay_closure
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
 
-		let rm   = Arc::new( RelayMap::new() );
 
-		let closure = Box::new( move |_: &ServiceID| -> Option<Box<dyn Relay>>
+		let handler = Box::new( move |_: &ServiceID| -> Option<Box<dyn Relay>>
 		{
 			static IDX: AtomicUsize = AtomicUsize::new( 0 );
 
@@ -257,16 +253,15 @@ pub async fn relay_closure
 
 		});
 
-		let sh1 = ServiceHandler::Closure( closure.clone() );
-		let sh2 = ServiceHandler::Closure( closure         );
 
-		rm.register_handler( add.clone(), sh1 );
+		let mut relayed = vec![ add.clone() ];
 
 		if relay_show
 		{
-			rm.register_handler( show.clone(), sh2 );
+			relayed.push( show.clone() );
 		}
 
+		let rm = Arc::new( RelayMap::new( ServiceHandler::Closure( handler ), relayed ) );
 
 		peer.register_services( rm );
 
