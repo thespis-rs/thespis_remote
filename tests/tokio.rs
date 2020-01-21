@@ -17,7 +17,7 @@ use
 // - ✔ correct async behavior: verify that a peer can continue to send/receive while waiting for the response to a call.
 // - ✔ call a remote service after the connection has closed: verify peer event and error kind.
 
-pub fn peer_listen( socket: TokioEndpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+pub fn peer_listen( socket: TokioEndpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: Arc< dyn Spawn + Send + Sync + 'static>, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	// Create mailbox for peer
 	//
@@ -40,7 +40,7 @@ pub fn peer_listen( socket: TokioEndpoint, sm: Arc<impl ServiceMap + Send + Sync
 }
 
 
-pub async fn peer_connect( socket: TokioEndpoint, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+pub async fn peer_connect( socket: TokioEndpoint, exec: Arc<dyn Spawn + Send + Sync + 'static>, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	// Create mailbox for peer
 	//
@@ -72,7 +72,7 @@ fn remote()
 
 	let (server, client) = TokioEndpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -164,7 +164,7 @@ fn parallel()
 {
 	let (server, client) = TokioEndpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
 
@@ -258,7 +258,7 @@ fn call_after_close_connection()
 
 	let (mut server, client) = TokioEndpoint::pair( 64, 64 );
 
-	let exec = ThreadPool::new().expect( "create threadpool" );
+	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 
 	let nodea = async move

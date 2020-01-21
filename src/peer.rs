@@ -200,8 +200,6 @@ impl Peer
 		let listen = async move
 		{
 			// This can fail if:
-			// - channel is full (TODO: currently we use unbounded, so that won't happen, but it might
-			//   use unbounded amounts of memory.)
 			// - the receiver is dropped. The receiver is our mailbox, so it should never be dropped
 			//   as long as we have an address to it.
 			//

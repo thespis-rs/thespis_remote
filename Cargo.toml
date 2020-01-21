@@ -129,6 +129,14 @@ version = "^0.3"
 path = "../../RUST/futures-rs/futures-channel"
 version = "^0.3"
 
+[patch.crates-io.futures-core]
+path = "../../RUST/futures-rs/futures-core"
+version = "^0.3"
+
+[patch.crates-io.futures-sink]
+path = "../../RUST/futures-rs/futures-sink"
+version = "^0.3"
+
 [patch.crates-io.futures-util]
 path = "../../RUST/futures-rs/futures-util"
 version = "^0.3"

@@ -127,4 +127,6 @@ patch:
     futures: { version: ^0.3, path: ../../RUST/futures-rs/futures }
     futures-channel: { version: ^0.3, path: ../../RUST/futures-rs/futures-channel }
     futures-util: { version: ^0.3, path: ../../RUST/futures-rs/futures-util }
+    futures-core: { version: ^0.3, path: ../../RUST/futures-rs/futures-core }
+    futures-sink: { version: ^0.3, path: ../../RUST/futures-rs/futures-sink }
 
