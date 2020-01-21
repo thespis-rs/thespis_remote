@@ -178,8 +178,8 @@ pub enum ThesRemoteErr
 
 impl ThesRemoteErr
 {
-	// Produce a display string suitable for sending errors to a connected client. This omit's
-	// process specific information like actor id's.
+	/// Produce a display string suitable for sending errors to a connected client. This omit's
+	/// process specific information like actor id's.
 	//
 	pub fn remote_err( self ) -> String
 	{

@@ -473,15 +473,15 @@ impl Peer
 //
 impl Handler<WireFormat> for Peer
 {
-	fn handle( &mut self, msg: WireFormat ) -> Return<'_, ()>
+	fn handle( &mut self, msg: WireFormat ) -> Return<'_, Result<(), ThesRemoteErr> >
 	{
-		Box::pin( async move
+		async move
 		{
 			trace!( "{}: sending OUT wireformat", self.identify() );
 
-			let _ = self.send_msg( msg ).await;
+			self.send_msg( msg ).await
 
-		})
+		}.boxed()
 	}
 }
 

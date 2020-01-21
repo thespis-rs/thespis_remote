@@ -283,7 +283,7 @@ fn header_deserialize()
 
 		let ms  = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
-		peera.call( ms ).await.expect( "send ms to peera" );
+		peera.call( ms ).await.expect( "send ms to peera" ).expect( "no network error" );
 
 		assert_eq!
 		(

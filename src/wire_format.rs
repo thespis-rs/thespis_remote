@@ -88,7 +88,7 @@ pub struct WireFormat
 
 impl Message for WireFormat
 {
-	type Return = ();
+	type Return = Result<(), ThesRemoteErr>;
 }
 
 
