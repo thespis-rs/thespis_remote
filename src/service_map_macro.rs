@@ -306,14 +306,13 @@ impl Services
 
 	/// Register a handler for a given service type
 	/// Calling this method twice for the same type will override the first handler.
-	/// TODO: avoid obliging the user to make a receiver, just make it here and avoid double boxing if possible.
 	//
-	pub fn register_handler<S>( &self, handler: Receiver<S> )
+	pub fn register_handler<S>( &self, handler: BoxAddress<S, ThesErr> )
 
 		where  S                    : Service,
 		      <S as Message>::Return: Serialize + DeserializeOwned,
 	{
-		self.handlers.write().insert( <S as Service>::sid(), Box::new( handler ) );
+		self.handlers.write().insert( <S as Service>::sid(), Box::new( Receiver::new(handler) ) );
 	}
 
 

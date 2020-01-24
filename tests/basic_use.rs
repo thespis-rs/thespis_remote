@@ -40,8 +40,8 @@ fn remote()
 		let sm = remotes::Services::new();
 		// Register our handlers
 		//
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( addr_handler.clone_box() );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 		// get a framed connection
 		//
@@ -59,7 +59,7 @@ fn remote()
 
 		// Call the service and receive the response
 		//
-		let mut addr  = remotes::RemoteAddr::new( peera.clone() );
+		let mut addr = remotes::RemoteAddr::new( peera.clone() );
 
 		let resp = addr.call( Add(5) ).await.expect( "Call failed" );
 		assert_eq!( (), resp );
@@ -143,7 +143,7 @@ fn parallel()
 		// register Sum with peer as handler for Add and Show
 		//
 		let sm = parallel::Services::new();
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 		peer.register_services( Arc::new( sm ) );
 
@@ -170,7 +170,7 @@ fn parallel()
 		// register Sum with peer as handler for Add and Show
 		//
 		let sm = remotes::Services::new();
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 		peer.register_services( Arc::new( sm ) );
 

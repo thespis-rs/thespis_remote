@@ -111,8 +111,8 @@ pub fn provider( name: Option<Arc<str>>, exec: Arc<dyn Spawn + Send + Sync + 'st
 	//
 	let sm = remotes::Services::new();
 
-	sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-	sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+	sm.register_handler::<Add >( addr_handler.clone_box() );
+	sm.register_handler::<Show>( addr_handler.clone_box() );
 
 
 	// get a framed connection

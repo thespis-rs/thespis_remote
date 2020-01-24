@@ -58,8 +58,8 @@ fn start_empty()
 
 		// Register our handlers
 		//
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( addr_handler.clone_box() );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 		provider_addr.call( AddServices{ sm } ).await.expect( "Add service Add, Show" );
 
@@ -108,8 +108,8 @@ fn adding_starts_providing()
 		let sm = Arc::new( remotes::Services::new() );
 		// Register our handlers
 		//
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( addr_handler.clone_box() );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 
 		// get a framed connection
@@ -131,7 +131,7 @@ fn adding_starts_providing()
 
 
 		let sm2 = Arc::new( remotes::Services::new() );
-		sm2.register_handler::<Sub >( Receiver::new( addr_handler.clone_box() ) );
+		sm2.register_handler::<Sub >( addr_handler.clone_box() );
 
 		provider_addr.call( AddServices{ sm: sm2 } ).await.expect( "Add service Sub" );
 
@@ -179,8 +179,8 @@ fn add_empty()
 		let sm = Arc::new( remotes::Services::new() );
 		// Register our handlers
 		//
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( addr_handler.clone_box() );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 
 		// get a framed connection
@@ -241,8 +241,8 @@ fn remove_should_stop_providing()
 		let sm = Arc::new( remotes::Services::new() );
 		// Register our handlers
 		//
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( addr_handler.clone_box() );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 
 		// get a framed connection
@@ -307,8 +307,8 @@ fn remove_non_existing()
 		let sm = Arc::new( remotes::Services::new() );
 		// Register our handlers
 		//
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( addr_handler.clone_box() );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 
 		// get a framed connection
@@ -373,16 +373,16 @@ fn update_to_new_handler()
 		let sm = Arc::new( remotes::Services::new() );
 		// Register our handlers
 		//
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( addr_handler.clone_box() );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 		// Create a service map
 		//
 		let sm2 = Arc::new( remotes::Services::new() );
 		// Register our handlers
 		//
-		sm2.register_handler::<Add >( Receiver::new( addr_handler2.clone_box() ) );
-		sm2.register_handler::<Show>( Receiver::new( addr_handler2.clone_box() ) );
+		sm2.register_handler::<Add >( addr_handler2.clone_box() );
+		sm2.register_handler::<Show>( addr_handler2.clone_box() );
 
 		// get a framed connection
 		//

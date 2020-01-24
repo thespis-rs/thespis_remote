@@ -48,8 +48,8 @@ fn relay_once()
 		//
 		let sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( addr_handler.clone_box() );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 
 		// get a framed connection
@@ -139,8 +139,8 @@ fn relay_multi()
 		//
 		let sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( addr_handler.clone_box() );
+		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 
 		// get a framed connection
@@ -214,7 +214,7 @@ fn relay_unknown_service()
 		//
 		let sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( addr_handler.clone_box() );
 
 
 		// get a framed connection
