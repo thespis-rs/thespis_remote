@@ -168,7 +168,6 @@ pub struct Peer
 	pharos        : Pharos<PeerEvent>,
 
 	// An executor to spawn tasks, for processing requests.
-	// TODO: make this an Arc.
 	//
 	exec          : Arc< dyn Spawn + Send + Sync + 'static >,
 }
@@ -469,7 +468,6 @@ impl Peer
 
 
 // Put an outgoing multiservice message on the wire.
-// TODO: why do we not return the error?
 //
 impl Handler<WireFormat> for Peer
 {

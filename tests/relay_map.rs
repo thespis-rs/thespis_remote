@@ -86,3 +86,47 @@ fn relay_once_load_balance()
 
 	block_on( join3( provider_handle, provider_handle2, relays ) );
 }
+
+
+
+// Test debug implementation.
+// Fixes the output of the debug implementation. Mainly, this fixes the sid impl. If sid's change,
+// that would be a breaking change, because people might be counting on them, especially if there
+// would be programs written in other languages, because those would manually implement the wire protocol.
+// Thus if this changes, you should bump a breaking change version.
+//
+#[test]
+//
+fn debug()
+{
+	let exec    = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
+	let (_, cx) = Endpoint::pair( 64, 64 );
+
+	// Create mailbox for peer
+	//
+	let mb_peer  : Inbox<Peer> = Inbox::new( Some( "relay_to_consumer".into() ) ) ;
+	let peer_addr              = Addr ::new( mb_peer.sender()                   ) ;
+	let id                     = peer_addr.id()                                   ;
+
+	let _peer = Peer::from_async_read( peer_addr.clone(), cx, 1024, exec ).expect( "spawn peer" );
+
+
+	let add  = <Add  as remotes::Service>::sid();
+	let show = <Show as remotes::Service>::sid();
+
+	let rm = RelayMap::new( ServiceHandler::Address( Box::new(peer_addr) ), vec![ add.clone(), show.clone() ] );
+
+	// All tests from the same file seem to run in the same process, so sometimes
+	// if the test for clone has run first, the ID will be 1.
+	//
+	let txt = format!
+("RelayMap, handler: ServiceHandler: Address: id: {}, name: \"relay_to_consumer\", services:
+{{
+	sid: 0xbcc09d3812378e171ad366d75f687757
+	sid: 0xbcc09d3812378e17e1a1e89b512c025a
+}}",
+&id,
+);
+
+	assert_eq!( txt, format!( "{:?}", rm ) );
+}

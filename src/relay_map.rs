@@ -12,10 +12,6 @@ pub struct RelayMap
 	// can store them. In this case, the process does not need to compile in the actual handlers.
 	// ServiceID is just 16 bytes of data.
 	//
-	// TODO: - what about taking but one closure that returns the correct handler
-	//       - closure vs fn pointer, Fn, FnOnce or FnMut?
-	//       - what about inherently concurrent hashmaps like evmap, dashmap?
-	//
 	handler : ServiceHandler ,
 	services: Vec<ServiceID> ,
 }
@@ -274,22 +270,27 @@ async fn make_call<T: Address<Call, Error=ThesErr> + ?Sized >( mut relay: Box<T>
 
 
 
-/// TODO: Print actor name if it has one
-///
 /// Will print something like:
 ///
 /// ```ignore
-/// RelayMap
+/// "RelayMap, handler: ServiceHandler: Address: id: {}, name: <name of handler>, services:
 /// {
-///    Add  - sid: c5c22cab4f2d334e0000000000000000 - handler (actor_id): 0
-///    Show - sid: 0617b1cfb55b99700000000000000000 - handler (actor_id): 0
-/// }
+///    sid: 0xbcc09d3812378e171ad366d75f687757
+///    sid: 0xbcc09d3812378e17e1a1e89b512c025a
+/// }"
 /// ```
 //
 impl fmt::Debug for RelayMap
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
-		write!( f, "dummy RelayMap" )
+		write!( f, "RelayMap, handler: {}, services:\n{{\n", self.handler )?;
+
+		for sid in &self.services
+		{
+			write!( f, "\tsid: 0x{:02x}\n", sid )?;
+		}
+
+		write!( f, "}}" )
 	}
 }

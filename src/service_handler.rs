@@ -28,6 +28,7 @@ pub type RelayClosure = Box< dyn Fn( &ServiceID ) -> Option<Box<dyn Relay>> + Se
 ///       implement load balancing by having a proxy actor be the handler and letting that dispatch.
 ///
 /// TODO: Letting the closure return an option is misleading. It is an error, which will return internal
+///       server error to the remote.
 //
 pub enum ServiceHandler
 {
@@ -51,6 +52,7 @@ impl From< Box<dyn Relay> > for ServiceHandler
 }
 
 
+
 impl From< RelayClosure > for ServiceHandler
 {
 	fn from( cl: RelayClosure ) -> Self
@@ -62,14 +64,32 @@ impl From< RelayClosure > for ServiceHandler
 
 
 
-/// TODO:
+/// TODO: - get a file and line number for the closure.
+///       - clean version for when the address has no name.
 ///
 //
 impl fmt::Debug for ServiceHandler
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
-		write!( f, "dummy ServiceHandler" )
+		write!( f, "ServiceHandler: " )?;
+
+		match self
+		{
+			Self::Closure(_) => { write!( f, "Closure" )?; }
+			Self::Address(a) => { write!( f, "Address: id: {}, name: {:?}", a.id(), a.name().unwrap_or( "".into() ) )?; }
+		};
+
+		Ok(())
+	}
+}
+
+
+impl fmt::Display for ServiceHandler
+{
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
+	{
+		fmt::Debug::fmt( &self, f )
 	}
 }
 
