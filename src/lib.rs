@@ -74,7 +74,6 @@ mod import
 		thespis        :: { *                                           } ,
 		thespis_impl   :: { Addr, ThesErr                               } ,
 		log            :: { *                                           } ,
-		byteorder      :: { LittleEndian, WriteBytesExt                 } ,
 		bytes          :: { Bytes, BytesMut, BufMut                     } ,
 		rand           :: { Rng                                         } ,
 		twox_hash      :: { XxHash64                                    } ,
@@ -145,6 +144,7 @@ mod import
 	//
 	pub(crate) use
 	{
-		pretty_assertions :: { assert_eq } ,
+		pretty_assertions :: { assert_eq      } ,
+		assert_matches    :: { assert_matches } ,
 	};
 }

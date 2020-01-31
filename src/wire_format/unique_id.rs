@@ -27,14 +27,8 @@ impl UniqueID
 
 		// u128 doesn't work in wasm and serde is being a pain, so 2 u64
 		//
-		let a = rng.gen::<u64>();
-		let b = rng.gen::<u64>();
-
-		let mut wtr = vec![];
-		wtr.write_u64::<LittleEndian>( a ).unwrap();
-		wtr.write_u64::<LittleEndian>( b ).unwrap();
-
-		buf.extend( wtr );
+		buf.put_u64_le( rng.gen::<u64>() );
+		buf.put_u64_le( rng.gen::<u64>() );
 
 		Self { bytes: buf.freeze() }
 	}
@@ -54,15 +48,14 @@ impl UniqueID
 		h.write( high );
 		l.write( low  );
 
-		// The format of the multiservice message requires this to be 128 bits, so add a zero
-		// We will have 128bit hash here when xxhash supports 128bit output.
 		// TODO: keep an eye on xxh3 support.
 		//
-		let mut wtr = vec![];
-		wtr.write_u64::<LittleEndian>( l.finish() ).unwrap();
-		wtr.write_u64::<LittleEndian>( h.finish() ).unwrap();
+		let mut buf = BytesMut::with_capacity( 128 );
 
-		Self { bytes: Bytes::from( wtr ) }
+		buf.put_u64_le( l.finish() );
+		buf.put_u64_le( h.finish() );
+
+		Self { bytes: buf.freeze() }
 	}
 
 
@@ -72,8 +65,8 @@ impl UniqueID
 	pub(crate) fn null() -> Self
 	{
 		let mut data = BytesMut::with_capacity( 16 );
-		data.put_u64( 0 );
-		data.put_u64( 0 );
+		data.put_u64_le( 0 );
+		data.put_u64_le( 0 );
 
 		Self { bytes: data.freeze() }
 	}

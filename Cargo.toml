@@ -13,9 +13,6 @@ paste = "^0.1"
 serde_bytes = "^0.11"
 thiserror = "^1"
 
-[dependencies.byteorder]
-version = "^1"
-
 [dependencies.bytes]
 version = "^0.5"
 

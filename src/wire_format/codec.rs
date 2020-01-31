@@ -3,15 +3,13 @@
 use crate::{ import::*, WireFormat, ThesRemoteErr };
 use super::HEADER_LEN;
 
-/// The tokio codec to frame AsyncRead/Write streams.
-/// TODO: test max_length
+/// The tokio/futures codec to frame AsyncRead/Write streams.
 //
 #[ derive( Debug ) ]
 //
 pub struct ThesCodec
 {
-	max_length: usize  , // in bytes
-
+	max_length: usize, // in bytes
 }
 
 
@@ -21,6 +19,8 @@ impl ThesCodec
 	/// header of the wireformat. For [`thespis_remote_impl::WireFormat`] the header is 36 bytes.
 	///
 	/// Setting a value to high might lead to more memory usage and could enable OOM/DDOS attacks.
+	/// Note that the `max_length` is the max size of your client message, but actual data sent over the
+	/// wire will have 32 more bytes from the WireFormat header + 8 bytes for a length field from the codec.
 	//
 	pub fn new( max_length: usize ) -> Self
 	{
@@ -30,15 +30,17 @@ impl ThesCodec
 
 	fn encode_impl( &mut self, item: WireFormat, buf: &mut BytesMut ) -> Result<(), ThesRemoteErr>
 	{
+		let payload_len = item.len() - HEADER_LEN;
+
 		// respect the max_length
 		//
-		if item.len() > self.max_length
+		if payload_len > self.max_length
 		{
 			return Err( ThesRemoteErr::MessageSizeExceeded
 			{
-				context: "WireFormat Codec encoder".to_string() ,
-				size   : item.len()                             ,
-				max_size: self.max_length                       ,
+				context : "WireFormat Codec encoder".to_string() ,
+				size    : payload_len                            ,
+				max_size: self.max_length                        ,
 			})
 		}
 
@@ -46,10 +48,7 @@ impl ThesCodec
 		let len = item.len() + 8;
 		buf.reserve( len );
 
-		let mut wtr = vec![];
-		wtr.write_u64::<LittleEndian>( len as u64 ).expect( "Tokio codec encode: Write u64 to vec" );
-
-		buf.put( wtr.as_ref()                );
+		buf.put_u64_le( len as u64 );
 		buf.put( Into::<Bytes>::into( item ) );
 
 		Ok(())
@@ -67,19 +66,18 @@ impl ThesCodec
 
 		// parse the first 8 bytes to find out the total length of the message
 		//
-		let mut tmp = Bytes::from( buf[..8].to_vec() );
-		let mut len = tmp.get_u64_le() as usize;
-
+		let mut tmp     = Bytes::from( buf[..8].to_vec() );
+		let mut len     = tmp.get_u64_le() as usize;
+		let payload_len = len - HEADER_LEN - 8;
 
 		// respect the max_length
-		// TODO: does max length include the HEADER? Document and make consistent with Encoder.
 		//
-		if len > self.max_length
+		if payload_len > self.max_length
 		{
 			return Err( ThesRemoteErr::MessageSizeExceeded
 			{
 				context : "WireFormat Codec decoder".to_string() ,
-				size    : len                                    ,
+				size    : payload_len                            ,
 				max_size: self.max_length                        ,
 			})
 		}
@@ -181,7 +179,7 @@ mod tests
 	// 3. TODO: send invalid data (not enough bytes to make a full multiservice header...)
 	//
 	use crate::{ * };
-	use super::{ *, assert_eq };
+	use super::{ *, assert_eq, assert_matches };
 
 
 
@@ -213,13 +211,13 @@ mod tests
 		let     data  = empty_data();
 		let     data2 = data.clone();
 
-		<ThesCodec as FutEncoder>::encode( &mut codec, data, &mut buf ).expect( "Encoding empty" );
+		FutEncoder::encode( &mut codec, data, &mut buf ).expect( "Encoding empty" );
 
 		assert_eq!
 		(
 			data2,
 
-			<ThesCodec as FutDecoder>::decode( &mut codec, &mut buf )
+			FutDecoder::decode( &mut codec, &mut buf )
 
 				.expect( "No errors should occur"                      )
 				.expect( "There should be some data (eg. Not Ok(None)" )
@@ -231,18 +229,20 @@ mod tests
 	//
 	fn full()
 	{
-		let mut codec = ThesCodec::new(1024);
+		// Set max_length exactly, the full data is a 5 byte string
+		//
+		let mut codec = ThesCodec::new(5);
 		let mut buf   = BytesMut::new();
 		let     data  = full_data();
 		let     data2 = data.clone();
 
-		<ThesCodec as FutEncoder>::encode( &mut codec, data, &mut buf ).expect( "Encoding empty" );
+		FutEncoder::encode( &mut codec, data, &mut buf ).expect( "Encoding empty" );
 
 		assert_eq!
 		(
 			data2,
 
-			<ThesCodec as FutDecoder>::decode( &mut codec, &mut buf )
+			FutDecoder::decode( &mut codec, &mut buf )
 
 				.expect( "No errors should occur"                      )
 				.expect( "There should be some data (eg. Not Ok(None)" )
@@ -254,9 +254,8 @@ mod tests
 	//
 	fn partials()
 	{
-		let mut codec: ThesCodec = ThesCodec ::new(1024);
-
-		let mut buf = BytesMut::new();
+		let mut codec = ThesCodec::new(1024);
+		let mut buf   = BytesMut::new();
 
 		let     empty  = empty_data();
 		let     full   = full_data ();
@@ -265,20 +264,40 @@ mod tests
 		let     full2  = full .clone();
 		let     full3  = full .clone();
 
-		<ThesCodec as FutEncoder>::encode( &mut codec, empty, &mut buf ).expect( "Encoding empty" ); // 41 bytes
-		<ThesCodec as FutEncoder>::encode( &mut codec, full , &mut buf ).expect( "Encoding full"  ); // 45 bytes
-		<ThesCodec as FutEncoder>::encode( &mut codec, full2, &mut buf ).expect( "Encoding full"  ); // 45 bytes
+		FutEncoder::encode( &mut codec, empty, &mut buf ).expect( "Encoding empty" ); // 41 bytes
+		FutEncoder::encode( &mut codec, full , &mut buf ).expect( "Encoding full"  ); // 45 bytes
+		FutEncoder::encode( &mut codec, full2, &mut buf ).expect( "Encoding full"  ); // 45 bytes
 
 		// total is 131
 		//
-		assert_eq!( empty2, <ThesCodec as FutDecoder>::decode( &mut codec, &mut buf )
-
-				.expect( "Decode empty" ).expect( "Not None" ) );
-
-		assert_eq!(  full3, <ThesCodec as FutDecoder>::decode( &mut codec, &mut buf )
-
-				.expect( "Decode empty" ).expect( "Not None" ) );
+		assert_eq!( empty2, FutDecoder::decode( &mut codec, &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
+		assert_eq!(  full3, FutDecoder::decode( &mut codec, &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
 
 		assert_eq!( 45, buf.len() ); // there should be exactly 48 bytes sitting there waiting for the last.
+	}
+
+
+	#[test]
+	//
+	fn max_length()
+	{
+		// Verify that max_length is respected.
+		//
+		let mut codec = ThesCodec::new(4);
+		let mut buf   = BytesMut::new();
+		let     data  = full_data();
+
+		let res = FutEncoder::encode( &mut codec, data, &mut buf );
+
+		assert_matches!
+		(
+			res,
+
+			Err( ThesRemoteErr::MessageSizeExceeded{ context, size, max_size } ) if
+
+				   context  == "WireFormat Codec encoder".to_string()
+				&& size     == 5
+				&& max_size == 4
+		);
 	}
 }

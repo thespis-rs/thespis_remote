@@ -75,8 +75,6 @@ const HEADER_LEN: usize = 32;
 /// - Destination unknown (since an address is like a capability,
 ///   we don't distinguish between not permitted and unknown)
 /// - Fail to deserialize message
-/// ```
-/// TODO: Do we really need sync here?
 //
 #[ derive( Debug, Clone, PartialEq, Eq ) ]
 //
