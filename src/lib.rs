@@ -144,7 +144,6 @@ mod import
 	//
 	pub(crate) use
 	{
-		pretty_assertions :: { assert_eq      } ,
-		assert_matches    :: { assert_matches } ,
+		pretty_assertions :: { assert_eq } ,
 	};
 }

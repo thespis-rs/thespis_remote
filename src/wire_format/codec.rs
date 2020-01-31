@@ -28,6 +28,10 @@ impl ThesCodec
 	}
 
 
+	// TODO: zero copy encoding. Currently we copy bytes in the output buffer.
+	// In principle we would like to not have to serialize the inner message
+	// before having access to this buffer.
+	//
 	fn encode_impl( &mut self, item: WireFormat, buf: &mut BytesMut ) -> Result<(), ThesRemoteErr>
 	{
 		let payload_len = item.len() - HEADER_LEN;
@@ -115,10 +119,6 @@ impl FutDecoder for ThesCodec
 }
 
 
-// TODO: zero copy encoding. Currently we copy bytes in the output buffer.
-// In principle we would like to not have to serialize the inner message
-// before having access to this buffer.
-//
 #[ cfg( feature = "futures_codec" ) ]
 //
 impl FutEncoder for ThesCodec
@@ -147,10 +147,7 @@ impl TokioDecoder for ThesCodec
 }
 
 
-// TODO: zero copy encoding. Currently we copy bytes in the output buffer.
-// In principle we would like to not have to serialize the inner message
-// before having access to this buffer.
-//
+
 #[ cfg( feature = "tokio_codec" ) ]
 //
 impl TokioEncoder for ThesCodec
@@ -165,139 +162,200 @@ impl TokioEncoder for ThesCodec
 }
 
 
-// TODO: test tokio
+#[ cfg( test ) ]
 //
-#[ cfg(all( test, feature = "futures_codec" )) ]
-//
-mod tests
+macro_rules! test_codec
 {
-	// Tests:
-	//
-	// 1. A valid WireFormat, encoded + decoded should be identical to original.
-	// 2. Send like 2 and a half full objects, test that 2 correctly come out, and there is the
-	//    exact amount of bytes left in the buffer for the other half.
-	// 3. TODO: send invalid data (not enough bytes to make a full multiservice header...)
-	//
-	use crate::{ * };
-	use super::{ *, assert_eq, assert_matches };
+	(
+		Encoder: $Encoder: ident,
+		Decoder: $Decoder: ident$(,)?
 
+	) =>
 
-
-	fn empty_data() -> WireFormat
 	{
-		let mut buf = BytesMut::with_capacity( 1 );
-		buf.put( &[0u8;1][..] );
-
-		let m = WireFormat::create( ServiceID::from_seed( b"codec_tests", b"Empty Message" ), ConnID::random(), buf.freeze() );
-
-		m
-	}
-
-	fn full_data() -> WireFormat
-	{
-		let mut buf = BytesMut::with_capacity( 5 );
-		buf.put( "hello".as_bytes() );
-
-		WireFormat::create( ServiceID::from_seed( b"codec_tests", b"Full Message" ), ConnID::random(), buf.freeze() )
-	}
-
-
-	#[test]
-	//
-	fn empty()
-	{
-		let mut codec = ThesCodec::new( 1024 );
-		let mut buf   = BytesMut::new();
-		let     data  = empty_data();
-		let     data2 = data.clone();
-
-		FutEncoder::encode( &mut codec, data, &mut buf ).expect( "Encoding empty" );
-
-		assert_eq!
-		(
-			data2,
-
-			FutDecoder::decode( &mut codec, &mut buf )
-
-				.expect( "No errors should occur"                      )
-				.expect( "There should be some data (eg. Not Ok(None)" )
-		);
-	}
-
-
-	#[test]
-	//
-	fn full()
-	{
-		// Set max_size exactly, the full data is a 5 byte string
+		// Tests:
 		//
-		let mut codec = ThesCodec::new(5);
-		let mut buf   = BytesMut::new();
-		let     data  = full_data();
-		let     data2 = data.clone();
-
-		FutEncoder::encode( &mut codec, data, &mut buf ).expect( "Encoding empty" );
-
-		assert_eq!
-		(
-			data2,
-
-			FutDecoder::decode( &mut codec, &mut buf )
-
-				.expect( "No errors should occur"                      )
-				.expect( "There should be some data (eg. Not Ok(None)" )
-		);
-	}
-
-
-	#[test]
-	//
-	fn partials()
-	{
-		let mut codec = ThesCodec::new(1024);
-		let mut buf   = BytesMut::new();
-
-		let     empty  = empty_data();
-		let     full   = full_data ();
-
-		let     empty2 = empty.clone();
-		let     full2  = full .clone();
-		let     full3  = full .clone();
-
-		FutEncoder::encode( &mut codec, empty, &mut buf ).expect( "Encoding empty" ); // 41 bytes
-		FutEncoder::encode( &mut codec, full , &mut buf ).expect( "Encoding full"  ); // 45 bytes
-		FutEncoder::encode( &mut codec, full2, &mut buf ).expect( "Encoding full"  ); // 45 bytes
-
-		// total is 131
+		// 1. A valid WireFormat, encoded + decoded should be identical to original.
+		// 2. Send like 2 and a half full objects, test that 2 correctly come out, and there is the
+		//    exact amount of bytes left in the buffer for the other half.
+		// 3. test max_size. Verify that a max_size exactly the size of the message passed (tested in test full),
+		//    and test the error (tested in test max_size)
+		// 4. calling decode on short or empty buffer should return Ok(None)
 		//
-		assert_eq!( empty2, FutDecoder::decode( &mut codec, &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
-		assert_eq!(  full3, FutDecoder::decode( &mut codec, &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
+		fn empty_data() -> WireFormat
+		{
+			let mut buf = BytesMut::with_capacity( 1 );
+			buf.put( &[0u8;1][..] );
 
-		assert_eq!( 45, buf.len() ); // there should be exactly 48 bytes sitting there waiting for the last.
-	}
+			let m = WireFormat::create( ServiceID::from_seed( b"codec_tests", b"Empty Message" ), ConnID::random(), buf.freeze() );
+
+			m
+		}
+
+		fn full_data() -> WireFormat
+		{
+			let mut buf = BytesMut::with_capacity( 5 );
+			buf.put( "hello".as_bytes() );
+
+			WireFormat::create( ServiceID::from_seed( b"codec_tests", b"Full Message" ), ConnID::random(), buf.freeze() )
+		}
 
 
-	#[test]
-	//
-	fn max_size()
-	{
-		// Verify that max_size is respected.
+		#[test]
 		//
-		let mut codec = ThesCodec::new(4);
-		let mut buf   = BytesMut::new();
-		let     data  = full_data();
+		fn empty()
+		{
+			let mut codec = ThesCodec::new( 1024 );
+			let mut buf   = BytesMut::new();
+			let     data  = empty_data();
+			let     data2 = data.clone();
 
-		let res = FutEncoder::encode( &mut codec, data, &mut buf );
+			$Encoder::encode( &mut codec, data, &mut buf ).expect( "Encoding empty" );
 
-		assert_matches!
-		(
-			res,
+			assert_eq!
+			(
+				data2,
 
-			Err( ThesRemoteErr::MessageSizeExceeded{ context, size, max_size } ) if
+				$Decoder::decode( &mut codec, &mut buf )
 
-				   context  == "WireFormat Codec encoder".to_string()
-				&& size     == 5
-				&& max_size == 4
-		);
+					.expect( "No errors should occur"                      )
+					.expect( "There should be some data (eg. Not Ok(None)" )
+			);
+		}
+
+
+		#[test]
+		//
+		fn full()
+		{
+			// Set max_size exactly, the full data is a 5 byte string
+			//
+			let mut codec = ThesCodec::new(5);
+			let mut buf   = BytesMut::new();
+			let     data  = full_data();
+			let     data2 = data.clone();
+
+			$Encoder::encode( &mut codec, data, &mut buf ).expect( "Encoding empty" );
+
+			assert_eq!
+			(
+				data2,
+
+				$Decoder::decode( &mut codec, &mut buf )
+
+					.expect( "No errors should occur"                      )
+					.expect( "There should be some data (eg. Not Ok(None)" )
+			);
+		}
+
+
+		#[test]
+		//
+		fn partials()
+		{
+			let mut codec = ThesCodec::new(1024);
+			let mut buf   = BytesMut::new();
+
+			let     empty  = empty_data();
+			let     full   = full_data ();
+
+			let     empty2 = empty.clone();
+			let     full2  = full .clone();
+			let     full3  = full .clone();
+
+			$Encoder::encode( &mut codec, empty, &mut buf ).expect( "Encoding empty" ); // 41 bytes
+			$Encoder::encode( &mut codec, full , &mut buf ).expect( "Encoding full"  ); // 45 bytes
+			$Encoder::encode( &mut codec, full2, &mut buf ).expect( "Encoding full"  ); // 45 bytes
+
+			// total is 131
+			//
+			assert_eq!( empty2, $Decoder::decode( &mut codec, &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
+			assert_eq!(  full3, $Decoder::decode( &mut codec, &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
+
+			assert_eq!( 45, buf.len() ); // there should be exactly 48 bytes sitting there waiting for the last.
+		}
+
+
+		#[test]
+		//
+		fn max_size()
+		{
+			// Verify that max_size is respected.
+			//
+			let mut codec = ThesCodec::new(4);
+			let mut buf   = BytesMut::new();
+			let     data  = full_data();
+
+			let res = $Encoder::encode( &mut codec, data, &mut buf );
+
+			assert_eq!
+			(
+				res.expect_err( "exceeding max size should give an error" ),
+
+				ThesRemoteErr::MessageSizeExceeded
+				{
+					context : "WireFormat Codec encoder".to_string() ,
+					size    : 5                                      ,
+					max_size: 4                                      ,
+				}
+			);
+		}
+
+
+		#[test]
+		//
+		fn decode_empty()
+		{
+			// Verify that max_size is respected.
+			//
+			let mut codec = ThesCodec::new(4);
+			let mut buf   = BytesMut::new();
+
+			let res = $Decoder::decode( &mut codec, &mut buf );
+
+			assert_eq!( res, Ok(None) );
+		}
+
+
+		#[test]
+		//
+		fn decode_short()
+		{
+			// Verify that max_size is respected.
+			//
+			let mut codec = ThesCodec::new(4);
+			let mut buf   = BytesMut::new();
+
+			buf.put_u8( 3 );
+
+			let res = $Decoder::decode( &mut codec, &mut buf );
+
+			assert_eq!( res, Ok(None) );
+		}
 	}
 }
+
+
+#[ cfg(all( test, feature = "futures_codec" )) ]
+//
+mod tests_futures
+{
+	use crate :: { *            } ;
+	use super :: { *, assert_eq } ;
+
+	test_codec!( Encoder: FutEncoder, Decoder: FutDecoder );
+}
+
+
+#[ cfg(all( test, feature = "tokio_codec" )) ]
+//
+mod tests_tokio
+{
+	use crate :: { *            } ;
+	use super :: { *, assert_eq } ;
+
+	test_codec!( Encoder: TokioEncoder, Decoder: TokioDecoder );
+}
+
+
+
