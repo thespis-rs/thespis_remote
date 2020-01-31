@@ -9,7 +9,7 @@ use super::HEADER_LEN;
 //
 pub struct ThesCodec
 {
-	max_length: usize, // in bytes
+	max_size: usize, // in bytes
 }
 
 
@@ -19,12 +19,12 @@ impl ThesCodec
 	/// header of the wireformat. For [`thespis_remote_impl::WireFormat`] the header is 36 bytes.
 	///
 	/// Setting a value to high might lead to more memory usage and could enable OOM/DDOS attacks.
-	/// Note that the `max_length` is the max size of your client message, but actual data sent over the
+	/// Note that the `max_size` is the max size of your client message, but actual data sent over the
 	/// wire will have 32 more bytes from the WireFormat header + 8 bytes for a length field from the codec.
 	//
-	pub fn new( max_length: usize ) -> Self
+	pub fn new( max_size: usize ) -> Self
 	{
-		Self{ max_length }
+		Self{ max_size }
 	}
 
 
@@ -32,15 +32,15 @@ impl ThesCodec
 	{
 		let payload_len = item.len() - HEADER_LEN;
 
-		// respect the max_length
+		// respect the max_size
 		//
-		if payload_len > self.max_length
+		if payload_len > self.max_size
 		{
 			return Err( ThesRemoteErr::MessageSizeExceeded
 			{
 				context : "WireFormat Codec encoder".to_string() ,
 				size    : payload_len                            ,
-				max_size: self.max_length                        ,
+				max_size: self.max_size                        ,
 			})
 		}
 
@@ -70,15 +70,15 @@ impl ThesCodec
 		let mut len     = tmp.get_u64_le() as usize;
 		let payload_len = len - HEADER_LEN - 8;
 
-		// respect the max_length
+		// respect the max_size
 		//
-		if payload_len > self.max_length
+		if payload_len > self.max_size
 		{
 			return Err( ThesRemoteErr::MessageSizeExceeded
 			{
 				context : "WireFormat Codec decoder".to_string() ,
 				size    : payload_len                            ,
-				max_size: self.max_length                        ,
+				max_size: self.max_size                        ,
 			})
 		}
 
@@ -229,7 +229,7 @@ mod tests
 	//
 	fn full()
 	{
-		// Set max_length exactly, the full data is a 5 byte string
+		// Set max_size exactly, the full data is a 5 byte string
 		//
 		let mut codec = ThesCodec::new(5);
 		let mut buf   = BytesMut::new();
@@ -279,9 +279,9 @@ mod tests
 
 	#[test]
 	//
-	fn max_length()
+	fn max_size()
 	{
-		// Verify that max_length is respected.
+		// Verify that max_size is respected.
 		//
 		let mut codec = ThesCodec::new(4);
 		let mut buf   = BytesMut::new();
