@@ -39,6 +39,10 @@ pub enum ConnectionError
 	//
 	ServiceGone( ServiceID ),
 
+	/// The connection timed out while waiting for a response to a Call.
+	//
+	Timeout( ServiceID ),
+
 	/// We don't provide this service.
 	//
 	UnknownService{ sid: Option<ServiceID>, cid: Option<ConnID> },

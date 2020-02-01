@@ -94,6 +94,17 @@ pub enum ThesRemoteErr
 		ctx: ErrorContext
 	},
 
+	/// An operation timed out. Currently used for outgoing calls.
+	//
+	#[ error( "Operation Timed out{ctx}" ) ]
+	//
+	Timeout
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: ErrorContext
+	},
+
 	/// Cannot deliver message to unknown service.
 	//
 	#[ error( "Cannot deliver message to unknown service.{ctx}" ) ]

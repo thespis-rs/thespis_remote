@@ -95,6 +95,7 @@ dependencies:
   rand                : { version: ^0.7, default-features: false }
   parking_lot         : { version: ^0.10 }
   tokio-serde-cbor    : { version: ^0.4, optional: true }
+  futures-timer       : ^3
 
   # thiserror shouldn't have any public impact, but if they make a breaking change, take care to double check.
   #

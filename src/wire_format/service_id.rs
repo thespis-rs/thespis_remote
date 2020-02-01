@@ -15,7 +15,12 @@ static SERVICES: SyncLazy<Mutex< HashMap<&'static ServiceID, &'static str> >> = 
 /// this message is to be delivered.
 ///
 /// Ideally we want to use 128 bits here to have globally unique identifiers with little chance
-/// of collision, but we use xxhash which for the moment only supports 64 bit.
+/// of collision, but we use xxhash which for the moment only supports 64 bit, so we hash the
+/// namespace and typename separately both to 64 bits.
+///
+/// 2 values are reserved, all zero's and all one's are used as special values by Peer to
+/// detect error conditions. If ever your namespace + typename would hash to one of these,
+/// please change them.
 //
 #[ derive( Clone, PartialEq, Eq, Hash, Serialize, Deserialize ) ]
 //
@@ -32,7 +37,11 @@ impl ServiceID
 	//
 	pub fn from_seed( namespace: &[u8], typename: &[u8] ) -> Self
 	{
-		Self{ inner: UniqueID::from_seed( namespace, typename ) }
+		let inner = UniqueID::from_seed( namespace, typename );
+
+		debug_assert!( !inner.is_null(), "Hashing your namespace + typename generated a hash that is all zero's, which is a reserved value. Please slightly change either one." );
+
+		Self{ inner }
 	}
 
 
@@ -50,6 +59,23 @@ impl ServiceID
 	pub fn is_null( &self ) -> bool
 	{
 		self.inner.is_null()
+	}
+
+
+	/// A full ServiceID. Value reserved by thespis to detect an error condition.
+	/// TODO: evaluate security implications.
+	//
+	pub fn full() -> Self
+	{
+		Self{ inner: UniqueID::full() }
+	}
+
+
+	/// Predicate for full values (all bytes are 1).
+	//
+	pub fn is_full( &self ) -> bool
+	{
+		self.inner.is_full()
 	}
 
 

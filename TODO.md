@@ -1,5 +1,7 @@
 # thespis_remote TODO
 
+- verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
+
 
 - structured concurrency! All of these requests (at least calls) should stop when the connection
  closes. It makes no sense to process requests if we can't send a response anymore. Right now

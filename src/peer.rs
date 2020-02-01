@@ -12,6 +12,7 @@ use crate :: { import::*, * };
     mod incoming          ;
     mod remove_services   ;
 pub mod request_error     ;
+    mod timeout           ;
 
 pub use add_services      :: AddServices      ;
 pub use call              :: Call             ;
@@ -21,6 +22,7 @@ pub use peer_event        :: PeerEvent        ;
 pub use remove_services   :: RemoveServices   ;
     use incoming          :: Incoming         ;
     use request_error     :: RequestError     ;
+    use timeout           :: Timeout          ;
 
 
 // Reduce trait bound boilerplate, since we have to repeat them all over
@@ -170,6 +172,10 @@ pub struct Peer
 	// An executor to spawn tasks, for processing requests.
 	//
 	exec          : Arc< dyn Spawn + Send + Sync + 'static >,
+
+	// How long to wait for responses to outgoing requests before timing out.
+	//
+	timeout       : Duration,
 }
 
 
@@ -238,6 +244,7 @@ impl Peer
 			listen_handle: Some( handle )             ,
 			pharos       : Pharos::default()          ,
 			exec         : exec                       ,
+			timeout      : Duration::from_secs(60)    ,
 		})
 	}
 
@@ -308,6 +315,14 @@ impl Peer
 	}
 
 
+	/// Set the timeout for outgoing calls. This defaults to 60 seconds if not set by this method.
+	/// Having a timeout allows your code to detect if a remote is not reactive and prevents a memory
+	/// leak in Peer where information regarding the request would be kept indefinitely otherwise.
+	//
+	pub fn set_timeout( &mut self, delay: Duration )
+	{
+		self.timeout = delay;
+	}
 
 
 	/// Register a service map as the handler for service ids that come in over the network. Normally you should

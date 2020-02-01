@@ -72,11 +72,33 @@ impl UniqueID
 	}
 
 
+	/// And full UniqueID. Reserved for use by thespis_remote, would usually be all
+	/// one bytes.
+	/// u128 still isn't well supported everywhere (WASM), so use 2 u64;
+	//
+	pub(crate) fn full() -> Self
+	{
+		let mut data = BytesMut::with_capacity( 16 );
+		data.put_u64_le( u64::max_value() );
+		data.put_u64_le( u64::max_value() );
+
+		Self { bytes: data.freeze() }
+	}
+
+
 	/// Predicate for null values (all bytes are 0).
 	//
 	pub(crate) fn is_null( &self ) -> bool
 	{
 		self.bytes.iter().all( |b| *b == 0 )
+	}
+
+
+	/// Predicate for null values (all bytes are 0).
+	//
+	pub(crate) fn is_full( &self ) -> bool
+	{
+		self.bytes.iter().all( |b| *b == 0xff )
 	}
 }
 
@@ -171,6 +193,8 @@ mod tests
 {
 	// What's tested:
 	// 1. Identical input data should give identical hash.
+	// 2. Creating full/null values create values that get detected by is_null, is_full predicates.
+	// 3. debug output.
 	//
 	use super::{ *, assert_eq };
 
@@ -183,6 +207,26 @@ mod tests
 		let sid2 = UniqueID::from_seed( b"namespace", b"Typename" );
 
 		assert_eq!( sid, sid2 );
+	}
+
+
+	#[test]
+	//
+	fn full()
+	{
+		let sid  = UniqueID::full();
+
+		assert!( sid.is_full() );
+	}
+
+
+	#[test]
+	//
+	fn null()
+	{
+		let sid  = UniqueID::null();
+
+		assert!( sid.is_null() );
 	}
 
 

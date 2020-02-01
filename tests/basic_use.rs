@@ -38,6 +38,7 @@ fn remote()
 		// Create a service map
 		//
 		let sm = remotes::Services::new();
+
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( addr_handler.clone_box() );

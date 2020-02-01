@@ -394,16 +394,19 @@ impl Services
 
 				Err(_) =>
 				{
-					let ctx = Peer::err_ctx( &peer, sid.clone(), cid, "Response to remote call".to_string() );
+					let ctx = Peer::err_ctx( &peer, sid, cid, "Response to remote call".to_string() );
 
 					return Self::handle_err( peer, ThesRemoteErr::Serialize{ ctx } ).await;
 				}
 			};
 
 
-			// Create a WireFormat response
+			// Create a WireFormat response.
+			// The sid must be full to differentiate a response from a request. If the request
+			// has timed out, the peer will no longer have the cid in their list of open requests,
+			// so they would not know this was a response otherwise.
 			//
-			let response = WireFormat::create( sid, cid, serialized.into() ) ;
+			let response = WireFormat::create( ServiceID::full(), cid, serialized.into() ) ;
 
 
 			// Send the response out over the network.
@@ -758,11 +761,11 @@ impl<S> Address<S> for RemoteAddr
 				)
 			},
 
-			// The remote returned an error
+			// The remote returned an error.
 			//
 			Err( err ) =>
 			{
-				let ctx = ErrorContext
+				let mut ctx = ErrorContext
 				{
 					context  : Some( "Remote could not process our message".to_string() ) ,
 					peer_id  : self.peer.id().into()                                      ,
@@ -771,7 +774,30 @@ impl<S> Address<S> for RemoteAddr
 					cid      : cid.into()                                                 ,
 				};
 
-				Err( ThesRemoteErr::Remote{ err, ctx } )
+				match err
+				{
+					// This is a special case, since it get's returned from the channel it needed to be a
+					// ConnectionError, but it doesn't actually come from the remote, so translate into
+					// it's own error variant rather than ThesRemoteErr::Remote.
+					//
+					// It can however come from a relay. We don't allow the user here to distinguish whether
+					// this peer timed out or a relay.
+					//
+					// TODO: Document this as users might be confused when they raise their timeout and it still
+					// times out. It will be logged as a remote error by the code in peer/incoming.rs
+					//
+					ConnectionError::Timeout(_) =>
+					{
+						ctx.context = Some( "Time out waiting for response to outgoing call".to_string() );
+
+						Err( ThesRemoteErr::Timeout{ ctx } )
+					}
+
+					_ =>
+					{
+						Err( ThesRemoteErr::Remote{ err, ctx } )
+					}
+				}
 			},
 		}
 

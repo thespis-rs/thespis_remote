@@ -209,6 +209,7 @@ async fn make_call<T: Address<Call, Error=ThesErr> + ?Sized >( mut relay: Box<T>
 					},
 
 					// The relayed remote had errors while processing the request, such as deserialization.
+					// Our own peer might send a Timeout error back as well.
 					//
 					Err(e) =>
 					{

@@ -18,6 +18,9 @@ pub struct Call
 
 impl Message for Call
 {
+	/// We do not await the receiver in the async handle method below, since we don't want
+	/// to hang the peer whilst waiting for the response. That's why we return a channel.
+	//
 	type Return = Result< oneshot::Receiver<Result<WireFormat, ConnectionError>>, ThesRemoteErr >;
 }
 
@@ -45,13 +48,40 @@ impl Handler<Call> for Peer
 {
 	fn handle( &mut self, call: Call ) -> Return< '_, <Call as Message>::Return >
 	{
-		trace!( "{}: starting Handler<Call>", self.identify());
+		let identity = self.identify();
+
+		trace!( "{}: starting Handler<Call>", &identity );
 
 		async move
 		{
-			trace!( "{}: polled Handler<Call>", self.identify() );
+			let self_addr = match &mut self.addr
+			{
+				Some(ref mut addr) => addr.clone(),
+
+				// we no longer have our address, we're shutting down. we can't really do anything
+				// without our address we won't have the sink for the connection either. We can
+				// no longer send outgoing messages. Don't process any.
+				//
+				None =>
+				{
+					let ctx = ErrorContext
+					{
+						context  : Some( "register_relayed_services".to_string() ),
+						peer_id  : None ,
+						peer_name: None ,
+						sid      : None ,
+						cid      : None ,
+					};
+
+					return Err( ThesRemoteErr::ConnectionClosed{ ctx } );
+				}
+			};
+
+
+			trace!( "{}: polled Handler<Call>", &identity );
 
 			let conn_id = call.mesg.conn_id();
+			let sid     = call.mesg.service();
 
 			self.send_msg( call.mesg ).await?;
 
@@ -59,9 +89,34 @@ impl Handler<Call> for Peer
 			//
 			let (sender, receiver) = oneshot::channel::< Result<WireFormat, ConnectionError> >() ;
 
-			// TODO: Probably need to keep some timeout mechanism for when responses never come...
-			//       Also how do we handle backpressure, limit the number of open requests?
+
+			// send a timeout message to ourselves.
 			//
+			let cid            = conn_id      .clone();
+			let sid2           = sid          .clone();
+			let delay          = self.timeout .clone();
+			let mut self_addr2 = self_addr    .clone();
+
+			let task = async move
+			{
+				Delay::new( delay ).await;
+
+				if self_addr2.send( super::Timeout{ cid, sid } ).await.is_err()
+				{
+					error!( "{}: Failed to send timeout to self.", &identity );
+				}
+			};
+
+			self.exec.spawn( task ).map_err( |_|
+			{
+				ThesRemoteErr::Spawn
+				{
+					ctx: Peer::err_ctx( &self_addr, sid2, None, "timeout for outgoing Call".to_string() )
+				}
+
+			})?;
+
+
 			self.responses.insert( conn_id, sender );
 
 			Ok( receiver )

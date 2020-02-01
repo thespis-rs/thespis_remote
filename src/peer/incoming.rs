@@ -63,9 +63,10 @@ async move
 
 	// algorithm for incoming messages. Options are:
 	//
-	// 1. incoming send/call               for local/relayed/unknown actor (6 options)
-	// 2.       response to outgoing call from local/relayed actor         (2 options)
-	// 3. error response to outgoing call from local/relayed actor         (2 options)
+	// 1. incoming send/call               for local/relayed/unknown actor     (6 options)
+	// 2.       response to outgoing call from local/relayed actor             (2 options)
+	// 3.       response to outgoing call from local/relayed actor (timed out) (2 options)
+	// 4. error response to outgoing call from local/relayed actor             (2 options)
 	//
 	// 4 possibilities with ServiceID and ConnID. These can be augmented with
 	// predicates about our local state (sid in local table, routing table, unknown), + the codec
@@ -79,7 +80,7 @@ async move
 	// (leaves distinguishing between send/call/response/error)
 	//
 	// CID   absent  -> Send
-	// CID   unknown -> Call
+	// CID   unknown -> Call or timed out response (SID full)
 	//
 	// CID   present -> Return/Error
 	//
@@ -124,12 +125,20 @@ async move
 		//
 		if channel.send( Ok( frame ) ).is_err()
 		{
-			warn!( "{}: Received response for dead actor, sid: {}, cid: {}.", self.identify(), sid, cid );
+			warn!( "{}: Received response for dead actor, cid: {}.", self.identify(), cid );
 		}
 	}
 
+	// There is a CID, so it's a response, but it's not in our self.responses, so it has timed out.
+	// We are no longer waiting for this response, so we can only drop it.
+	//
+	else if sid.is_full()
+	{
+		warn!( "{}: Received response for a timed out outgoing request, cid: {}. Dropping response.", self.identify(), cid );
+	}
 
-	// it's a call (!cid.is_null() and cid is unknown)
+
+	// it's a call (!cid.is_null() and cid is unknown and there is a sid not null)
 	//
 	else
 	{
@@ -144,7 +153,6 @@ async move
 
 impl Peer
 {
-
 	// It's a connection error from the remote peer
 	//
 	// This includes failing to deserialize our messages, failing to relay, unknown service, ...
