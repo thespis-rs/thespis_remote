@@ -115,28 +115,27 @@ fn clone()
 //
 fn debug()
 {
-	let exec = ThreadPool::new().expect( "create threadpool" );
-
 	// Create mailbox for our handler
 	//
-	let addr_handler = Addr::try_from( Sum(0), &exec ).expect( "spawn actor mailbox" );
+	let mb    : Inbox<Sum> = Inbox::new( Some( "for_debug".into() ) ) ;
+	let addr               = Addr::new( mb.sender() )                 ;
 
 	let sm = remotes::Services::new();
 
-	sm.register_handler::<Add >( addr_handler.clone_box() );
-	sm.register_handler::<Show>( addr_handler.clone_box() );
+	sm.register_handler::<Add >( addr.clone_box() );
+	sm.register_handler::<Show>( addr.clone_box() );
 
 	// All tests from the same file seem to run in the same process, so sometimes
 	// if the test for clone has run first, the ID will be 1.
 	//
-	let id = addr_handler.id();
+	let id = addr.id();
 
 	let txt = format!
 ("remotes::Services
 {{
-	Add  - sid: 0xbcc09d3812378e171ad366d75f687757 - handler id: {:?}
-	Sub  - sid: 0xbcc09d3812378e179c6a3582c2729a7c - handler id: none
-	Show - sid: 0xbcc09d3812378e17e1a1e89b512c025a - handler id: {:?}
+	Add  - sid: 0xbcc09d3812378e171ad366d75f687757 - handler: id({}), name(for_debug)
+	Sub  - sid: 0xbcc09d3812378e179c6a3582c2729a7c - handler: none
+	Show - sid: 0xbcc09d3812378e17e1a1e89b512c025a - handler: id({}), name(for_debug)
 }}",
 &id,
 &id,

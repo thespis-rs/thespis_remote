@@ -1,4 +1,4 @@
-# thespis_remote_impl TODO
+# thespis_remote TODO
 
 
 - structured concurrency! All of these requests (at least calls) should stop when the connection

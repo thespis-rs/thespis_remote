@@ -58,13 +58,12 @@ const HEADER_LEN: usize = 32;
 ///
 /// - a send/call for an actor we don't know -> sid unknown: respond with error
 ///
-/// - a response to a call    -> service sid zero, valid connID
+/// - a response to a call    -> valid connID
 ///   - when the call was made, we gave a onshot-channel receiver to the caller,
 ///     look it up in our open connections table and put the response in there.
 ///     Maybe need 2 different tables, one for in process and one for rely.
 ///
-/// - an error message (eg. deserialization failed on the remote) -> service sid and connID zero.
-/// 	TODO: This is a problem. We should know which connection erred, so connID should be valid...
+/// - an error message (eg. deserialization failed on the remote) -> service sid null.
 ///
 ///
 ///   -> log the error, we currently don't have a way to pass an error to the caller.
@@ -91,14 +90,11 @@ impl Message for WireFormat
 
 
 
-/// All the methods here can panic. We should make sure that bytes is always big enough,
-/// because bytes.slice panics if it's to small. Same for bytes.put.
+// All the methods here can panic. We should make sure that bytes is always big enough,
+// because bytes.slice panics if it's to small. Same for bytes.put.
 //
 impl WireFormat
 {
-
-	/// TODO: This can panic because of Buf.put
-	//
 	pub fn create( service: ServiceID, conn_id: ConnID, mesg: Bytes ) -> Self
 	{
 		let mut bytes = BytesMut::with_capacity( HEADER_LEN + mesg.len() );
@@ -164,8 +160,8 @@ impl TryFrom< Bytes > for WireFormat
 	fn try_from( bytes: Bytes ) -> Result< Self, ThesRemoteErr >
 	{
 		// at least verify we have enough bytes
-		// minimum: header: 32 + 1 byte mesg = 33
-		// TODO: we allow an empty message. Do codecs actually serialize zero sized types to nothing?
+		// We allow an empty message. In principle I suppose a zero sized type could be
+		// serialized to nothing by serde. Haven't checked though.
 		//
 		if bytes.len() < HEADER_LEN
 		{

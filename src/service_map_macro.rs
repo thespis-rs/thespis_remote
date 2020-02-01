@@ -77,10 +77,6 @@ macro_rules! service_map
 	///
 	/// A process wanting to send messages needs to create the service map with the same namespace as the
 	/// receiving process.
-	///
-	/// TODO: are we sure that path is better than ty or ident? We should test it actually works with paths.
-	///       one place where it makes a difference, is in the use statement just below, where ty doesn't
-	///       seem to work.
 	//
 	namespace: $ns: ident;
 
@@ -127,8 +123,10 @@ use
 ///
 pub trait Service
 
-	// TODO: make peace with serde and figure out once and for all when it makes sense
-	//       to create a bound to Deserialize<'de> and when to use DeserializeOwned.
+	// TODO: From trying with Deserialize<'de>, and reading https://serde.rs/lifetimes.html#trait-bounds
+	// I think we need DeserializeOwned here. I'm not a 100% sure though, so hence this comment if
+	// at later stage we can have certainty here, then replace this comment with a proof of why
+	// we need which one.
 	//
 	where  Self                    : Message + Serialize + DeserializeOwned,
          <Self as Message>::Return:           Serialize + DeserializeOwned,
@@ -179,15 +177,13 @@ pub struct Services
 
 
 
-/// TODO: Print actor name if it has one
-///
 /// Will print something like:
 ///
 /// ```ignore
 /// remotes::Services
 /// {
-///    Add  - sid: c5c22cab4f2d334e0000000000000000 - handler id: 0
-///    Show - sid: 0617b1cfb55b99700000000000000000 - handler id: 0
+///    Add  - sid: 0xbcc09d3812378e171ad366d75f687757 - handler: id(0), name(actor_name)
+///    Show - sid: 0xbcc09d3812378e17e1a1e89b512c025a - handler: id(0), name(actor_name)
 /// }
 /// ```
 //
@@ -212,27 +208,33 @@ impl fmt::Debug for Services
 			(
 				f,
 
-				"\t{:width$} - sid: 0x{:02x} - handler id: {}\n",
+				"\t{:width$} - sid: 0x{:02x} - handler: ",
 
 				stringify!( $services ),
 				sid,
 
-
-				if let Some(h) = handlers.get( sid )
-				{
-					// TODO, don't expect?
-					//
-					let handler: &Receiver<$services> = h.downcast_ref().expect( "downcast receiver in Debug for Services" );
-					format!( "{:?}", handler.id() )
-				}
-
-				else
-				{
-					"none".to_string()
-				},
-
 				width = width
 			)?;
+
+			if let Some(h) = handlers.get( sid )
+			{
+				// This expect shouldn't ever fail. We manually make the receiver in this file.
+				//
+				let handler: &Receiver<$services> = h.downcast_ref().expect( "downcast receiver in Debug for Services" );
+
+				match handler.name()
+				{
+					Some(n) => write!( f, "id({}), name({})", &handler.id(), &n )?,
+					None    => write!( f, "id({})", &handler.id() )?,
+				};
+			}
+
+			else
+			{
+				write!( f, "none" )?;
+			}
+
+			write!( f, "\n" )?;
 		)+
 
 		write!( f, "}}" )
@@ -247,7 +249,7 @@ impl Clone for Services
 {
 	fn clone( &self ) -> Self
 	{
-		let mut map: HashMap<&'static ServiceID, Box< dyn Any + Send + Sync >> = HashMap::new();
+		let mut map: HashMap< &'static ServiceID, Box<dyn Any + Send + Sync> > = HashMap::new();
 
 		let handlers = self.handlers.read();
 
@@ -259,7 +261,7 @@ impl Clone for Services
 				$(
 					_ if *k == <$services as Service>::sid() =>
 					{
-						// TODO: don't expect?
+						// This should never fail, so the expect should be fine.
 						//
 						let h: &Receiver<$services> = v.downcast_ref().expect( "downcast receiver in Clone" );
 
@@ -464,9 +466,6 @@ impl ServiceMap for Services
 	/// - ThesRemoteErr::UnknownService
 	/// - ThesRemoteErr::Deserialize
 	///
-	/// TODO: This should never block, so can't we access self.handlers inside the future returned if we
-	///       make it's lifetime '_, then we can make this a normal async method.
-	///
 	//
 	fn send_service( &self, msg: WireFormat, peer: Addr<Peer> )
 
@@ -618,9 +617,15 @@ impl ServiceMap for Services
 pub struct RemoteAddr
 {
 	// TODO: do not rely on Addr, we should be generic over Address, but not
-	//       choose an implementation.
+	//       choose an implementation. This is a complicated one. While this is in the public
+	//       API, so it would be good, having a trait object that is Address<WireFormat> + Address<Call>
+	//       and is still cloneable is complicated.
 	//
-	peer: Pin<Box< Addr<Peer> >>
+	//       It could be done by unifying both message types (eg. an enum), but then what is the return
+	//       type of this message. It would have to be an enum as well, and every caller would have to
+	//       match on it. For now we will keep our dependency on Peer and Addr.
+	//
+	peer: Addr<Peer>
 }
 
 
@@ -628,7 +633,7 @@ impl RemoteAddr
 {
 	pub fn new( peer: Addr<Peer> ) -> Self
 	{
-		Self { peer: Box::pin( peer ) }
+		Self { peer }
 	}
 
 
@@ -789,14 +794,13 @@ impl<S> Sink<S> for RemoteAddr
 	where  S                    : Service + Send,
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
-
 {
 	type Error = ThesRemoteErr;
 
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		Sink::<WireFormat>::poll_ready( self.peer.as_mut(), cx )
+		Sink::<WireFormat>::poll_ready( Pin::new( &mut self.peer ), cx )
 
 			.map_err( Into::into )
 	}
@@ -804,7 +808,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
-		Sink::<WireFormat>::start_send( self.peer.as_mut(), Self::build_ms( msg, ConnID::null() )? )
+		Sink::<WireFormat>::start_send( Pin::new( &mut self.peer ), Self::build_ms( msg, ConnID::null() )? )
 
 			.map_err( |_|
 			{
@@ -824,7 +828,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		Sink::<WireFormat>::poll_flush( self.peer.as_mut(), cx )
+		Sink::<WireFormat>::poll_flush( Pin::new( &mut self.peer ), cx )
 
 			.map_err( Into::into )
 	}
