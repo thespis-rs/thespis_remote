@@ -60,10 +60,7 @@ impl From< RelayClosure > for ServiceHandler
 
 
 
-
-/// TODO: - get a file and line number for the closure.
-///       - clean version for when the address has no name.
-///
+// Would have been nice to have file and line number for the closure here, but it's rather hard to do.
 //
 impl fmt::Debug for ServiceHandler
 {
@@ -74,7 +71,15 @@ impl fmt::Debug for ServiceHandler
 		match self
 		{
 			Self::Closure(_) => { write!( f, "Closure" )?; }
-			Self::Address(a) => { write!( f, "Address: id: {}, name: {:?}", a.id(), a.name().unwrap_or( "".into() ) )?; }
+
+			Self::Address(a) =>
+			{
+				match a.name()
+				{
+					Some(n) => write!( f, "Address: id: {}, name: {:?}", a.id(), n )? ,
+					None    => write!( f, "Address: id: {}", a.id()                )? ,
+				}
+			}
 		};
 
 		Ok(())
