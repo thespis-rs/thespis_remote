@@ -7,11 +7,12 @@
 //
 mod common;
 
-use common::*                       ;
-use common::import::{ *, assert_eq };
-use std::sync::atomic::{ AtomicUsize, Ordering };
-use std::time::{ Duration };
-use futures_timer :: { Delay };
+use
+{
+	common        :: { *, import::{ *, assert_eq }                             } ,
+	std           :: { time::Duration, sync::atomic::{ AtomicUsize, Ordering } } ,
+	futures_timer :: { Delay                                                   } ,
+};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -23,7 +24,7 @@ impl Handler<Add> for Slow
 {
 	fn handle( &mut self, _msg: Add ) -> Return<'_, ()> { async move
 	{
-		let _ = Delay::new( Duration::from_secs(1) ).await;
+		let _ = Delay::new( Duration::from_millis(100) ).await;
 
 		COUNTER.fetch_add( 1, Ordering::SeqCst );
 
