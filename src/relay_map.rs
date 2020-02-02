@@ -78,26 +78,18 @@ impl ServiceMap for RelayMap
 
 			ServiceHandler::Closure( c ) =>
 			{
-				match c(&sid)
+				let mut a = c(&sid);
+
+				async move
 				{
-					Some(mut a) => async move
+					if a.send( msg ).await.is_err()
 					{
-						if a.send( msg ).await.is_err()
-						{
-							let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Process send to relayed Actor".to_string() );
+						let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Process send to relayed Actor".to_string() );
 
-							return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
-						}
-
-					}.boxed(),
-
-					None =>
-					{
-						let ctx = Peer::err_ctx( &peer, sid, None, "Process call for relayed Actor".to_string() );
-
-						return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
+						return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
 					}
-				}
+
+				}.boxed()
 			}
 		}
 	}
@@ -112,27 +104,11 @@ impl ServiceMap for RelayMap
 		trace!( "RelayMap: Incoming Call for relayed actor." );
 
 		let sid = frame.service();
-		let cid = frame.conn_id();
-
 
 		match &self.handler
 		{
-			ServiceHandler::Address( a ) => make_call( a.clone_box(), frame, peer ).boxed(),
-
-			ServiceHandler::Closure( c ) =>
-			{
-				match c(&sid)
-				{
-					Some(a) => make_call( a, frame, peer ).boxed(),
-
-					None =>
-					{
-						let ctx = Peer::err_ctx( &peer, sid, cid, "Process call for relayed Actor".to_string() );
-
-						return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
-					}
-				}
-			}
+			ServiceHandler::Address( a ) => make_call( a.clone_box(), frame, peer ).boxed() ,
+			ServiceHandler::Closure( c ) => make_call( c(&sid)      , frame, peer ).boxed() ,
 		}
 	}
 

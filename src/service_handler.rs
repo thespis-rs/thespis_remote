@@ -9,7 +9,7 @@ pub trait Relay: Address<WireFormat, Error=ThesErr> + Address<Call, Error=ThesEr
 impl<T> Relay for T where T: Address<WireFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Identify + Send + Sync {}
 
 
-pub type RelayClosure = Box< dyn Fn( &ServiceID ) -> Option<Box<dyn Relay>> + Send + Sync>;
+pub type RelayClosure = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay> + Send + Sync>;
 
 
 /// A wrapper type to be able to pass both an BoxAddress or a closure to RelayMap.
@@ -20,15 +20,12 @@ pub type RelayClosure = Box< dyn Fn( &ServiceID ) -> Option<Box<dyn Relay>> + Se
 /// WireFormat and Call, we would have to create some Eiter enum. That would still have been acceptable,
 /// yet the both types have different return types as associated types in the Message impl. That means
 /// that the return type would also have to be an enum. My gut says this is becoming to complex.
-/// As an added down-side, the compiler can't map the Eiter Message type to the Either return type,
+/// As an added down-side, the compiler can't map the Either Message type to the Either return type,
 /// so we don't get compiler verification on that.
 ///
 /// TODO: Further unifying remote and local handlers is desirable, but further thought is needed to find
 ///       an elegant solution. I don't consider it a priority because for local actors it's possible to
 ///       implement load balancing by having a proxy actor be the handler and letting that dispatch.
-///
-/// TODO: Letting the closure return an option is misleading. It is an error, which will return internal
-///       server error to the remote.
 //
 pub enum ServiceHandler
 {

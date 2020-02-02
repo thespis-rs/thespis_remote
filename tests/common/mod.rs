@@ -242,14 +242,14 @@ pub async fn relay_closure
 		let show = <Show as remotes::Service>::sid();
 
 
-		let handler = Box::new( move |_: &ServiceID| -> Option<Box<dyn Relay>>
+		let handler = Box::new( move |_: &ServiceID| -> Box<dyn Relay>
 		{
 			static IDX: AtomicUsize = AtomicUsize::new( 0 );
 
 			let   i  = IDX.fetch_add( 1, Relaxed );
 			let addr = &providers2[ i % providers2.len() ];
 
-			Some( Box::new( addr.clone() ) )
+			Box::new( addr.clone() )
 
 		});
 
