@@ -26,7 +26,7 @@ pub fn peer_listen( socket: TokioEndpoint, sm: Arc<impl ServiceMap + Send + Sync
 
 	// create peer with stream/sink
 	//
-	let mut peer = Peer::from_tokio_async_read( peer_addr.clone(), socket, 1024, exec.clone() ).expect( "spawn peer" );
+	let mut peer = Peer::from_tokio_async_read( peer_addr.clone(), socket, 1024, exec.clone(), None ).expect( "spawn peer" );
 
 	let peer_evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
@@ -49,7 +49,7 @@ pub async fn peer_connect( socket: TokioEndpoint, exec: Arc<dyn Spawn + Send + S
 
 	// create peer with stream/sink + service map
 	//
-	let mut peer = Peer::from_tokio_async_read( addr.clone(), socket, 1024, exec.clone() ).expect( "spawn peer" );
+	let mut peer = Peer::from_tokio_async_read( addr.clone(), socket, 1024, exec.clone(), None ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
@@ -183,7 +183,7 @@ fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::new( peer_addr.clone(), stream_a, sink_a, ex1.clone() ).expect( "spawn peer" );
+		let mut peer = Peer::new( peer_addr.clone(), stream_a, sink_a, ex1.clone(), None ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -213,7 +213,7 @@ fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_tokio_async_read( peer_addr.clone(), client, 1024, ex2.clone() ).expect( "spawn peer" );
+		let mut peer = Peer::from_tokio_async_read( peer_addr.clone(), client, 1024, ex2.clone(), None ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//

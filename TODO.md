@@ -3,25 +3,28 @@
 - verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
 
 
-- structured concurrency! All of these requests (at least calls) should stop when the connection
+- structured concurrency!
+
+- All of these requests (at least calls) should stop when the connection
  closes. It makes no sense to process requests if we can't send a response anymore. Right now
- we have orphaned tasks that will keep running and keep processing.
+ we have orphaned tasks that will keep running and keep processing. The solution to this is structured con
+ currency, having a nursery and spawning both the mailbox of peer on it as well as giving a reference to
+ the nursery to peer means that all these tasks would be tied to the lifetime of the nursery.
 
 
-- Think of all the scenarios and error handling/reporting -> still based on our older not so flexible model.
 - evaluate all places where peer can block while processing messages and document/test.
   - the opposite, flow control and back pressure?
     - tests + benchmarks for flow control and back pressure.
 
 - TODO's and FIXME's
-- timeout mechanism for outgoing calls.
-- supervised actors and automatic reconnect? (resilliance, start a new actor or reconnect to a backend and try again before reporting error to client?)
+- test supervised actors and automatic reconnect? (resilliance, start a new actor or reconnect to a backend and try again before reporting error to client?)
 - get rid of Send and Sync where possible
 - add tests and comments for everything (especially error handling.)
 - fuzz
 
 - fix examples
 - verify stability of UniqueID and generate one from a different programming language to be sure.
+- make a test communicating with a program in a different programming language.
 - benchmark
 - test system limits/memory consumption in relation to backpressure settings/max open connections...
 - documentation

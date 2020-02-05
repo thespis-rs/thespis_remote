@@ -63,7 +63,6 @@ impl ServiceID
 
 
 	/// A full ServiceID. Value reserved by thespis to detect an error condition.
-	/// TODO: evaluate security implications.
 	//
 	pub fn full() -> Self
 	{
@@ -84,7 +83,7 @@ impl ServiceID
 	//
 	pub fn register_service( sid: &'static ServiceID, name: &'static str )
 	{
-		let mut s = SERVICES.lock().unwrap();
+		let mut s = SERVICES.lock();
 
 		// unwrap: OnceCell already guarantees us unique access.
 		//
@@ -96,7 +95,7 @@ impl ServiceID
 	//
 	pub fn service_name( sid: &ServiceID ) -> Option<&'static str>
 	{
-		let s = SERVICES.lock().unwrap();
+		let s = SERVICES.lock();
 
 		// unwrap: OnceCell already guarantees us unique access.
 		//

@@ -142,6 +142,11 @@ async move
 	//
 	else
 	{
+		if let Some( ref bp ) = self.backpressure
+		{
+			bp.remove_slots( NonZeroUsize::new(1).unwrap() );
+		}
+
 		self.incoming_call( cid, sid, frame ).await;
 	}
 

@@ -411,7 +411,7 @@ impl Services
 
 			// Send the response out over the network.
 			//
-			if peer.send( response ).await.is_err()
+			if peer.send( CallResponse::new( response ) ).await.is_err()
 			{
 				error!
 				(

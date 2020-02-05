@@ -82,14 +82,22 @@ mod import
 		thiserror      :: { Error                                       } ,
 		once_cell      :: { sync::Lazy as SyncLazy                      } ,
 		futures_timer  :: { Delay                                       } ,
+		parking_lot    :: { Mutex                                       } ,
+
 		std ::
 		{
-			fmt                            ,
-			convert     :: { TryFrom     } ,
-			collections :: { HashMap     } ,
-			sync        :: { Arc, Mutex  } ,
-			hash        :: { Hasher      } ,
-			time        :: { Duration    } ,
+			fmt                                      ,
+			convert      :: { TryFrom              } ,
+			collections  :: { HashMap, VecDeque    } ,
+			sync         :: { Arc                  } ,
+			hash         :: { Hasher               } ,
+			time         :: { Duration             } ,
+			sync::atomic :: { AtomicI64, Ordering  } ,
+			pin          :: { Pin                  } ,
+			task         :: { Poll, Context, Waker } ,
+			future       :: { Future               } ,
+			num          :: { NonZeroUsize         } ,
+			ops          :: { DerefMut             } ,
 		},
 
 
@@ -101,6 +109,7 @@ mod import
 			sink    :: { SinkExt                 } ,
 			stream  :: { StreamExt               } ,
 			task    :: { Spawn, SpawnExt         } ,
+			lock    :: { Mutex as FutMutex       } ,
 		},
 	};
 
@@ -145,6 +154,8 @@ mod import
 	//
 	pub(crate) use
 	{
-		pretty_assertions :: { assert_eq } ,
+		pretty_assertions :: { assert_eq             } ,
+		futures           :: { executor::block_on    } ,
+		futures_test      :: { task::new_count_waker } ,
 	};
 }

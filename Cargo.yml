@@ -96,6 +96,7 @@ dependencies:
   parking_lot         : { version: ^0.10 }
   tokio-serde-cbor    : { version: ^0.4, optional: true }
   futures-timer       : ^3
+  num_cpus            : ^1
 
   # thiserror shouldn't have any public impact, but if they make a breaking change, take care to double check.
   #
@@ -111,6 +112,7 @@ dev-dependencies:
 
   async_executors   : { path: ../../async_executors, features: [ localpool, threadpool, async_std ] }
   futures_ringbuf   : { version: ^0.2, features: [ tokio ] }
+  futures-test      : ^0.3
 
 profile:
 
@@ -122,11 +124,4 @@ profile:
     lto          : false
     debug        : true
 
-patch:
-  crates-io:
-    futures: { version: ^0.3, path: ../../RUST/futures-rs/futures }
-    futures-channel: { version: ^0.3, path: ../../RUST/futures-rs/futures-channel }
-    futures-util: { version: ^0.3, path: ../../RUST/futures-rs/futures-util }
-    futures-core: { version: ^0.3, path: ../../RUST/futures-rs/futures-core }
-    futures-sink: { version: ^0.3, path: ../../RUST/futures-rs/futures-sink }
 

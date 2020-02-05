@@ -1,17 +1,15 @@
 #![ cfg( feature = "futures_codec" ) ]
 
+// Tests:
+//
+// ✔ basic remote funcionality: intertwined sends and calls.
+// ✔ correct async behavior: verify that a peer can continue to send/receive while waiting for the response to a call.
+// ✔ call a remote service after the connection has closed: verify peer event and error kind.
+//
 mod common;
 
 use common::*                       ;
 use common::import::{ *, assert_eq };
-
-
-// Tests:
-//
-// - ✔ basic remote funcionality: intertwined sends and calls.
-// - ✔ correct async behavior: verify that a peer can continue to send/receive while waiting for the response to a call.
-// - ✔ call a remote service after the connection has closed: verify peer event and error kind.
-
 
 
 // Test basic remote funcionality. Test intertwined sends and calls.
@@ -131,7 +129,7 @@ fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr.clone(), server, 1024, ex1.clone() ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peer_addr.clone(), server, 1024, ex1.clone(), None ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -161,7 +159,7 @@ fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr.clone(), client, 1024, ex2.clone() ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peer_addr.clone(), client, 1024, ex2.clone(), None ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//

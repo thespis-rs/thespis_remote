@@ -5,17 +5,21 @@ use crate :: { import::*, * };
 
 
     mod add_services      ;
+    mod backpressure      ;
     mod close_connection  ;
     mod connection_error  ;
     mod peer_event        ;
     mod call              ;
+    mod call_response     ;
     mod incoming          ;
     mod remove_services   ;
 pub mod request_error     ;
     mod timeout           ;
 
 pub use add_services      :: AddServices      ;
+pub use backpressure      :: BackPressure     ;
 pub use call              :: Call             ;
+pub use call_response     :: CallResponse     ;
 pub use close_connection  :: CloseConnection  ;
 pub use connection_error  :: ConnectionError  ;
 pub use peer_event        :: PeerEvent        ;
@@ -176,6 +180,10 @@ pub struct Peer
 	// How long to wait for responses to outgoing requests before timing out.
 	//
 	timeout       : Duration,
+
+	// How long to wait for responses to outgoing requests before timing out.
+	//
+	backpressure  : Option<Arc< BackPressure >>,
 }
 
 
@@ -187,10 +195,11 @@ impl Peer
 	//
 	pub fn new
 	(
-		    addr    : Addr<Self>                              ,
-		mut incoming: impl BoundsIn                           ,
-		    outgoing: impl BoundsOut                          ,
-		    exec    : Arc<dyn Spawn + Send + Sync + 'static > ,
+		    addr        : Addr<Self>                              ,
+		mut incoming    : impl BoundsIn                           ,
+		    outgoing    : impl BoundsOut                          ,
+		    exec        : Arc<dyn Spawn + Send + Sync + 'static > ,
+		    bp          : Option<Arc<BackPressure>>               ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -201,6 +210,7 @@ impl Peer
 		// Hook up the incoming stream to our address.
 		//
 		let mut addr2 = addr.clone();
+		let     bp2   = bp  .clone();
 
 		let listen = async move
 		{
@@ -212,6 +222,15 @@ impl Peer
 			//
 			while let Some(msg) = incoming.next().await
 			{
+				if let Some( ref bp ) = bp2
+				{
+					trace!( "check for backpressure" );
+
+					bp.wait().await;
+
+					trace!( "backpressure allows progress now." );
+				}
+
 				trace!( "{}: incoming message.", &addr2 );
 				addr2.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" );
 			}
@@ -237,14 +256,15 @@ impl Peer
 
 		Ok( Self
 		{
-			outgoing     : Some( Box::new(outgoing) ) ,
-			addr         : Some( addr )               ,
-			responses    : HashMap::new()             ,
-			services     : HashMap::new()             ,
-			listen_handle: Some( handle )             ,
-			pharos       : Pharos::default()          ,
-			exec         : exec                       ,
-			timeout      : Duration::from_secs(60)    ,
+			outgoing     : Some( Box::new(outgoing) )                  ,
+			addr         : Some( addr )                                ,
+			responses    : HashMap::new()                              ,
+			services     : HashMap::new()                              ,
+			listen_handle: Some( handle )                              ,
+			pharos       : Pharos::default()                           ,
+			exec         : exec                                        ,
+			timeout      : Duration::from_secs(60)                     ,
+			backpressure : bp                                          ,
 		})
 	}
 
@@ -265,10 +285,11 @@ impl Peer
 	//
 	pub fn from_async_read
 	(
-		addr    : Addr<Self>                                                 ,
-		socket  : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static ,
-		max_size: usize                                                      ,
-		exec    : Arc<dyn Spawn + Send + Sync + 'static >                    ,
+		addr        : Addr<Self>                                                 ,
+		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static ,
+		max_size    : usize                                                      ,
+		exec        : Arc<dyn Spawn + Send + Sync + 'static >                    ,
+		bp          : Option<Arc<BackPressure>>                                  ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -278,7 +299,7 @@ impl Peer
 
 		let (sink, stream) = FutFramed::new( socket, codec ).split();
 
-		Peer::new( addr.clone(), stream, sink, exec )
+		Peer::new( addr.clone(), stream, sink, exec, bp )
 	}
 
 
@@ -298,10 +319,11 @@ impl Peer
 	//
 	pub fn from_tokio_async_read
 	(
-		addr    : Addr<Self>                                              ,
-		socket  : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static ,
-		max_size: usize                                                   ,
-		exec    : Arc<dyn Spawn + Send + Sync + 'static >                 ,
+		addr        : Addr<Self>                                              ,
+		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static ,
+		max_size    : usize                                                   ,
+		exec        : Arc<dyn Spawn + Send + Sync + 'static >                 ,
+		bp          : Option<Arc<BackPressure>>                               ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -311,7 +333,7 @@ impl Peer
 
 		let (sink, stream) = TokioFramed::new( socket, codec ).split();
 
-		Peer::new( addr.clone(), stream, sink, exec )
+		Peer::new( addr.clone(), stream, sink, exec, bp )
 	}
 
 

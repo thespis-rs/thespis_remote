@@ -16,9 +16,7 @@ use
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-#[ derive( Actor ) ]
-//
-struct Slow;
+#[ derive(Actor) ] struct Slow;
 
 impl Handler<Add> for Slow
 {
@@ -90,7 +88,7 @@ fn timeout()
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::from_async_read( peera.clone(), client, 1024, exec.clone() ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peera.clone(), client, 1024, exec.clone(), None ).expect( "spawn peer" );
 
 
 		// This is the relevant line for this test!
