@@ -11,14 +11,14 @@ package:
   # - create git tag
   #
   version       : 0.1.0
-  name          : thespis_remote_impl
+  name          : thespis_remote
   edition       : '2018'
   authors       : [ Naja Melan <najamelan@autistici.org> ]
   description   : Reference implementation for thespis remote actors
   license       : Unlicense
-  homepage      : https://github.com/thespis-rs/thespis_remote_impl
-  repository    : https://github.com/thespis-rs/thespis_remote_impl
-  documentation : https://docs.rs/thespis_remote_impl
+  homepage      : https://github.com/thespis-rs/thespis_remote
+  repository    : https://github.com/thespis-rs/thespis_remote
+  documentation : https://docs.rs/thespis_remote
   readme        : README.md
   keywords      : [ async, futures, actor, thespis ]
   categories    : [ Asynchronous, Concurrency, network-programming ]
@@ -30,8 +30,8 @@ package:
 
 badges:
 
-  maintenance : { status     : actively-developed             }
-  travis-ci   : { repository : thespis-rs/thespis_remote_impl }
+  maintenance : { status     : actively-developed        }
+  travis-ci   : { repository : thespis-rs/thespis_remote }
 
 features:
 

@@ -4,7 +4,7 @@
 status = "actively-developed"
 
 [badges.travis-ci]
-repository = "thespis-rs/thespis_remote_impl"
+repository = "thespis-rs/thespis_remote"
 
 [dependencies]
 futures-timer = "^3"
@@ -104,14 +104,14 @@ bench = false
 authors = ["Naja Melan <najamelan@autistici.org>"]
 categories = ["Asynchronous", "Concurrency", "network-programming"]
 description = "Reference implementation for thespis remote actors"
-documentation = "https://docs.rs/thespis_remote_impl"
+documentation = "https://docs.rs/thespis_remote"
 edition = "2018"
-homepage = "https://github.com/thespis-rs/thespis_remote_impl"
+homepage = "https://github.com/thespis-rs/thespis_remote"
 keywords = ["async", "futures", "actor", "thespis"]
 license = "Unlicense"
-name = "thespis_remote_impl"
+name = "thespis_remote"
 readme = "README.md"
-repository = "https://github.com/thespis-rs/thespis_remote_impl"
+repository = "https://github.com/thespis-rs/thespis_remote"
 version = "0.1.0"
 
 [package.metadata]

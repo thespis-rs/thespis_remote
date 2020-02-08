@@ -1,4 +1,4 @@
-# thespis_remote_impl
+# thespis_remote
 The reference implementation of the thespis remote actor model
 
 
