@@ -50,7 +50,11 @@ impl Handler<CloseConnection> for Peer
 		{
 			Some( out ) =>
 			{
-				out.close().await.expect( "CloseConnection: close sink for peer" );
+				// TODO: this expect is not necessarily desirable. It can be triggered remotely
+				// I think by not properly closing the connection.
+				//
+				// out.close().await.expect( "CloseConnection: close sink for peer" );
+				let _ = out.close().await;
 				self.outgoing = None;
 			},
 

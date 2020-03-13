@@ -1,0 +1,29 @@
+package:
+
+  name       : thespis_remote_wasm_example_server
+  version    : 0.1.0
+  authors    : [ Naja Melan <najamelan@autistici.org> ]
+  edition    : '2018'
+  description: An example for using websockets in rust WASM.
+  repository : https::/github.com/najamelan/ws_stream
+
+
+
+dependencies:
+
+  async_executors       : { version: ^0.2, features: [ async_std ] }
+  thespis_remote_wasm_example_common: { path: ../common        }
+  flexi_logger          : ^0.15
+  futures               : { version: ^0.3 }
+  futures_codec         : ^0.4
+  log                   : ^0.4
+  pharos                : { version: ^0.4 }
+  async-tungstenite     : { version: ^0.4, features: [ async-std-runtime ] }
+  ws_stream_tungstenite : { path: ../../../../../ws_stream_tungstenite }
+  async-std             : { version: ^1, features: [ attributes ] }
+  thespis               : { path: ../../../../thespis              }
+  thespis_impl          : { path: ../../../../thespis_impl         }
+  thespis_remote        : { path: ../../../../thespis_remote       }
+
+
+

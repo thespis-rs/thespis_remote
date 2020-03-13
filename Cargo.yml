@@ -47,9 +47,12 @@ features:
   #
   tokio_codec  : [ tokio, tokio-util, tokio-serde-cbor ]
 
+  wasm: [ futures-timer/wasm-bindgen ]
+
   # only used internally, don't use
   #
   external_doc: []
+
 
 lib:
 
@@ -94,7 +97,7 @@ dependencies:
   rand                : { version: ^0.7, default-features: false }
   parking_lot         : { version: ^0.10 }
   tokio-serde-cbor    : { version: ^0.4, optional: true }
-  futures-timer       : ^3
+  futures-timer       : { version: ^3 }
   num_cpus            : ^1
 
   # thiserror shouldn't have any public impact, but if they make a breaking change, take care to double check.
