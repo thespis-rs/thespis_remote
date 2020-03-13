@@ -7,14 +7,14 @@ pub mod import
 {
 	pub use
 	{
-		async_executors     :: { LocalPool, AsyncStd, ThreadPool, JoinHandle, SpawnHandle, LocalSpawnHandle } ,
-		futures_ringbuf     :: { Endpoint                                                                   } ,
-		thespis             :: { *                                                                          } ,
-		thespis_impl        :: { *                                                                          } ,
-		thespis_remote_impl :: { *, service_map, peer                                                       } ,
-		log                 :: { *                                                                          } ,
-		bytes               :: { Bytes, BytesMut                                                            } ,
-		pharos              :: { Observable, ObserveConfig, Events                                          } ,
+		async_executors :: { AsyncStd, SpawnHandle, LocalSpawnHandle, SpawnHandleExt } ,
+		futures_ringbuf :: { Endpoint                                                } ,
+		thespis         :: { *                                                       } ,
+		thespis_impl    :: { *                                                       } ,
+		thespis_remote  :: { *, service_map, peer                                    } ,
+		log             :: { *                                                       } ,
+		bytes           :: { Bytes, BytesMut                                         } ,
+		pharos          :: { Observable, ObserveConfig, Events                       } ,
 
 		std::
 		{
@@ -34,7 +34,7 @@ pub mod import
 			stream  :: { StreamExt, SplitSink, SplitStream                                       } ,
 			future  :: { FutureExt, join, join3, RemoteHandle                                    } ,
 			task    :: { SpawnExt, LocalSpawnExt, Spawn                                          } ,
-			executor:: { block_on                                                                } ,
+			executor:: { block_on, LocalPool, ThreadPool                                         } ,
 		},
 
 		pretty_assertions :: { assert_eq, assert_ne } ,

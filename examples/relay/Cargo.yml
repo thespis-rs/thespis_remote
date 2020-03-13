@@ -40,8 +40,8 @@ dependencies:
 
   thespis             : { path: ../../../thespis        }
   thespis_impl        : { path: ../../../thespis_impl }
-  thespis_remote_impl : { path: ../../../thespis_remote, features: [ futures_codec ] }
-  futures             : { version: ^0.3, features: [ std, compat ], default-features: false }
+  thespis_remote      : { path: ../../../thespis_remote, features: [ futures_codec ] }
+  futures             : { version: ^0.3, features: [ std, compat, thread-pool ], default-features: false }
   log                 : ^0.4
   simple_logger       : ^1
   regex               : { version: ^1, features: [ pattern ] }
@@ -64,7 +64,7 @@ dependencies:
   flexi_logger      : ^0.14
   hex               : ^0.4
 
-  async_executors   : { path: ../../../../async_executors, features: [ localpool, threadpool, async_std ] }
+  async_executors   : { path: ../../../../async_executors, features: [ spawn_handle, async_std ] }
   futures_ringbuf   : ^0.1
   futures_ringbuf   : ^0.2
   # futures_ringbuf   : { path: ../../futures_ringbuf }

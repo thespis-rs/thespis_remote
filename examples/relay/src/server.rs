@@ -32,15 +32,15 @@ fn main()
 
 		// Create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr, socket, 1024, ex2.clone() ).expect( "create peer" );
+		let mut peer = Peer::from_async_read( peer_addr, socket, 1024, Arc::new( ex2.clone() ), None ).expect( "create peer" );
 
 
 		// Register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 
-		sm.register_handler::<Add >( Receiver::new( addr_handler.clone_box() ) );
-		sm.register_handler::<Show>( Receiver::new( addr_handler.clone_box() ) );
+		sm.register_handler::<Add >( Box::new( Receiver::new( addr_handler.clone_box() ) ) );
+		sm.register_handler::<Show>( Box::new( Receiver::new( addr_handler.clone_box() ) ) );
 
 
 		// Register service map with peer

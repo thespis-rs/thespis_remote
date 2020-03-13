@@ -6,16 +6,16 @@ pub mod import
 {
 	pub use
 	{
-		async_std           :: { net::{ TcpListener, TcpStream }, io::{ Read as _, Write as _ }             } ,
-		async_executors     :: { LocalPool, AsyncStd, ThreadPool, JoinHandle, SpawnHandle, LocalSpawnHandle } ,
-		futures_ringbuf     :: { Endpoint                                                                   } ,
-		thespis             :: { *                                                                          } ,
-		thespis_impl        :: { *                                                                          } ,
-		thespis_remote_impl :: { *, service_map, peer                                                       } ,
-		log                 :: { *                                                                          } ,
-		bytes               :: { Bytes, BytesMut                                                            } ,
-		pharos              :: { Observable, ObserveConfig, Events                                          } ,
-		serde               :: { Serialize, Deserialize                                                     } ,
+		async_std           :: { net::{ TcpListener, TcpStream }, io::{ Read as _, Write as _ } } ,
+		async_executors     :: { AsyncStd, SpawnHandle, LocalSpawnHandle                        } ,
+		futures_ringbuf     :: { Endpoint                                                       } ,
+		thespis             :: { *                                                              } ,
+		thespis_impl        :: { *                                                              } ,
+		thespis_remote      :: { *, service_map, peer                                           } ,
+		log                 :: { *                                                              } ,
+		bytes               :: { Bytes, BytesMut                                                } ,
+		pharos              :: { Observable, ObserveConfig, Events                              } ,
+		serde               :: { Serialize, Deserialize                                         } ,
 
 		std::
 		{
@@ -35,7 +35,7 @@ pub mod import
 			stream  :: { StreamExt, SplitSink, SplitStream                                       } ,
 			future  :: { FutureExt, join                                                         } ,
 			task    :: { SpawnExt, LocalSpawnExt, Spawn                                          } ,
-			executor:: { block_on                                                                } ,
+			executor:: { block_on, ThreadPool                                                    } ,
 		},
 
 
@@ -95,7 +95,7 @@ pub async fn peer_connect( socket: TcpStream, exec: impl Spawn + Clone + Send + 
 
 	// create peer with stream/sink + service map
 	//
-	let mut peer = Peer::from_async_read( addr.clone(), socket, 1024, exec.clone() ).expect( "create peer" );
+	let mut peer = Peer::from_async_read( addr.clone(), socket, 1024, Arc::new( exec.clone() ), None ).expect( "create peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 

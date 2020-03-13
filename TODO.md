@@ -12,10 +12,11 @@
  the nursery to peer means that all these tasks would be tied to the lifetime of the nursery.
 
 
-- evaluate all places where peer can block while processing messages and document/test.
-  - the opposite, flow control and back pressure?
-    - tests + benchmarks for flow control and back pressure.
+- tests + benchmarks for flow control and back pressure. Shouldn't we be able to achieve backpressure solely by bounded channels instead of having to add a special backpressure type?
 
+- fairness and starvation
+
+- does it work to communicate with code in webworkers in wasm?
 - TODO's and FIXME's
 - test supervised actors and automatic reconnect? (resilliance, start a new actor or reconnect to a backend and try again before reporting error to client?)
 - get rid of Send and Sync where possible

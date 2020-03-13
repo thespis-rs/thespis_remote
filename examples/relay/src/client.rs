@@ -40,7 +40,7 @@ fn main()
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 10, resp );
 
-		to_relay.call( CloseConnection{ remote: false } ).await.expect( "close connection to relay" );
+		to_relay.call( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to relay" );
 	};
 
 	block_on( client );

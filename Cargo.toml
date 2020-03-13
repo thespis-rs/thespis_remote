@@ -42,10 +42,6 @@ version = "^0.4"
 default-features = false
 version = "^0.7"
 
-[dependencies.regex]
-features = ["pattern"]
-version = "^1"
-
 [dependencies.serde]
 default-features = false
 features = ["derive"]
@@ -79,13 +75,20 @@ version = "^1"
 
 [dev-dependencies]
 assert_matches = "^1"
-flexi_logger = "^0.14"
 futures-test = "^0.3"
 pretty_assertions = "^0.6"
 
 [dev-dependencies.async_executors]
-features = ["localpool", "threadpool", "async_std"]
+features = ["spawn_handle", "async_std", "threadpool"]
 path = "../../async_executors"
+
+[dev-dependencies.flexi_logger]
+default-features = false
+version = "^0.15"
+
+[dev-dependencies.futures]
+features = ["thread-pool"]
+version = "^0.3"
 
 [dev-dependencies.futures_ringbuf]
 features = ["tokio"]

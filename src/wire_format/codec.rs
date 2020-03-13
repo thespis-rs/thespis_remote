@@ -82,7 +82,7 @@ impl ThesCodec
 			{
 				context : "WireFormat Codec decoder".to_string() ,
 				size    : payload_len                            ,
-				max_size: self.max_size                        ,
+				max_size: self.max_size                          ,
 			})
 		}
 

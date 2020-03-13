@@ -84,26 +84,24 @@ impl<T> BoundsOut for T
 /// (such as after removing it with `RemoveServices`) the remote will receive a
 /// `ConnectionError::UnknownService`.
 ///
-///  You can check the documentation of both [`RelayMap`] and [`service_map!`] for more information
-///  on their usage.
+/// You can check the documentation of both [`RelayMap`] and [`service_map!`] for more information
+/// on their usage.
 ///
-///  You can supply several service maps with different services to Peer. They will only advertise
-///  services for which you have actually set handlers. When you later want to add services with
-///  `AddServices`, you can pass in the same service map if you want, as long as you have added
-///  handlers for all the services you wish to add. When seeding before starting the peer, only
-///  one service map may claim to provide a given service. Peer only delivers the message to exactly
-///  one handler.
+/// You can supply several service maps with different services to Peer. They will only advertise
+/// services for which you have actually set handlers. When you later want to add services with
+/// `AddServices`, you can pass in the same service map if you want, as long as you have added
+/// handlers for all the services you wish to add. When seeding before starting the peer, only
+/// one service map may claim to provide a given service. Peer only delivers the message to exactly
+/// one handler.
 ///
-///  ### Sending messages to remote processes.
+/// ### Sending messages to remote processes.
 ///
-///  As far as the Peer type is concerned sending actor messages to a remote is relatively simple.
-///  Once you have serialized a message as `WireFormat`, sending that directly to `Peer` will be considered
-///  a Send to a remote actor and it will just be sent out. For a Call, there is the Call message type,
-///  which will resolve to a channel you can await in order to get your response from the remote process.
-///  The `service_map!` macro provides a `RemoteAddress` type which acts much the same as a local actor address
-///  and will accept messages of all services that are defined in the service map.
-///
-///
+/// As far as the Peer type is concerned sending actor messages to a remote is relatively simple.
+/// Once you have serialized a message as `WireFormat`, sending that directly to `Peer` will be considered
+/// a Send to a remote actor and it will just be sent out. For a Call, there is the Call message type,
+/// which will resolve to a channel you can await in order to get your response from the remote process.
+/// The `service_map!` macro provides a `RemoteAddress` type which acts much the same as a local actor address
+/// and will accept messages of all services that are defined in the service map.
 ///
 /// ### Closing the connection
 ///
@@ -195,11 +193,11 @@ impl Peer
 	//
 	pub fn new
 	(
-		    addr        : Addr<Self>                              ,
-		mut incoming    : impl BoundsIn                           ,
-		    outgoing    : impl BoundsOut                          ,
-		    exec        : Arc<dyn Spawn + Send + Sync + 'static > ,
-		    bp          : Option<Arc<BackPressure>>               ,
+		    addr        : Addr<Self>                         ,
+		mut incoming    : impl BoundsIn                      ,
+		    outgoing    : impl BoundsOut                     ,
+		    exec        : impl Spawn + Send + Sync + 'static ,
+		    bp          : Option<Arc<BackPressure>>          ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -256,15 +254,15 @@ impl Peer
 
 		Ok( Self
 		{
-			outgoing     : Some( Box::new(outgoing) )                  ,
-			addr         : Some( addr )                                ,
-			responses    : HashMap::new()                              ,
-			services     : HashMap::new()                              ,
-			listen_handle: Some( handle )                              ,
-			pharos       : Pharos::default()                           ,
-			exec         : exec                                        ,
-			timeout      : Duration::from_secs(60)                     ,
-			backpressure : bp                                          ,
+			outgoing     : Some( Box::new(outgoing) ) ,
+			addr         : Some( addr )               ,
+			responses    : HashMap::new()             ,
+			services     : HashMap::new()             ,
+			listen_handle: Some( handle )             ,
+			pharos       : Pharos::default()          ,
+			exec         : Arc::new( exec )           ,
+			timeout      : Duration::from_secs(60)    ,
+			backpressure : bp                         ,
 		})
 	}
 
@@ -288,7 +286,7 @@ impl Peer
 		addr        : Addr<Self>                                                 ,
 		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static ,
 		max_size    : usize                                                      ,
-		exec        : Arc<dyn Spawn + Send + Sync + 'static >                    ,
+		exec        : impl Spawn + Send + Sync + 'static                         ,
 		bp          : Option<Arc<BackPressure>>                                  ,
 	)
 
@@ -299,7 +297,7 @@ impl Peer
 
 		let (sink, stream) = FutFramed::new( socket, codec ).split();
 
-		Peer::new( addr.clone(), stream, sink, exec, bp )
+		Peer::new( addr.clone(), stream, sink, Arc::new(exec), bp )
 	}
 
 
@@ -322,7 +320,7 @@ impl Peer
 		addr        : Addr<Self>                                              ,
 		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static ,
 		max_size    : usize                                                   ,
-		exec        : Arc<dyn Spawn + Send + Sync + 'static >                 ,
+		exec        : impl Spawn + Send + Sync + 'static                      ,
 		bp          : Option<Arc<BackPressure>>                               ,
 	)
 

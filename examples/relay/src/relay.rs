@@ -64,21 +64,19 @@ async fn relay
 
 		// This peer is listening for the connection from the client.
 		//
-		let mut peer = Peer::new( peer_addr, client_stream, client_sink, ex2 ).expect( "spawn peer" );
+		let mut peer = Peer::new( peer_addr, client_stream, client_sink, Arc::new( ex2 ), None ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
 
-		let rm      = Arc::new( RelayMap::new() );
-		let closure = Box::new( move |_: &ServiceID| Some( Box::new(provider_addr2.clone()) as Box<dyn Relay> ) );
-
-		rm.register_handler( add.clone(), closure.clone() );
+		let mut services = vec![ add.clone() ];
 
 		if relay_show
 		{
-			rm.register_handler( show.clone(), closure );
+			services.push( show.clone() );
 		}
 
+		let rm   = Arc::new( RelayMap::new( ServiceHandler::Address( Box::new( provider_addr2.clone() ) ), services ) );
 
 		peer.register_services( rm );
 
@@ -93,5 +91,5 @@ async fn relay
 	exec.spawn_handle( relay ).expect( "failed to spawn server" ).await;
 	warn!( "relay finished, closing connection" );
 
-	provider_addr.send( CloseConnection{ remote: false } ).await.expect( "close connection to provider" );
+	provider_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to provider" );
 }
