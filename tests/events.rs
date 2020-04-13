@@ -40,7 +40,7 @@ fn close_connection()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -97,7 +97,7 @@ fn close_connection_call()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -156,7 +156,7 @@ fn header_unknown_service_error()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -234,7 +234,7 @@ fn header_deserialize()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -329,7 +329,7 @@ fn sm_deserialize_error()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//

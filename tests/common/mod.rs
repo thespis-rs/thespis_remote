@@ -7,14 +7,14 @@ pub mod import
 {
 	pub use
 	{
-		async_executors :: { AsyncStd, SpawnHandle, LocalSpawnHandle, SpawnHandleExt } ,
-		futures_ringbuf :: { Endpoint                                                } ,
-		thespis         :: { *                                                       } ,
-		thespis_impl    :: { *                                                       } ,
-		thespis_remote  :: { *, service_map, peer                                    } ,
-		log             :: { *                                                       } ,
-		bytes           :: { Bytes, BytesMut                                         } ,
-		pharos          :: { Observable, ObserveConfig, Events                       } ,
+		async_executors :: { *                                 } ,
+		futures_ringbuf :: { Endpoint                          } ,
+		thespis         :: { *                                 } ,
+		thespis_impl    :: { *                                 } ,
+		thespis_remote  :: { *, service_map, peer              } ,
+		log             :: { *                                 } ,
+		bytes           :: { Bytes, BytesMut                   } ,
+		pharos          :: { Observable, ObserveConfig, Events } ,
 
 		std::
 		{
@@ -28,7 +28,6 @@ pub mod import
 
 		futures::
 		{
-			channel :: { mpsc                                                                    } ,
 			io      :: { AsyncWriteExt                                                           } ,
 			compat  :: { Compat01As03Sink, Stream01CompatExt, Sink01CompatExt, Future01CompatExt } ,
 			stream  :: { StreamExt, SplitSink, SplitStream                                       } ,
@@ -39,7 +38,8 @@ pub mod import
 
 		pretty_assertions :: { assert_eq, assert_ne } ,
 		assert_matches    :: { assert_matches       } ,
-
+		tokio             :: { sync::mpsc           } ,
+		async_chanx       :: { TokioSender          } ,
 	};
 }
 
@@ -48,18 +48,26 @@ pub mod import
 pub use actors::*;
 
 
-pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: Arc<dyn Spawn + Send + Sync + 'static >, name: &str )
+pub fn peer_listen
+(
+	socket: Endpoint                                                     ,
+	sm    : Arc<impl ServiceMap + Send + Sync + 'static>                 ,
+	exec  : impl Spawn + SpawnHandle<()> + Clone + Send + Sync + 'static ,
+	name  : &str                                                         ,
+)
 
-	-> (Addr<Peer>, Events<PeerEvent>, RemoteHandle<()>)
+	-> (Addr<Peer>, Events<PeerEvent>, JoinHandle<()>)
 {
 	// Create mailbox for peer
 	//
-	let mb_peer  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
-	let peer_addr              = Addr ::new( mb_peer.sender() );
+	let (tx, rx)    = mpsc::channel( 16 )                                                             ;
+	let mb_peer     = Inbox::new( Some( name.into() ), Box::new( rx ) )                               ;
+	let tx          = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
+	let peer_addr   = Addr::new( mb_peer.id(), mb_peer.name(), tx )                                   ;
 
 	// create peer with stream/sink
 	//
-	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, exec.clone(), None ).expect( "spawn peer" );
+	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, Arc::new( exec.clone() ), None ).expect( "spawn peer" );
 
 	let peer_evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
@@ -67,9 +75,7 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 	//
 	peer.register_services( sm );
 
-	let (fut, handle) = mb_peer.start_fut(peer).remote_handle();
-
-	exec.spawn( fut ).expect( "start mailbox of Peer" );
+	let handle = exec.spawn_handle( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
 
 	(peer_addr, peer_evts, handle)
 }
@@ -77,34 +83,50 @@ pub fn peer_listen( socket: Endpoint, sm: Arc<impl ServiceMap + Send + Sync + 's
 
 
 
-pub fn peer_connect( socket: Endpoint, exec: Arc<dyn Spawn + Send + Sync + 'static >, name: &str ) -> (Addr<Peer>, Events<PeerEvent>)
+pub fn peer_connect
+(
+	socket: Endpoint                                   ,
+	exec  : impl Spawn + Clone + Send + Sync + 'static ,
+	name  : &str                                       ,
+)
+	-> (Addr<Peer>, Events<PeerEvent>)
+
 {
 	// Create mailbox for peer
 	//
-	let mb  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
-	let addr              = Addr ::new( mb.sender() );
+	let (tx, rx)    = mpsc::channel( 16 )                                                             ;
+	let mb_peer     = Inbox::new( Some( name.into() ), Box::new( rx ) )                               ;
+	let tx          = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
+	let peer_addr   = Addr::new( mb_peer.id(), mb_peer.name(), tx )                                   ;
+
 
 	// create peer with stream/sink + service map
 	//
-	let mut peer = Peer::from_async_read( addr.clone(), socket, 1024, exec.clone(), None ).expect( "spawn peer" );
+	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, exec.clone(), None ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
 	debug!( "start mailbox for [{}] in peer_connect", name );
 
-	exec.spawn( mb.start_fut(peer) ).expect( "start mailbox of Peer" );
+	exec.spawn( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
 
-	(addr, evts)
+	(peer_addr, evts)
 }
 
 
-pub fn provider( name: Option<Arc<str>>, exec: Arc<dyn Spawn + Send + Sync + 'static > ) -> (Endpoint, RemoteHandle<()>)
+pub fn provider
+(
+	name: Option<Arc<str>>,
+	exec  : impl Spawn + SpawnHandle<()> + Clone + Send + Sync + 'static ,
+)
+	-> (Endpoint, JoinHandle<()>)
+
 {
 	let name = name.map( |n| n.to_string() ).unwrap_or( "unnamed".to_string() );
 	// Create mailbox for our handler
 	//
 	debug!( "start mailbox for Sum handler in provider: {}", name );
-	let addr_handler = Addr::try_from( Sum(0), &exec ).expect( "spawn actor mailbox" );
+	let addr_handler = Addr::builder().start( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
 
 	// register Sum with peer as handler for Add and Show
@@ -153,8 +175,7 @@ pub async fn relay
 	{
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "relay_to_consumer".into() ) );
-		let peer_addr              = Addr ::new( mb_peer.sender()                   );
+		let (peer_addr, peer_mb) = Addr::builder().name( "relay_to_consumer".into() ).build();
 
 		// create peer with stream/sink + service map
 		//
@@ -176,7 +197,7 @@ pub async fn relay
 		peer.register_services( rm );
 
 		debug!( "start mailbox for relay_to_consumer" );
-		mb_peer.start_fut( peer ).await;
+		peer_mb.start_fut( peer ).await;
 		warn!( "relay async block finished" );
 	};
 
@@ -231,8 +252,10 @@ pub async fn relay_closure
 	{
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "relay_to_consumer".into() ) );
-		let peer_addr              = Addr ::new( mb_peer.sender()                   );
+		let (tx, rx)    = mpsc::channel( 16 )                                                             ;
+		let mb_peer     = Inbox::new( Some( "relay_to_consumer".into() ), Box::new( rx ) )                ;
+		let tx          = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
+		let peer_addr   = Addr::new( mb_peer.id(), mb_peer.name(), tx )                                   ;
 
 		// create peer with stream/sink + service map
 		//

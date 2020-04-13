@@ -7,6 +7,7 @@ log = "^0.4"
 tokio-serde-cbor = "^0.4"
 wasm-bindgen = "^0.2"
 wasm-logger = "^0.2"
+ws_stream_wasm = "^0.6"
 
 [dependencies.async_executors]
 features = ["bindgen"]
@@ -43,12 +44,8 @@ version = "^0.4"
 features = ["console", "Document", "Element", "HtmlElement", "Node", "Window"]
 version = "^0.3"
 
-[dependencies.ws_stream_wasm]
-features = ["send"]
-path = "../../../../../ws_stream_wasm"
-
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 path = "src/entrypoint.rs"
 
 [package]

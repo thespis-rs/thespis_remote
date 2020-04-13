@@ -1,43 +1,30 @@
 //! This is an echo server that returns all incoming bytes, without framing. It is used for the tests in
 //! ws_stream_wasm.
 //
-mod import
+use
 {
-	pub(crate) use
-	{
-		thespis_remote_wasm_example_common :: *,
+	thespis_remote_wasm_example_common :: *,
 
-		async_executors       :: { AsyncStd                                 } ,
-		async_std             :: { net::{ TcpListener, TcpStream }          } ,
-		async_tungstenite     :: { accept_async, WebSocketStream            } ,
-		log                   :: { *                                        } ,
-		std                   :: { net::SocketAddr, sync::Arc               } ,
-		ws_stream_tungstenite :: { *                                        } ,
-		thespis               :: { Message, Actor, Handler, Return, Address } ,
-		thespis_impl          :: { Addr, Inbox                              } ,
-		thespis_remote        :: { peer::Peer                               } ,
-		pharos                :: { Observable, Filter                       } ,
+	async_executors       :: { AsyncStd                        } ,
+	async_std             :: { net::{ TcpListener, TcpStream } } ,
+	async_tungstenite     :: { accept_async, WebSocketStream   } ,
+	log                   :: { *                               } ,
+	std                   :: { net::SocketAddr, sync::Arc      } ,
+	ws_stream_tungstenite :: { *                               } ,
+	thespis               :: { *                               } ,
+	thespis_impl          :: { Addr                            } ,
+	thespis_remote        :: { peer::Peer                      } ,
+	pharos                :: { Observable, Filter              } ,
+	futures               :: { task::SpawnExt, StreamExt       } ,
+};
 
-		futures::
-		{
-			stream  :: { StreamExt                                           } ,
-		},
-	};
-}
-
-
-use import::*;
-
-
-// pub type TheSink    = SplitSink< Framed< WsStream<WebSocketStream<TcpStream>>, MulServTokioCodec<MS> >, MS> ;
-// pub type MS         = MultiServiceImpl<ServiceID, ConnID, Codecs>                                           ;
 
 
 #[ async_std::main ]
 //
 async fn main()
 {
-	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
+	flexi_logger::Logger::with_str( "info, thespis_remote_wasm_example_server=trace" ).start().unwrap();
 
 	let     socket      = TcpListener::bind( "127.0.0.1:3012" ).await.expect( "bind to port" );
 	let mut connections = socket.incoming();
@@ -60,30 +47,26 @@ async fn main()
 //
 async fn handle_conn( socket: WebSocketStream<TcpStream>, peer_addr: SocketAddr )
 {
-	info!( "Handle WS connection from: {:?}", peer_addr );
+	info!( "Handle WS connection from: {:?}", &peer_addr );
 
-	let exec = AsyncStd::new();
 	let mut ws_stream = WsStream::new( socket );
-
-
-	let closed = Filter::Pointer( |e| matches!( e, WsEvent::Closed ) );
-
-	let mut events = ws_stream.observe( closed.into() ).expect( "observe ws_stream" );
+	let     closed    = Filter::Pointer( |e| matches!( e, WsEvent::Closed ) );
+	let mut events    = ws_stream.observe( closed.into() ).expect( "observe ws_stream" );
 
 	// Create mailbox for peer
 	//
-	let mb_peer: Inbox<Peer> = Inbox::new( Some( format!( "{:?}", peer_addr ).into() ) );
-	let cc_addr              = Addr ::new( mb_peer.sender() );
+	let (cc_addr, peer_mb) = Addr::builder().name( format!( "{:?}", peer_addr ).into() ).build();
+
 
 	// create peer with stream/sink
 	//
-	let mut peer = Peer::from_async_read( cc_addr.clone(), ws_stream, 1024, exec, None ).expect( "create peer" );
+	let mut peer = Peer::from_async_read( cc_addr.clone(), ws_stream, 1024, AsyncStd, None ).expect( "create peer" );
 
 
 	// Create mailbox for user
 	//
-	let mb_actor: Inbox<MyActor> = Inbox::new( Some( "my actor".into() ) );
-	let actor                    = Addr ::new( mb_actor.sender() ) ;
+	let (actor, mb_actor) = Addr::builder().name( "my actor".into() ).build();
+
 
 	let my_act = MyActor { count: 5 };
 
@@ -102,12 +85,12 @@ async fn handle_conn( socket: WebSocketStream<TcpStream>, peer_addr: SocketAddr 
 	//
 	peer.register_services( Arc::new( sm ) );
 
-	mb_peer .start( peer  , &exec ).expect( "Failed to start mailbox of Peer"    );
-	mb_actor.start( my_act, &exec ).expect( "Failed to start mailbox of MyActor" );
+	AsyncStd.spawn( peer_mb .start_fut( peer   ) ).expect( "Failed to start mailbox of Peer"    );
+	AsyncStd.spawn( mb_actor.start_fut( my_act ) ).expect( "Failed to start mailbox of MyActor" );
 
 	events.next().await;
 
-	info!( "connection closed" );
+	info!( "connection closed {:?}", peer_addr );
 }
 
 
@@ -126,12 +109,9 @@ pub struct MyActor { pub count: usize }
 //
 impl Handler<Ping> for MyActor
 {
-	fn handle( &mut self, msg: Ping ) -> Return<<Ping as Message>::Return>
+	#[async_fn] fn handle( &mut self, msg: Ping ) -> <Ping as Message>::Return
 	{
-		Box::pin( async move
-		{
-			self.count += msg.0;
-			self.count
-		})
+		self.count += msg.0;
+		self.count
 	}
 }

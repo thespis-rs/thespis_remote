@@ -41,7 +41,7 @@ fn relay_once()
 		// Create mailbox for our handler
 		//
 		debug!( "start mailbox for handler" );
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -132,7 +132,7 @@ fn relay_multi()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -207,7 +207,7 @@ fn relay_unknown_service()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show

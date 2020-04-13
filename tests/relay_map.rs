@@ -104,9 +104,9 @@ fn debug()
 
 	// Create mailbox for peer
 	//
-	let mb_peer  : Inbox<Peer> = Inbox::new( Some( "relay_to_consumer".into() ) ) ;
-	let peer_addr              = Addr ::new( mb_peer.sender()                   ) ;
-	let id                     = peer_addr.id()                                   ;
+	let (peer_addr, _) = Addr::builder().name( "relay_to_consumer".into() ).build();
+	let id             = peer_addr.id()                                            ;
+
 
 	let _peer = Peer::from_async_read( peer_addr.clone(), cx, 1024, exec, None ).expect( "spawn peer" );
 

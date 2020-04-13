@@ -403,13 +403,11 @@ impl Peer
 	//
 	async fn send_err<'a>
 	(
-		&'a mut self                             ,
-		     cid  : ConnID ,
-		     err  : &'a ConnectionError          ,
+		&'a mut self               ,
 
-		     // whether the connection should be closed (eg stream corrupted)
-		     //
-		     close: bool                         ,
+		cid  : ConnID              ,
+		err  : &'a ConnectionError ,
+		close: bool                , // whether the connection should be closed (eg stream corrupted)
 	)
 	{
 		let identity = self.identify();

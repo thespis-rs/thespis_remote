@@ -8,7 +8,7 @@ package:
 
 lib:
 
-  crate-type : [ cdylib ]
+  crate-type : [ cdylib, rlib ]
   path       : src/entrypoint.rs
 
 
@@ -30,7 +30,7 @@ dependencies:
   wasm-bindgen                       : ^0.2
   wasm-bindgen-futures               : { version: ^0.4 }
   wasm-logger                        : ^0.2
-  ws_stream_wasm                     : { path: ../../../../../ws_stream_wasm, features: [ send ] }
+  ws_stream_wasm                     : ^0.6
 
 
   web-sys:

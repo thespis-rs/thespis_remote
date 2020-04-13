@@ -18,37 +18,37 @@ impl Message for Show { type Return = i64; }
 
 impl Handler< Add > for Sum
 {
-	fn handle( &mut self, msg: Add ) -> Return<()> { Box::pin( async move
+	#[async_fn] fn handle( &mut self, msg: Add ) -> ()
 	{
 		trace!( "called sum with: {:?}", msg );
 
 		self.0 += msg.0;
 
-	})}
+	}
 }
 
 
 
 impl Handler< Sub > for Sum
 {
-	fn handle( &mut self, msg: Sub ) -> Return<()> { Box::pin( async move
+	#[async_fn] fn handle( &mut self, msg: Sub ) -> ()
 	{
 		trace!( "called sum with: {:?}", msg );
 
 		self.0 -= msg.0;
 
-	})}
+	}
 }
 
 
 
 impl Handler< Show > for Sum
 {
-	fn handle( &mut self, _msg: Show ) -> Return<i64> { Box::pin( async move
+	#[async_fn] fn handle( &mut self, _msg: Show ) -> i64
 	{
 		trace!( "called sum with: Show" );
 
 		self.0
 
-	})}
+	}
 }

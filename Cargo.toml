@@ -80,6 +80,9 @@ assert_matches = "^1"
 futures-test = "^0.3"
 pretty_assertions = "^0.6"
 
+[dev-dependencies.async_chanx]
+path = "../../async_chanx"
+
 [dev-dependencies.async_executors]
 features = ["spawn_handle", "async_std", "threadpool"]
 path = "../../async_executors"
@@ -94,6 +97,13 @@ version = "^0.3"
 
 [dev-dependencies.futures_ringbuf]
 features = ["tokio"]
+version = "^0.2"
+
+[dev-dependencies.thespis_impl]
+path = "../thespis_impl"
+
+[dev-dependencies.tokio]
+features = ["sync", "stream"]
 version = "^0.2"
 
 [features]

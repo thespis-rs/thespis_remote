@@ -87,7 +87,7 @@ fn clone()
 
 	// Create mailbox for our handler
 	//
-	let addr_handler = Addr::try_from( Sum(0), &exec ).expect( "spawn actor mailbox" );
+	let addr_handler = Addr::builder().start( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
 	// Create a service map
 	//
@@ -115,20 +115,22 @@ fn clone()
 //
 fn debug()
 {
-	// Create mailbox for our handler
+	// Create mailbox for peer
 	//
-	let mb    : Inbox<Sum> = Inbox::new( Some( "for_debug".into() ) ) ;
-	let addr               = Addr::new( mb.sender() )                 ;
+	let (tx, rx) = mpsc::channel( 16 )                                                             ;
+	let mb_peer  = Inbox::new( Some( "for_debug".into() ), Box::new( rx ) )                        ;
+	let tx       = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
+	let sum_addr = Addr::<Sum>::new( mb_peer.id(), mb_peer.name(), tx )                            ;
 
 	let sm = remotes::Services::new();
 
-	sm.register_handler::<Add >( addr.clone_box() );
-	sm.register_handler::<Show>( addr.clone_box() );
+	sm.register_handler::<Add >( sum_addr.clone_box() );
+	sm.register_handler::<Show>( sum_addr.clone_box() );
 
 	// All tests from the same file seem to run in the same process, so sometimes
 	// if the test for clone has run first, the ID will be 1.
 	//
-	let id = addr.id();
+	let id = sum_addr.id();
 
 	let txt = format!
 ("remotes::Services

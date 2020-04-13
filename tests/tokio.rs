@@ -16,13 +16,20 @@ use
 // - ✔ basic remote funcionality: intertwined sends and calls.
 // - ✔ correct async behavior: verify that a peer can continue to send/receive while waiting for the response to a call.
 // - ✔ call a remote service after the connection has closed: verify peer event and error kind.
+//
+pub fn peer_listen
+(
+	socket: TokioEndpoint                                ,
+	sm    : Arc<impl ServiceMap + Send + Sync + 'static> ,
+	exec  : Arc< dyn Spawn + Send + Sync + 'static>      ,
+	name  : &'static str                                 ,
+)
 
-pub fn peer_listen( socket: TokioEndpoint, sm: Arc<impl ServiceMap + Send + Sync + 'static>, exec: Arc< dyn Spawn + Send + Sync + 'static>, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+	-> (Addr<Peer>, Events<PeerEvent>)
 {
 	// Create mailbox for peer
 	//
-	let mb_peer  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
-	let peer_addr              = Addr ::new( mb_peer.sender() );
+	let (peer_addr, peer_mb) = Addr::builder().name( name.into() ).build();
 
 	// create peer with stream/sink
 	//
@@ -34,7 +41,7 @@ pub fn peer_listen( socket: TokioEndpoint, sm: Arc<impl ServiceMap + Send + Sync
 	//
 	peer.register_services( sm );
 
-	exec.spawn( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
+	exec.spawn( peer_mb.start_fut(peer) ).expect( "start mailbox of Peer" );
 
 	(peer_addr, peer_evts)
 }
@@ -44,8 +51,7 @@ pub async fn peer_connect( socket: TokioEndpoint, exec: Arc<dyn Spawn + Send + S
 {
 	// Create mailbox for peer
 	//
-	let mb  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
-	let addr              = Addr ::new( mb.sender() );
+	let (addr, mb) = Addr::builder().name( name.into() ).build();
 
 	// create peer with stream/sink + service map
 	//
@@ -81,7 +87,7 @@ fn remote()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -178,8 +184,7 @@ fn parallel()
 
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "peera".into() )  );
-		let peer_addr              = Addr ::new( mb_peer.sender() );
+		let (peer_addr, peer_mb) = Addr::builder().name( "peer_a".into() ).build();
 
 		// create peer with stream/sink
 		//
@@ -191,7 +196,7 @@ fn parallel()
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Parallel{ sum: Box::new( addr ) }, &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Parallel{ sum: Box::new( addr ) }, &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -200,7 +205,7 @@ fn parallel()
 
 		peer.register_services( Arc::new( sm ) );
 
-		mb_peer.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
 	};
 
 
@@ -208,8 +213,7 @@ fn parallel()
 	{
 		// Create mailbox for peer
 		//
-		let     mb_peer  : Inbox<Peer> = Inbox::new( Some( "peer_b".into() )  );
-		let mut peer_addr              = Addr ::new( mb_peer.sender() );
+		let (mut peer_addr, peer_mb) = Addr::builder().name( "peer_b".into() ).build();
 
 		// create peer with stream/sink
 		//
@@ -217,7 +221,7 @@ fn parallel()
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(19), &ex2 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(19), &ex2 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -227,7 +231,7 @@ fn parallel()
 
 		peer.register_services( Arc::new( sm ) );
 
-		mb_peer.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" );
 
 
 		// Create recipients

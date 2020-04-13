@@ -101,9 +101,9 @@ fn backpressure_basic()
 	{
 		// Create mailbox for our handler
 		//
-		let slow  = Addr::try_from( Slow , &ex1 ).expect( "spawn actor mailbox" );
-		let slow2 = Addr::try_from( Slow , &ex1 ).expect( "spawn actor mailbox" );
-		let after = Addr::try_from( After, &ex1 ).expect( "spawn actor mailbox" );
+		let slow  = Addr::builder().start( Slow , &ex1 ).expect( "spawn actor mailbox" );
+		let slow2 = Addr::builder().start( Slow , &ex1 ).expect( "spawn actor mailbox" );
+		let after = Addr::builder().start( After, &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -115,11 +115,12 @@ fn backpressure_basic()
 		sm.register_handler::<Add2>( slow2.clone_box() );
 		sm.register_handler::<Show>( after.clone_box() );
 
-
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "server".into() ) );
-		let peer_addr              = Addr ::new( mb_peer.sender() );
+		let (tx, rx)    = mpsc::channel( 16 )                                                             ;
+		let mb_peer     = Inbox::new( Some( "server".into() ), Box::new( rx ) )                   ;
+		let tx          = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
+		let peer_addr   = Addr::new( mb_peer.id(), mb_peer.name(), tx )                                   ;
 
 		// create peer with stream/sink
 		//

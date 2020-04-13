@@ -19,7 +19,7 @@ dependencies:
   log                   : ^0.4
   pharos                : { version: ^0.4 }
   async-tungstenite     : { version: ^0.4, features: [ async-std-runtime ] }
-  ws_stream_tungstenite : { path: ../../../../../ws_stream_tungstenite }
+  ws_stream_tungstenite : { version: ^0.1 }
   async-std             : { version: ^1, features: [ attributes ] }
   thespis               : { path: ../../../../thespis              }
   thespis_impl          : { path: ../../../../thespis_impl         }

@@ -115,7 +115,11 @@ dev-dependencies:
   async_executors   : { path: ../../async_executors, features: [ spawn_handle, async_std, threadpool ] }
   futures_ringbuf   : { version: ^0.2, features: [ tokio ] }
   futures-test      : ^0.3
-  futures           : { version: ^0.3, features: [thread-pool] }
+  futures           : { version: ^0.3, features: [ thread-pool ] }
+  tokio             : { version: ^0.2, features: [ sync, stream ] }
+  async_chanx       : { path: ../../async_chanx }
+  thespis_impl      : { path: ../thespis_impl }
+
 
 profile:
 

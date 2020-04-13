@@ -38,7 +38,7 @@ fn start_empty()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -101,7 +101,7 @@ fn adding_starts_providing()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -172,7 +172,7 @@ fn add_empty()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -234,7 +234,7 @@ fn remove_should_stop_providing()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -300,7 +300,7 @@ fn remove_non_existing()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -365,8 +365,8 @@ fn update_to_new_handler()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler  = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
-		let addr_handler2 = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler  = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler2 = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//

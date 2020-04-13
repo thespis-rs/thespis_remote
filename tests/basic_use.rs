@@ -31,7 +31,7 @@ fn remote()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -124,8 +124,7 @@ fn parallel()
 	{
 		// Create mailbox for peer
 		//
-		let mb_peer  : Inbox<Peer> = Inbox::new( Some( "peera".into() ) );
-		let peer_addr              = Addr ::new( mb_peer.sender() );
+		let (peer_addr, peer_mb) = Addr::builder().name( "peer_a".into() ).build();
 
 		// create peer with stream/sink
 		//
@@ -137,7 +136,7 @@ fn parallel()
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Parallel{ sum: Box::new( addr ) }, &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Parallel{ sum: Box::new( addr ) }, &ex1 ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -146,7 +145,7 @@ fn parallel()
 
 		peer.register_services( Arc::new( sm ) );
 
-		mb_peer.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
 	};
 
 
@@ -154,8 +153,7 @@ fn parallel()
 	{
 		// Create mailbox for peer
 		//
-		let     mb_peer  : Inbox<Peer> = Inbox::new( Some( "peer_b".into() )  );
-		let mut peer_addr              = Addr ::new( mb_peer.sender() );
+		let (mut peer_addr, peer_mb) = Addr::builder().name( "peer_b".into() ).build();
 
 		// create peer with stream/sink
 		//
@@ -163,7 +161,7 @@ fn parallel()
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Sum(19), &ex2 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(19), &ex2 ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -173,7 +171,7 @@ fn parallel()
 
 		peer.register_services( Arc::new( sm ) );
 
-		mb_peer.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" );
 
 
 		// Create recipients

@@ -57,7 +57,7 @@ fn timeout()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::try_from( Slow, &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Slow, &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -83,8 +83,7 @@ fn timeout()
 
 		// Create mailbox for peer
 		//
-		let mb  : Inbox<Peer> = Inbox::new( Some( name.clone() ) );
-		let mut peera         = Addr ::new( mb.sender() );
+		let (mut peera, peer_mb) = Addr::builder().name( name.clone() ).build();
 
 		// create peer with stream/sink + service map
 		//
@@ -98,7 +97,7 @@ fn timeout()
 
 		debug!( "start mailbox for [{}] in peerb", name );
 
-		exec.spawn( mb.start_fut(peer) ).expect( "start mailbox of Peer" );
+		exec.spawn( peer_mb.start_fut(peer) ).expect( "start mailbox of Peer" );
 
 
 		// Call the service and receive the response

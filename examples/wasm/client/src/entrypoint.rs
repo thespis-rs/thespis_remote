@@ -10,7 +10,7 @@ use
 	wasm_bindgen_futures :: { spawn_local      } ,
 
 	ws_stream_wasm :: { *                      } ,
-	pharos                :: { Observable, ObserveConfig } ,
+	pharos         :: { Observable, ObserveConfig } ,
 
 	futures::
 	{
@@ -20,7 +20,7 @@ use
 };
 
 
-pub const URL   : &str = "ws://127.0.0.1:3012";
+pub const URL: &str = "ws://127.0.0.1:3012";
 
 
 // Called when the wasm module is instantiated
@@ -65,8 +65,7 @@ pub fn main() -> Result<(), JsValue>
 
 		// Create mailbox for server peer
 		//
-		let mb       : Inbox<Peer> = Inbox::new( Some( "Wasm Peer".into() ) );
-		let peer_addr              = Addr ::new( mb.sender() );
+		let (peer_addr, mb) = Addr::builder().name( "Wasm Peer".into() ).build();
 
 		// create peer with stream/sink + service map
 		//

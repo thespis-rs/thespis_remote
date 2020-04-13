@@ -35,7 +35,7 @@ path = "../../../../thespis_remote"
 path = "../common"
 
 [dependencies.ws_stream_tungstenite]
-path = "../../../../../ws_stream_tungstenite"
+version = "^0.1"
 
 [package]
 authors = ["Naja Melan <najamelan@autistici.org>"]
