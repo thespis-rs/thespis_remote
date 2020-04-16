@@ -15,9 +15,9 @@ use common::import::{ *, assert_eq };
 
 // Test relaying messages
 //
-#[test]
+#[async_std::test]
 //
-fn relay_once_load_balance()
+async fn relay_once_load_balance()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
@@ -30,8 +30,8 @@ fn relay_once_load_balance()
 	let ex3  = exec.clone();
 
 
-	let (provider_cx , provider_handle ) = provider( Some( "provider1".into() ), ex1 );
-	let (provider_cx2, provider_handle2) = provider( Some( "provider1".into() ), ex2 );
+	let (provider_cx , provider_handle ) = provider( Some( "provider1".into() ), ex1 ).await;
+	let (provider_cx2, provider_handle2) = provider( Some( "provider1".into() ), ex2 ).await;
 
 
 	// --------------------------------------

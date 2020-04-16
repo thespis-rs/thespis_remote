@@ -21,9 +21,9 @@ use remotes::Service;
 
 // start with empty and add later.
 //
-#[test]
+#[async_std::test]
 //
-fn start_empty()
+async fn start_empty()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
@@ -34,51 +34,45 @@ fn start_empty()
 	let ex2  = exec.clone();
 
 
-	let test = async move
-	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+	// Create mailbox for our handler
+	//
+	let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
 
-		// Create a service map
-		//
-		let sm = Arc::new( remotes::Services::new() );
+	// Create a service map
+	//
+	let mut sm = remotes::Services::new();
 
+	let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn actor mailbox" );
 
-		// get a framed connection
-		//
-		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm.clone(), ex1.clone(), "peera" );
+	// get a framed connection
+	//
+	let (mut provider_addr, _, provider_handle) = peer_listen( server, sm_addr.clone(), ex1.clone(), "peera" ).await;
 
+	let (to_provider, _)  = peer_connect( client, ex2, "peer_b_to_peera" );
 
-		let (to_provider, _)  = peer_connect( client, ex2, "peer_b_to_peera" );
+	// Call the service and receive the response
+	//
+	let mut addr = remotes::RemoteAddr::new( to_provider.clone() );
 
-		// Call the service and receive the response
-		//
-		let mut addr = remotes::RemoteAddr::new( to_provider.clone() );
+	// Register our handlers
+	//
+	sm_addr.call( RegisterHandler::new::<Add >( addr_handler.clone_box() ) );
+	sm_addr.call( RegisterHandler::new::<Show>( addr_handler.clone_box() ) );
 
-		// Register our handlers
-		//
-		sm.register_handler::<Add >( addr_handler.clone_box() );
-		sm.register_handler::<Show>( addr_handler.clone_box() );
+	provider_addr.call( AddServices{ sm: Box::new(sm_addr) } ).await.expect( "Call Provider" ).expect( "Add service Add, Show" );
 
-		provider_addr.call( AddServices{ sm } ).await.expect( "Add service Add, Show" );
+	let resp = addr.call( Add(5) ).await.expect( "Call Add(5)" );
+	assert_eq!( (), resp );
 
-		let resp = addr.call( Add(5) ).await.expect( "Call Add(5)" );
-		assert_eq!( (), resp );
+	let resp = addr.call( Show ).await.expect( "Call failed" );
+	assert_eq!( 5, resp );
 
-		let resp = addr.call( Show ).await.expect( "Call failed" );
-		assert_eq!( 5, resp );
+	provider_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 
-		provider_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
+	drop( provider_addr );
+	provider_handle.await;
 
-		drop( provider_addr );
-		provider_handle.await;
-
-		trace!( "end of test" );
-	};
-
-
-	block_on( test );
+	trace!( "end of test" );
 }
 
 
@@ -105,16 +99,19 @@ fn adding_starts_providing()
 
 		// Create a service map
 		//
-		let sm = Arc::new( remotes::Services::new() );
+		let mut sm = remotes::Services::new();
+
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
+		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
+
 
 		// get a framed connection
 		//
-		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm.clone(), ex1.clone(), "peera" );
+		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm_addr, ex1.clone(), "peera" ).await;
 
 
 		let (to_provider, _)  = peer_connect( client, ex2, "peer_b_to_peera" );
@@ -130,10 +127,14 @@ fn adding_starts_providing()
 		assert_matches!( resp.unwrap_err(), ThesRemoteErr::Remote{ err: ConnectionError::UnknownService{..}, .. } );
 
 
-		let sm2 = Arc::new( remotes::Services::new() );
+		let mut sm2 = remotes::Services::new();
+
 		sm2.register_handler::<Sub >( addr_handler.clone_box() );
 
-		provider_addr.call( AddServices{ sm: sm2 } ).await.expect( "Add service Sub" );
+		let sm2_addr = Addr::builder().start( sm2, &ex1 ).expect( "spawn service map" );
+
+
+		provider_addr.call( AddServices{ sm: Box::new( sm2_addr ) } ).await.expect( "Call Provider" ).expect( "Add service Sub" );
 
 		let resp = addr.call( Sub(1) ).await.expect( "Call Sub(1)" );
 		assert_eq!( (), resp );
@@ -176,16 +177,18 @@ fn add_empty()
 
 		// Create a service map
 		//
-		let sm = Arc::new( remotes::Services::new() );
+		let mut sm = remotes::Services::new();
+
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
+		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
 
 		// get a framed connection
 		//
-		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm.clone(), ex1.clone(), "peera" );
+		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm_addr, ex1.clone(), "peera" ).await;
 
 
 		let (to_provider, _)  = peer_connect( client, ex2, "peer_b_to_peera" );
@@ -194,8 +197,10 @@ fn add_empty()
 		//
 		let mut addr = remotes::RemoteAddr::new( to_provider.clone() );
 
-		let sm2 = Arc::new( remotes::Services::new() );
-		provider_addr.call( AddServices{ sm: sm2 } ).await.expect( "Add service Sub" );
+		let sm2      = remotes::Services::new();
+		let sm2_addr = Addr::builder().start( sm2, &ex1 ).expect( "spawn service map" );
+
+		provider_addr.call( AddServices{ sm: Box::new(sm2_addr) } ).await.expect( "Call Provider" ).expect( "Add service Sub" );
 
 		let resp = addr.call( Add(5) ).await.expect( "Call Add(5)" );
 		assert_eq!( (), resp );
@@ -238,16 +243,19 @@ fn remove_should_stop_providing()
 
 		// Create a service map
 		//
-		let sm = Arc::new( remotes::Services::new() );
+		let mut sm = remotes::Services::new();
+
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
+		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
+
 
 		// get a framed connection
 		//
-		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm.clone(), ex1.clone(), "peera" );
+		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm_addr, ex1.clone(), "peera" ).await;
 
 
 		let (to_provider, _)  = peer_connect( client, ex2, "peer_b_to_peera" );
@@ -304,16 +312,19 @@ fn remove_non_existing()
 
 		// Create a service map
 		//
-		let sm = Arc::new( remotes::Services::new() );
+		let mut sm = remotes::Services::new();
+
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
+		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
+
 
 		// get a framed connection
 		//
-		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm.clone(), ex1.clone(), "peera" );
+		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm_addr, ex1.clone(), "peera" ).await;
 
 
 		let (to_provider, _)  = peer_connect( client, ex2, "peer_b_to_peera" );
@@ -370,23 +381,31 @@ fn update_to_new_handler()
 
 		// Create a service map
 		//
-		let sm = Arc::new( remotes::Services::new() );
+		let mut sm = remotes::Services::new();
+
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
+		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
+
+
 		// Create a service map
 		//
-		let sm2 = Arc::new( remotes::Services::new() );
+		let mut sm2 = remotes::Services::new();
+
 		// Register our handlers
 		//
 		sm2.register_handler::<Add >( addr_handler2.clone_box() );
 		sm2.register_handler::<Show>( addr_handler2.clone_box() );
 
+		let sm2_addr = Addr::builder().start( sm2, &ex1 ).expect( "spawn service map" );
+
+
 		// get a framed connection
 		//
-		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm.clone(), ex1.clone(), "peera" );
+		let (mut provider_addr, _, provider_handle) = peer_listen( server, sm_addr, ex1.clone(), "peera" ).await;
 
 
 		let (to_provider, _)  = peer_connect( client, ex2, "peer_b_to_peera" );
@@ -402,7 +421,7 @@ fn update_to_new_handler()
 		assert_eq!( 5, resp );
 
 
-		provider_addr.call( AddServices{ sm: sm2 } ).await.expect( "Add new handler" );
+		provider_addr.call( AddServices{ sm: Box::new(sm2_addr) } ).await.expect( "Call Provider" ).expect( "Add new handler" );
 
 
 		let resp = addr.call( Add(3) ).await.expect( "Call Add(5)" );

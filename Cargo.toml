@@ -80,6 +80,10 @@ assert_matches = "^1"
 futures-test = "^0.3"
 pretty_assertions = "^0.6"
 
+[dev-dependencies.async-std]
+features = ["attributes"]
+version = "^1"
+
 [dev-dependencies.async_chanx]
 path = "../../async_chanx"
 

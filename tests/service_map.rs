@@ -91,7 +91,7 @@ fn clone()
 
 	// Create a service map
 	//
-	let sm = remotes::Services::new();
+	let mut sm = remotes::Services::new();
 
 	// Register our handlers
 	//
@@ -122,7 +122,7 @@ fn debug()
 	let tx       = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
 	let sum_addr = Addr::<Sum>::new( mb_peer.id(), mb_peer.name(), tx )                            ;
 
-	let sm = remotes::Services::new();
+	let mut sm = remotes::Services::new();
 
 	sm.register_handler::<Add >( sum_addr.clone_box() );
 	sm.register_handler::<Show>( sum_addr.clone_box() );

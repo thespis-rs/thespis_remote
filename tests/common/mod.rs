@@ -48,10 +48,10 @@ pub mod import
 pub use actors::*;
 
 
-pub fn peer_listen
+pub async fn peer_listen
 (
 	socket: Endpoint                                                     ,
-	sm    : Arc<impl ServiceMap + Send + Sync + 'static>                 ,
+	sm    : impl ServiceMap + Send + 'static                             ,
 	exec  : impl Spawn + SpawnHandle<()> + Clone + Send + Sync + 'static ,
 	name  : &str                                                         ,
 )
@@ -60,10 +60,7 @@ pub fn peer_listen
 {
 	// Create mailbox for peer
 	//
-	let (tx, rx)    = mpsc::channel( 16 )                                                             ;
-	let mb_peer     = Inbox::new( Some( name.into() ), Box::new( rx ) )                               ;
-	let tx          = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
-	let peer_addr   = Addr::new( mb_peer.id(), mb_peer.name(), tx )                                   ;
+	let (peer_addr, peer_mb) = Addr::builder().name( name.into() ).build()                            ;
 
 	// create peer with stream/sink
 	//
@@ -73,9 +70,9 @@ pub fn peer_listen
 
 	// register service map with peer
 	//
-	peer.register_services( sm );
+	peer.register_services( Box::new(sm) ).await.expect( "register services" );
 
-	let handle = exec.spawn_handle( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
+	let handle = exec.spawn_handle( peer_mb.start_fut(peer) ).expect( "start mailbox of Peer" );
 
 	(peer_addr, peer_evts, handle)
 }
@@ -114,7 +111,7 @@ pub fn peer_connect
 }
 
 
-pub fn provider
+pub async fn provider
 (
 	name: Option<Arc<str>>,
 	exec  : impl Spawn + SpawnHandle<()> + Clone + Send + Sync + 'static ,
@@ -131,10 +128,12 @@ pub fn provider
 
 	// register Sum with peer as handler for Add and Show
 	//
-	let sm = remotes::Services::new();
+	let mut sm = remotes::Services::new();
 
 	sm.register_handler::<Add >( addr_handler.clone_box() );
 	sm.register_handler::<Show>( addr_handler.clone_box() );
+
+	let sm_addr = Addr::builder().start( sm, &exec ).expect( "spawn sm mailbox" );
 
 
 	// get a framed connection
@@ -142,7 +141,7 @@ pub fn provider
 	let (ab, ba) = Endpoint::pair( 128, 128 );
 
 	debug!( "start mailbox for provider" );
-	let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), exec, "provider" );
+	let (peer_addr, _peer_evts, handle) = peer_listen( ab, sm_addr, exec, "provider" ).await;
 
 	drop( peer_addr );
 	trace!( "End of provider" );
@@ -168,6 +167,7 @@ pub async fn relay
 	let (mut provider_addr, _provider_evts) = peer_connect( connect, exec.clone(), "relay_to_provider" );
 	let provider_addr2                      = provider_addr.clone();
 	let ex1                                 = exec.clone();
+	let ex2                                 = exec.clone();
 
 	// Relay part ---------------------
 
@@ -193,8 +193,10 @@ pub async fn relay
 			relayed.push( show.clone() );
 		}
 
-		let rm = Arc::new( RelayMap::new( handler.into(), relayed ) );
-		peer.register_services( rm );
+		let rm = RelayMap::new( handler.into(), relayed );
+		let rm_addr = Addr::builder().start( rm, &ex2 ).expect( "spawn relay map" );
+
+		peer.register_services( Box::new( rm_addr ) ).await.expect( "register services" );
 
 		debug!( "start mailbox for relay_to_consumer" );
 		peer_mb.start_fut( peer ).await;
@@ -245,6 +247,7 @@ pub async fn relay_closure
 
 	let providers2 = providers.clone();
 	let ex1        = exec.clone();
+	let ex2        = exec.clone();
 
 	// Relay part ---------------------
 
@@ -252,10 +255,8 @@ pub async fn relay_closure
 	{
 		// Create mailbox for peer
 		//
-		let (tx, rx)    = mpsc::channel( 16 )                                                             ;
-		let mb_peer     = Inbox::new( Some( "relay_to_consumer".into() ), Box::new( rx ) )                ;
-		let tx          = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
-		let peer_addr   = Addr::new( mb_peer.id(), mb_peer.name(), tx )                                   ;
+		let (peer_addr, peer_mb) = Addr::builder().name( "relay_to_consumer".into() ).build();
+
 
 		// create peer with stream/sink + service map
 		//
@@ -284,12 +285,14 @@ pub async fn relay_closure
 			relayed.push( show.clone() );
 		}
 
-		let rm = Arc::new( RelayMap::new( ServiceHandler::Closure( handler ), relayed ) );
+		let rm = RelayMap::new( ServiceHandler::Closure( handler ), relayed );
+		let rm_addr = Addr::builder().start( rm, &ex2 ).expect( "spawn relay map" );
 
-		peer.register_services( rm );
+		peer.register_services( Box::new( rm_addr ) ).await.expect( "register services" );
+
 
 		debug!( "start mailbox for relay_to_consumer" );
-		mb_peer.start_fut( peer ).await;
+		peer_mb.start_fut( peer ).await;
 		warn!( "relay async block finished" );
 	};
 

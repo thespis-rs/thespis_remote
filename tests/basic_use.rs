@@ -35,16 +35,19 @@ fn remote()
 
 		// Create a service map
 		//
-		let sm = remotes::Services::new();
+		let mut sm = remotes::Services::new();
 
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
+		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
+
+
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "peera" );
+		let (_, _, handle) = peer_listen( server, sm_addr, ex1.clone(), "peera" ).await;
 
 		handle.await;
 
@@ -140,10 +143,12 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let sm = parallel::Services::new();
+		let mut sm = parallel::Services::new();
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
-		peer.register_services( Arc::new( sm ) );
+		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
+
+		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
 		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
 	};
@@ -166,10 +171,12 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let sm = remotes::Services::new();
+		let mut sm = remotes::Services::new();
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
-		peer.register_services( Arc::new( sm ) );
+		let sm_addr = Addr::builder().start( sm, &ex2 ).expect( "spawn service map" );
+
+		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
 		peer_mb.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" );
 

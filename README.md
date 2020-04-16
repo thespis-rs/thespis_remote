@@ -4,6 +4,10 @@ The reference implementation of the thespis remote actor model
 
 ## TODO
 
+- why does handling an incoming send for a service require services to have the addr of the peer?
+  We seem to use it to feed error information to the peer, but sends opt out of feedback normally.
+  Only calls are guaranteed to get feedback related to the processing.
+
 - switch to futures_ringbuf for testing and examples
 
 - fuzz testing

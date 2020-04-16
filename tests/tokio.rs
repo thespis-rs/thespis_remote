@@ -17,10 +17,10 @@ use
 // - ✔ correct async behavior: verify that a peer can continue to send/receive while waiting for the response to a call.
 // - ✔ call a remote service after the connection has closed: verify peer event and error kind.
 //
-pub fn peer_listen
+pub async fn peer_listen
 (
 	socket: TokioEndpoint                                ,
-	sm    : Arc<impl ServiceMap + Send + Sync + 'static> ,
+	sm    : impl ServiceMap + Send + 'static             ,
 	exec  : Arc< dyn Spawn + Send + Sync + 'static>      ,
 	name  : &'static str                                 ,
 )
@@ -39,7 +39,7 @@ pub fn peer_listen
 
 	// register service map with peer
 	//
-	peer.register_services( sm );
+	peer.register_services( Box::new(sm) ).await.expect( "register services" );
 
 	exec.spawn( peer_mb.start_fut(peer) ).expect( "start mailbox of Peer" );
 
@@ -91,15 +91,17 @@ fn remote()
 
 		// Create a service map
 		//
-		let sm = remotes::Services::new();
+		let mut sm = remotes::Services::new();
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
+		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
+
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), ex1.clone(), "peera" );
+		let _ = peer_listen( server, Box::new( sm_addr ), ex1.clone(), "peera" );
 
 		trace!( "end of peera" );
 	};
@@ -200,10 +202,12 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let sm = parallel::Services::new();
+		let mut sm = parallel::Services::new();
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
-		peer.register_services( Arc::new( sm ) );
+		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
+
+		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
 		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
 	};
@@ -226,10 +230,12 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let sm = remotes::Services::new();
+		let mut sm = remotes::Services::new();
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
-		peer.register_services( Arc::new( sm ) );
+		let sm_addr = Addr::builder().start( sm, &ex2 ).expect( "spawn service map" );
+
+		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
 		peer_mb.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" );
 

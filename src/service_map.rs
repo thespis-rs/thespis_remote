@@ -1,27 +1,33 @@
-use crate::{ *, import::* } ;
+use crate::{ import::* } ;
 
+mod deliver_call;
+mod deliver_send;
+mod list_services;
 
-/// This interface is what the Peer type uses to deliver messages. An implementation is provided
-/// for you in the `service_map` macro. You can however roll your own.
-///
-/// RelayMap also implements this for relaying certain services to remote providers.
-///
-//
-pub trait ServiceMap: fmt::Debug + Send + Sync
+pub use
 {
-	/// Send a message to a handler. This should take care of deserialization.
-	//
-	fn send_service( &self, msg: WireFormat, peer_addr: Addr<Peer> ) -> Return<'static, ()>;
+	deliver_call::*,
+	deliver_send::*,
+	list_services::*,
+};
+
+pub trait ServiceMap:
+
+	Address< ListServices, Error=ThesErr > +
+	Address< DeliverSend , Error=ThesErr > +
+	Address< DeliverCall , Error=ThesErr > +
+	Send
+
+{}
 
 
-	/// Call a Service.
-	/// This should take care of deserialization. The return address is the address of the peer
-	/// to which the serialized answer shall be send.
-	//
-	fn call_service( &self, msg: WireFormat, peer_addr: Addr<Peer> ) -> Return<'static, ()>;
+impl<T> ServiceMap for T
 
+	where T:
 
-	/// Get a list of all services provided by this service map.
-	//
-	fn services( &self ) -> Vec<ServiceID>;
-}
+		Address< ListServices, Error=ThesErr > +
+		Address< DeliverSend , Error=ThesErr > +
+		Address< DeliverCall , Error=ThesErr > +
+		Send
+
+{}

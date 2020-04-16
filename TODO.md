@@ -2,6 +2,14 @@
 
 - verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
 
+- further clean up service maps:
+  - do we need a trait ServiceMap?
+  - can we move things out of macro?
+  - usage with HashMany and complicated code in incoming
+
+- do we really want to use Bytes as underlying storage and use codec?
+- should UniqueID and ServiceID be Copy?
+- Kompakt?
 
 - structured concurrency!
 

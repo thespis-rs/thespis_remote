@@ -61,15 +61,17 @@ fn timeout()
 
 		// Create a service map
 		//
-		let sm = timeouts::Services::new();
+		let mut sm = timeouts::Services::new();
 
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 
+		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn" );
+
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "peera" );
+		let (_, _, handle) = peer_listen( server, sm_addr, ex1.clone(), "peera" ).await;
 
 		handle.await;
 
