@@ -89,7 +89,7 @@ path = "../../async_chanx"
 
 [dev-dependencies.async_executors]
 features = ["spawn_handle", "async_std", "threadpool"]
-path = "../../async_executors"
+version = "^0.2"
 
 [dev-dependencies.flexi_logger]
 default-features = false

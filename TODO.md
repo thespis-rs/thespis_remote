@@ -1,5 +1,7 @@
 # thespis_remote TODO
 
+- output service names in relaymap debug
+- should service_map work with ServiceHandler just like relaymap?
 - verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
 
 - further clean up service maps:

@@ -104,11 +104,11 @@ fn debug()
 
 	// Create mailbox for peer
 	//
-	let (peer_addr, _) = Addr::builder().name( "relay_to_consumer".into() ).build();
+	let (peer_addr, mb) = Addr::builder().name( "relay_to_consumer".into() ).build();
 	let id             = peer_addr.id()                                            ;
 
-
-	let _peer = Peer::from_async_read( peer_addr.clone(), cx, 1024, exec, None ).expect( "spawn peer" );
+	let peer = Peer::from_async_read( peer_addr.clone(), cx, 1024, exec.clone(), None ).expect( "spawn peer" );
+	mb.start( peer, &exec ).expect( "spawn peer" ).detach();
 
 
 	let add  = <Add  as remotes::Service>::sid();
@@ -118,6 +118,8 @@ fn debug()
 
 	// All tests from the same file seem to run in the same process, so sometimes
 	// if the test for clone has run first, the ID will be 1.
+	//
+	// TODO: output service names.
 	//
 	let txt = format!
 ("RelayMap, handler: ServiceHandler: Address: id: {}, name: \"relay_to_consumer\", services:

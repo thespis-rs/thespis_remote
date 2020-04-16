@@ -113,7 +113,7 @@ dev-dependencies:
   pretty_assertions : ^0.6
   flexi_logger      : { version: ^0.15, default-features: false }
 
-  async_executors   : { path: ../../async_executors, features: [ spawn_handle, async_std, threadpool ] }
+  async_executors   : { version: ^0.2, features: [ spawn_handle, async_std, threadpool ] }
   futures_ringbuf   : { version: ^0.2, features: [ tokio ] }
   futures-test      : ^0.3
   futures           : { version: ^0.3, features: [ thread-pool ] }

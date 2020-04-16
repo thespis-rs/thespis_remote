@@ -16,7 +16,7 @@ use common::import::{ *, assert_eq };
 //
 #[test]
 //
-fn remote()
+fn basic_remote()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
@@ -150,7 +150,7 @@ fn parallel()
 
 		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
-		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" ).detach();
 	};
 
 
@@ -178,7 +178,7 @@ fn parallel()
 
 		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
-		peer_mb.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" ).detach();
 
 
 		// Create recipients

@@ -52,11 +52,11 @@ pub async fn peer_listen
 (
 	socket: Endpoint                                                     ,
 	sm    : impl ServiceMap + Send + 'static                             ,
-	exec  : impl Spawn + SpawnHandle<()> + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle< Option<Inbox<Peer>> > + Clone + Send + Sync + 'static ,
 	name  : &str                                                         ,
 )
 
-	-> (Addr<Peer>, Events<PeerEvent>, JoinHandle<()>)
+	-> (Addr<Peer>, Events<PeerEvent>, JoinHandle< Option<Inbox<Peer>> >)
 {
 	// Create mailbox for peer
 	//
@@ -105,7 +105,7 @@ pub fn peer_connect
 
 	debug!( "start mailbox for [{}] in peer_connect", name );
 
-	exec.spawn( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
+	exec.spawn( async{ mb_peer.start_fut(peer).await; } ).expect( "start mailbox of Peer" );
 
 	(peer_addr, evts)
 }
@@ -114,9 +114,9 @@ pub fn peer_connect
 pub async fn provider
 (
 	name: Option<Arc<str>>,
-	exec  : impl Spawn + SpawnHandle<()> + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle< Option<Inbox<Peer>> > + Clone + Send + Sync + 'static ,
 )
-	-> (Endpoint, JoinHandle<()>)
+	-> (Endpoint, JoinHandle< Option<Inbox<Peer>> >)
 
 {
 	let name = name.map( |n| n.to_string() ).unwrap_or( "unnamed".to_string() );
