@@ -4,7 +4,6 @@
 use crate :: { import::*, *, service_map::{ ListServices }, hash_many::HashMany };
 
 
-    mod add_services      ;
     mod backpressure      ;
     mod close_connection  ;
     mod connection_error  ;
@@ -12,18 +11,15 @@ use crate :: { import::*, *, service_map::{ ListServices }, hash_many::HashMany 
     mod call              ;
     mod call_response     ;
     mod incoming          ;
-    mod remove_services   ;
 pub mod request_error     ;
     mod timeout           ;
 
-pub use add_services      :: AddServices      ;
 pub use backpressure      :: BackPressure     ;
 pub use call              :: Call             ;
 pub use call_response     :: CallResponse     ;
 pub use close_connection  :: CloseConnection  ;
 pub use connection_error  :: ConnectionError  ;
 pub use peer_event        :: PeerEvent        ;
-pub use remove_services   :: RemoveServices   ;
     use incoming          :: Incoming         ;
     use request_error     :: RequestError     ;
     use timeout           :: Timeout          ;
