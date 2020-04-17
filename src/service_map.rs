@@ -11,6 +11,11 @@ pub use
 	list_services::*,
 };
 
+/// Collection of trait bounds guaranteeing that this address poings to an actor which
+/// handles all message types needed consumers of service maps.
+///
+/// Automatically implemented with a blanket impl when all bounds are satisfied.
+//
 pub trait ServiceMap:
 
 	Address< ListServices, Error=ThesErr > +

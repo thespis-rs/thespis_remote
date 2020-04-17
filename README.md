@@ -4,6 +4,9 @@ The reference implementation of the thespis remote actor model
 
 ## TODO
 
+- service_map macro should not block on the processing of the handlers.
+- if we implement send_after on thespis, we don't need an executor anymore in peer.
+
 - why does handling an incoming send for a service require services to have the addr of the peer?
   We seem to use it to feed error information to the peer, but sends opt out of feedback normally.
   Only calls are guaranteed to get feedback related to the processing.
