@@ -16,6 +16,7 @@ pub struct RelayMap
 	//
 	handler : ServiceHandler ,
 	services: Vec<ServiceID> ,
+	exec    : Arc< dyn Spawn + Send + Sync + 'static >
 }
 
 
@@ -23,9 +24,9 @@ impl RelayMap
 {
 	/// Create a RelayMap.
 	//
-	pub fn new( handler: ServiceHandler, services: Vec<ServiceID> ) -> Self
+	pub fn new( handler: ServiceHandler, services: Vec<ServiceID>, exec: impl Spawn + Send + Sync + 'static ) -> Self
 	{
-		Self { handler, services }
+		Self { handler, services, exec: Arc::new(exec) }
 	}
 
 
@@ -52,7 +53,17 @@ impl Handler<DeliverCall> for RelayMap
 {
 	fn handle( &mut self, msg: DeliverCall ) -> Return<'_, ()>
 	{
-		self.call_service( msg.mesg, msg.peer )
+		let peer = msg.peer.clone();
+		let sid  = msg.mesg.service();
+
+		return if self.exec.spawn( self.call_service( msg.mesg, msg.peer ) ).is_err()
+		{
+			let ctx = Peer::err_ctx( &peer, sid, None, "RelayMap DeliverCall".to_string() );
+
+			Self::handle_err( peer, ThesRemoteErr::Spawn{ ctx } ).boxed()
+		}
+
+		else { async{}.boxed() }
 	}
 }
 
@@ -61,7 +72,17 @@ impl Handler<DeliverSend> for RelayMap
 {
 	fn handle( &mut self, msg: DeliverSend ) -> Return<'_, ()>
 	{
-		self.send_service( msg.mesg, msg.peer )
+		let peer = msg.peer.clone();
+		let sid  = msg.mesg.service();
+
+		return if self.exec.spawn( self.send_service( msg.mesg, msg.peer ) ).is_err()
+		{
+			let ctx = Peer::err_ctx( &peer, sid, None, "RelayMap DeliverSend".to_string() );
+
+			Self::handle_err( peer, ThesRemoteErr::Spawn{ ctx } ).boxed()
+		}
+
+		else { async{}.boxed() }
 	}
 }
 

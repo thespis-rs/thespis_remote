@@ -113,7 +113,7 @@ fn debug()
 	let add  = <Add  as remotes::Service>::sid();
 	let show = <Show as remotes::Service>::sid();
 
-	let rm = RelayMap::new( ServiceHandler::Address( Box::new(peer_addr) ), vec![ add.clone(), show.clone() ] );
+	let rm = RelayMap::new( ServiceHandler::Address( Box::new(peer_addr) ), vec![ add.clone(), show.clone() ], exec );
 
 	// All tests from the same file seem to run in the same process, so sometimes
 	// if the test for clone has run first, the ID will be 1.
