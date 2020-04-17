@@ -44,7 +44,7 @@ fn close_connection()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let mut sm = remotes::Services::new( ex1.clone() );
 
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
@@ -53,7 +53,7 @@ fn close_connection()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, sm_addr, ex1.clone(), "nodea" ).await;
+		let (_, _, handle) = peer_listen( server, sm_addr, ex1, "nodea" ).await;
 
 		handle.await;
 	};
@@ -61,7 +61,7 @@ fn close_connection()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2, "nodeb_to_nodea" );
 
 		// Close the connection and check the event
 		//
@@ -103,7 +103,7 @@ fn close_connection_call()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let mut sm = remotes::Services::new( ex1.clone() );
 
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
@@ -112,7 +112,7 @@ fn close_connection_call()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, sm_addr, ex1.clone(), "nodea" ).await;
+		let (_, _, handle) = peer_listen( server, sm_addr, ex1, "nodea" ).await;
 
 		handle.await;
 	};
@@ -120,7 +120,7 @@ fn close_connection_call()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2, "nodeb_to_nodea" );
 
 		// Close the connection and check the event
 		//
@@ -164,14 +164,14 @@ fn header_unknown_service_error()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let mut sm = remotes::Services::new( ex1.clone() );
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 
 		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
 
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, sm_addr, ex1.clone(), "nodea" ).await;
+		let (_, mut evts, handle) = peer_listen( server, sm_addr, ex1, "nodea" ).await;
 
 		let sid = Some( ServiceID::from( Bytes::from( vec![3;16] ) ) );
 
@@ -191,7 +191,7 @@ fn header_unknown_service_error()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2, "nodeb_to_nodea" );
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -244,14 +244,14 @@ fn header_deserialize()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let mut sm = remotes::Services::new( ex1.clone() );
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 
 		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
 
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, sm_addr, ex1.clone(), "nodea" ).await;
+		let (_, mut evts, handle) = peer_listen( server, sm_addr, ex1, "nodea" ).await;
 
 
 		match evts.next().await.unwrap()
@@ -270,7 +270,7 @@ fn header_deserialize()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, ex2, "nodeb_to_nodea" );
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -341,14 +341,14 @@ fn sm_deserialize_error()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let mut sm = remotes::Services::new( ex1.clone() );
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 
 		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
 
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, sm_addr, ex1.clone(), "nodea" ).await;
+		let (_, mut evts, handle) = peer_listen( server, sm_addr, ex1, "nodea" ).await;
 
 		match evts.next().await.unwrap()
 		{
@@ -366,7 +366,7 @@ fn sm_deserialize_error()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts) = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts) = peer_connect( client, ex2, "nodeb_to_nodea" );
 
 		// Create some random data that shouldn't deserialize
 		//

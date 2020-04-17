@@ -45,7 +45,7 @@ fn relay_once()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let mut sm = remotes::Services::new( ex1.clone() );
 
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
@@ -71,7 +71,7 @@ fn relay_once()
 	{
 		debug!( "start mailbox for consumer_to_relay" );
 
-		let (mut to_relay, _)  = peer_connect( cb, ex2.clone(), "consumer_to_relay" );
+		let (mut to_relay, _)  = peer_connect( cb, ex2, "consumer_to_relay" );
 
 		// Call the service and receive the response
 		//
@@ -135,7 +135,7 @@ fn relay_multi()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let mut sm = remotes::Services::new( ex1.clone() );
 
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
@@ -156,7 +156,7 @@ fn relay_multi()
 
 	let consumer = async move
 	{
-		let (mut relay, _)  = peer_connect( fe, ex2.clone(), "consumer_to_relay" );
+		let (mut relay, _)  = peer_connect( fe, ex2, "consumer_to_relay" );
 
 		// Call the service and receive the response
 		//
@@ -210,7 +210,7 @@ fn relay_unknown_service()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let mut sm = remotes::Services::new( ex1.clone() );
 
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 
@@ -230,7 +230,7 @@ fn relay_unknown_service()
 
 	let consumer = async move
 	{
-		let (mut relay, _relay_evts) = peer_connect( cb, ex2.clone(), "consumer_to_relay" );
+		let (mut relay, _relay_evts) = peer_connect( cb, ex2, "consumer_to_relay" );
 
 		// Create some random data that shouldn't deserialize
 		//

@@ -102,14 +102,14 @@ use
 
 	$crate::external_deps::
 	{
-		once_cell       :: { sync::Lazy                                   } ,
-		futures         :: { future::FutureExt, task::{ Context, Poll }   } ,
-		thespis         :: { *                                            } ,
-		thespis_impl    :: { Addr, Receiver, ThesErr, ThesRes             } ,
-		serde_cbor      :: { self, from_slice as des                      } ,
-		serde           :: { Serialize, Deserialize, de::DeserializeOwned } ,
-		log             :: { error                                        } ,
-		parking_lot     :: { RwLock                                       } ,
+		once_cell       :: { sync::Lazy                                                  } ,
+		futures         :: { future::FutureExt, task::{ Context, Poll, Spawn, SpawnExt } } ,
+		thespis         :: { *                                                           } ,
+		thespis_impl    :: { Addr, Receiver, ThesErr, ThesRes                            } ,
+		serde_cbor      :: { self, from_slice as des                                     } ,
+		serde           :: { Serialize, Deserialize, de::DeserializeOwned                } ,
+		log             :: { error                                                       } ,
+		parking_lot     :: { RwLock                                                      } ,
 		paste,
 	},
 };
@@ -175,7 +175,7 @@ pub struct Services
 	// The addresses to the actors that handle incoming messages.
 	//
 	handlers: HashMap< &'static ServiceID, Box< dyn Any + Send > > ,
-	// exec    : Box< dyn Spawn + Send >                              ,
+	exec    : Arc< dyn Spawn + Send + Sync + 'static >             ,
 }
 
 
@@ -218,7 +218,16 @@ impl Handler<DeliverCall> for Services
 			$(
 				_ if sid == *<$services as Service>::sid() =>
 				{
-					Self::call_service_gen::<$services>( msg, receiver, peer )
+					let peer2 = peer.clone();
+
+					return if self.exec.spawn( Self::call_service_gen::<$services>( msg, receiver, peer ) ).is_err()
+					{
+						let ctx = Peer::err_ctx( &peer2, sid, None, "Service Map DeliverCall".to_string() );
+
+						Self::handle_err( peer2, ThesRemoteErr::Spawn{ ctx } ).boxed()
+					}
+
+					else { async{}.boxed() }
 				}
 			)+
 
@@ -244,6 +253,8 @@ impl Handler<DeliverSend> for Services
 	/// - ThesRemoteErr::Downcast
 	/// - ThesRemoteErr::UnknownService
 	/// - ThesRemoteErr::Deserialize
+	///
+	/// Errors are sent to the peer to be logged and returned to the remote.
 	///
 	//
 	fn handle( &mut self, msg: DeliverSend ) -> Return<'_, ()>
@@ -304,17 +315,27 @@ impl Handler<DeliverSend> for Services
 					// We need to clone the receiver so it can be inside the future as &mut self.
 					//
 					let mut rec = rec.clone_box();
+					let peer2   = peer.clone();
+					let sid2    = sid.clone();
 
-					async move
+					let task = async move
 					{
 						if rec.send( message ).await.is_err()
 						{
-							let ctx = Peer::err_ctx( &peer, sid, None, "Process Send for local Actor".to_string() );
+							let ctx = Peer::err_ctx( &peer2, sid2, None, "Process Send for local Actor".to_string() );
 
-							return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
+							return Self::handle_err( peer2, ThesRemoteErr::HandlerDead{ ctx } ).await;
 						}
+					};
 
-					}.boxed()
+					return if self.exec.spawn( task ).is_err()
+					{
+						let ctx = Peer::err_ctx( &peer, sid, None, "Service Map DeliverSend".to_string() );
+
+						Self::handle_err( peer, ThesRemoteErr::Spawn{ ctx } ).boxed()
+					}
+
+					else { async{}.boxed() }
 				},
 			)+
 
@@ -438,7 +459,7 @@ impl Clone for Services
 
 		}
 
-		Self { handlers: map }
+		Self { handlers: map, exec: self.exec.clone() }
 	}
 }
 
@@ -448,7 +469,7 @@ impl Services
 {
 	/// Create a new service map
 	//
-	pub fn new() -> Self
+	pub fn new( exec: impl Spawn + Send + Sync + 'static ) -> Self
 	{
 		$(
 			paste::expr!
@@ -462,7 +483,7 @@ impl Services
 			}
 		)+
 
-		Self{ handlers: HashMap::new() }
+		Self{ handlers: HashMap::new(), exec: Arc::new( exec ) }
 	}
 
 

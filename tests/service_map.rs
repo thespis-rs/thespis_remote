@@ -91,7 +91,7 @@ fn clone()
 
 	// Create a service map
 	//
-	let mut sm = remotes::Services::new();
+	let mut sm = remotes::Services::new( exec );
 
 	// Register our handlers
 	//
@@ -119,7 +119,7 @@ fn debug()
 	//
 	let (sum_addr, _) = Addr::<Sum>::builder().name( "for_debug".into() ).build();
 
-	let mut sm = remotes::Services::new();
+	let mut sm = remotes::Services::new( AsyncStd );
 
 	sm.register_handler::<Add >( sum_addr.clone_box() );
 	sm.register_handler::<Show>( sum_addr.clone_box() );
@@ -153,7 +153,7 @@ fn debug_service_id()
 {
 	// Unfortunately we can only register the service in Services::new. TODO: document this.
 	//
-	let _sm = remotes::Services::new();
+	let _sm = remotes::Services::new( AsyncStd );
 
 	use remotes::Service;
 
