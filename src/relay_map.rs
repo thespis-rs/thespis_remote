@@ -153,7 +153,8 @@ impl RelayMap
 }
 
 
-
+#[ allow(clippy::needless_return) ]
+//
 async fn make_call<T: Address<Call, Error=ThesErr> + ?Sized >( mut relay: Box<T>, frame: WireFormat, mut peer: Addr<Peer> )
 {
 	let sid = frame.service();
@@ -297,7 +298,7 @@ impl fmt::Debug for RelayMap
 
 		for sid in &self.services
 		{
-			write!( f, "\tsid: 0x{:02x}\n", sid )?;
+			writeln!( f, "\tsid: 0x{:02x}", sid )?;
 		}
 
 		write!( f, "}}" )

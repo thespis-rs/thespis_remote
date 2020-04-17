@@ -100,7 +100,7 @@ fn clone()
 
 	let serial = format!( "{:?}", sm );
 
-	assert_eq!( serial, format!( "{:?}", sm.clone() ) );
+	assert_eq!( serial, format!( "{:?}", sm ) );
 }
 
 
@@ -117,10 +117,7 @@ fn debug()
 {
 	// Create mailbox for peer
 	//
-	let (tx, rx) = mpsc::channel( 16 )                                                             ;
-	let mb_peer  = Inbox::new( Some( "for_debug".into() ), Box::new( rx ) )                        ;
-	let tx       = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
-	let sum_addr = Addr::<Sum>::new( mb_peer.id(), mb_peer.name(), tx )                            ;
+	let (sum_addr, _) = Addr::<Sum>::builder().name( "for_debug".into() ).build();
 
 	let mut sm = remotes::Services::new();
 

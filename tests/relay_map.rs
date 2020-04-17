@@ -53,8 +53,7 @@ async fn relay_once_load_balance()
 		//
 		for _ in 0..2
 		{
-			let resp = addr.call( Add(5) ).await.expect( "Call failed" );
-			assert_eq!( (), resp );
+			assert_eq!( addr.call( Add(5) ).await, Ok(()) );
 
 			addr.send( Add(5) ).await.expect( "Send failed" );
 		}

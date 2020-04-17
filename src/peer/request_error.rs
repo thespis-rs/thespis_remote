@@ -83,7 +83,7 @@ impl Handler<RequestError> for Peer
 
 			ThesRemoteErr::DeserializeWireFormat{ ref ctx } =>
 			{
-				let cid = ctx.cid.as_ref().map( |c| c.clone() ).unwrap_or( ConnID::null() );
+				let cid = ctx.cid.as_ref().cloned().unwrap_or_else( ConnID::null );
 
 				// Report to remote and close connection as the stream is no longer coherent.
 				//
@@ -105,7 +105,7 @@ impl Handler<RequestError> for Peer
 				// If the error happened in the codec, there won't be a cid, but if it happens
 				// while deserializing the actor message, we will already have a cid.
 				//
-				self.send_err( ctx.cid.unwrap_or( ConnID::null() ), &err, false ).await;
+				self.send_err( ctx.cid.unwrap_or_else( ConnID::null ), &err, false ).await;
 			}
 
 
@@ -117,7 +117,7 @@ impl Handler<RequestError> for Peer
 				//
 				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: ctx.cid.clone() };
 
-				self.send_err( ctx.cid.unwrap_or( ConnID::null() ), &err, true ).await;
+				self.send_err( ctx.cid.unwrap_or_else( ConnID::null ), &err, true ).await;
 			}
 
 
@@ -132,7 +132,7 @@ impl Handler<RequestError> for Peer
 				//
 				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: ctx.cid.clone() };
 
-				self.send_err( ctx.cid.unwrap_or( ConnID::null() ), &err, false ).await;
+				self.send_err( ctx.cid.unwrap_or_else( ConnID::null ), &err, false ).await;
 			}
 
 
@@ -145,7 +145,7 @@ impl Handler<RequestError> for Peer
 				//
 				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: ctx.cid.clone() };
 
-				self.send_err( ctx.cid.unwrap_or( ConnID::null() ), &err, false ).await;
+				self.send_err( ctx.cid.unwrap_or_else( ConnID::null ), &err, false ).await;
 			}
 
 
@@ -155,7 +155,7 @@ impl Handler<RequestError> for Peer
 				//
 				let err = ConnectionError::UnknownService{ sid: ctx.sid, cid: ctx.cid.clone() };
 
-				self.send_err( ctx.cid.unwrap_or( ConnID::null() ), &err, false ).await;
+				self.send_err( ctx.cid.unwrap_or_else( ConnID::null ), &err, false ).await;
 			}
 
 			// We shouldn't accept any other errors unknowingly.

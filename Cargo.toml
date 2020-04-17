@@ -84,9 +84,6 @@ pretty_assertions = "^0.6"
 features = ["attributes"]
 version = "^1"
 
-[dev-dependencies.async_chanx]
-path = "../../async_chanx"
-
 [dev-dependencies.async_executors]
 features = ["spawn_handle", "async_std", "threadpool"]
 version = "^0.2"

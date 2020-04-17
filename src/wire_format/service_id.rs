@@ -99,7 +99,7 @@ impl ServiceID
 
 		// unwrap: OnceCell already guarantees us unique access.
 		//
-		s.get( sid ).map( |n| *n )
+		s.get( sid ).copied()
 	}
 }
 

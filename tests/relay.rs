@@ -33,7 +33,6 @@ fn relay_once()
 	// let exec = AsyncStd::default();
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
-	let ex3  = exec.clone();
 
 
 	let provider = async move
@@ -78,8 +77,7 @@ fn relay_once()
 		//
 		let mut addr = remotes::RemoteAddr::new( to_relay.clone() );
 
-		let resp = addr.call( Add(5) ).await.expect( "Call failed" );
-		assert_eq!( (), resp );
+		assert_eq!( Ok(()), addr.call( Add(5) ).await );
 
 		addr.send( Add(5) ).await.expect( "Send failed" );
 
@@ -99,7 +97,7 @@ fn relay_once()
 
 	let relays = async move
 	{
-		relay( ba, bc, Box::pin( consumer ), true, ex3.clone() ).await;
+		relay( ba, bc, Box::pin( consumer ), true, exec ).await;
 
 		warn!( "relays end" );
 	};
@@ -126,7 +124,6 @@ fn relay_multi()
 	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
 	let ex2  = exec.clone();
-	let ex3  = exec.clone();
 
 
 	let provider = async move
@@ -165,8 +162,7 @@ fn relay_multi()
 		//
 		let mut addr  = remotes::RemoteAddr::new( relay.clone() );
 
-		let resp = addr.call( Add(5) ).await.expect( "Call failed" );
-		assert_eq!( (), resp );
+		assert_eq!( Ok(()), addr.call( Add(5) ).await );
 
 		addr.send( Add(5) ).await.expect( "Send failed" );
 
@@ -178,10 +174,10 @@ fn relay_multi()
 
 	let relays = async move
 	{
-		let  relay4 = relay( ed, ef, Box::pin( consumer ), true, ex3.clone() )       ;
-		let  relay3 = relay( dc, de, Box::pin( relay4   ), true, ex3.clone() )       ;
-		let  relay2 = relay( cb, cd, Box::pin( relay3   ), true, ex3.clone() )       ;
-		let _relay1 = relay( ba, bc, Box::pin( relay2   ), true, ex3         ).await ;
+		let  relay4 = relay( ed, ef, Box::pin( consumer ), true, exec.clone() )       ;
+		let  relay3 = relay( dc, de, Box::pin( relay4   ), true, exec.clone() )       ;
+		let  relay2 = relay( cb, cd, Box::pin( relay3   ), true, exec.clone() )       ;
+		              relay( ba, bc, Box::pin( relay2   ), true, exec         ).await ;
 	};
 
 	block_on( join( provider, relays ) );

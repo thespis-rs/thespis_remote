@@ -22,7 +22,7 @@ impl Handler<Add> for Slow
 {
 	fn handle( &mut self, _msg: Add ) -> Return<'_, ()> { async move
 	{
-		let _ = Delay::new( Duration::from_millis(100) ).await;
+		Delay::new( Duration::from_millis(100) ).await;
 
 		COUNTER.fetch_add( 1, Ordering::SeqCst );
 

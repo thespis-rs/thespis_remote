@@ -92,9 +92,9 @@ impl Handler<Call> for Peer
 
 			// send a timeout message to ourselves.
 			//
+			let delay          = self.timeout         ;
 			let cid            = conn_id      .clone();
 			let sid2           = sid          .clone();
-			let delay          = self.timeout .clone();
 			let mut self_addr2 = self_addr    .clone();
 
 			let task = async move

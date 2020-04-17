@@ -93,6 +93,8 @@ impl Message for WireFormat
 // All the methods here can panic. We should make sure that bytes is always big enough,
 // because bytes.slice panics if it's to small. Same for bytes.put.
 //
+#[ allow(clippy::len_without_is_empty) ]
+//
 impl WireFormat
 {
 	pub fn create( service: ServiceID, conn_id: ConnID, mesg: Bytes ) -> Self
@@ -208,12 +210,12 @@ mod tests
 
 		match WireFormat::try_from( buf )
 		{
-			Ok (_) => assert!( false, "WireFormat::try_from( Bytes ) should fail for data shorter than header" ),
+			Ok (_) => panic!( "WireFormat::try_from( Bytes ) should fail for data shorter than header" ),
 
 			Err(e) => match e
 			{
-				ThesRemoteErr::DeserializeWireFormat{..} => assert!( true ),
-				_                                        => assert!( false, "Wrong error type (should be DeserializeWireFormat): {:?}", e ),
+				ThesRemoteErr::DeserializeWireFormat{..} => {}
+				_                                        => panic!( "Wrong error type (should be DeserializeWireFormat): {:?}", e ),
 			}
 		}
 	}

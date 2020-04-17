@@ -118,7 +118,6 @@ dev-dependencies:
   futures-test      : ^0.3
   futures           : { version: ^0.3, features: [ thread-pool ] }
   tokio             : { version: ^0.2, features: [ sync, stream ] }
-  async_chanx       : { path: ../../async_chanx }
   thespis_impl      : { path: ../thespis_impl }
 
 

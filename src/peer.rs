@@ -293,7 +293,7 @@ impl Peer
 
 		let (sink, stream) = FutFramed::new( socket, codec ).split();
 
-		Peer::new( addr.clone(), stream, sink, Arc::new(exec), bp )
+		Peer::new( addr, stream, sink, Arc::new(exec), bp )
 	}
 
 
@@ -327,7 +327,7 @@ impl Peer
 
 		let (sink, stream) = TokioFramed::new( socket, codec ).split();
 
-		Peer::new( addr.clone(), stream, sink, exec, bp )
+		Peer::new( addr, stream, sink, exec, bp )
 	}
 
 

@@ -39,7 +39,6 @@ pub mod import
 		pretty_assertions :: { assert_eq, assert_ne } ,
 		assert_matches    :: { assert_matches       } ,
 		tokio             :: { sync::mpsc           } ,
-		async_chanx       :: { TokioSender          } ,
 	};
 }
 
@@ -91,10 +90,7 @@ pub fn peer_connect
 {
 	// Create mailbox for peer
 	//
-	let (tx, rx)    = mpsc::channel( 16 )                                                             ;
-	let mb_peer     = Inbox::new( Some( name.into() ), Box::new( rx ) )                               ;
-	let tx          = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
-	let peer_addr   = Addr::new( mb_peer.id(), mb_peer.name(), tx )                                   ;
+	let (peer_addr, peer_mb) = Addr::builder().name( name.into() ).build();
 
 
 	// create peer with stream/sink + service map
@@ -105,7 +101,7 @@ pub fn peer_connect
 
 	debug!( "start mailbox for [{}] in peer_connect", name );
 
-	exec.spawn( async{ mb_peer.start_fut(peer).await; } ).expect( "start mailbox of Peer" );
+	exec.spawn( async{ peer_mb.start_fut(peer).await; } ).expect( "start mailbox of Peer" );
 
 	(peer_addr, evts)
 }
@@ -119,7 +115,7 @@ pub async fn provider
 	-> (Endpoint, JoinHandle< Option<Inbox<Peer>> >)
 
 {
-	let name = name.map( |n| n.to_string() ).unwrap_or( "unnamed".to_string() );
+	let name = name.map( |n| n.to_string() ).unwrap_or_else( || "unnamed".to_string() );
 	// Create mailbox for our handler
 	//
 	debug!( "start mailbox for Sum handler in provider: {}", name );

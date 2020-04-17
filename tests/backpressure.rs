@@ -29,7 +29,7 @@ impl Handler<Add> for Slow
 	{
 		log::warn!( "handle Add" );
 
-		let _ = Delay::new( Duration::from_millis(100) ).await;
+		Delay::new( Duration::from_millis(100) ).await;
 
 		COUNTER.fetch_add( 1, Ordering::SeqCst );
 
@@ -45,7 +45,7 @@ impl Handler<Add2> for Slow
 	{
 		log::warn!( "handle Add" );
 
-		let _ = Delay::new( Duration::from_millis(50) ).await;
+		Delay::new( Duration::from_millis(50) ).await;
 
 		COUNTER.fetch_add( 1, Ordering::SeqCst );
 
@@ -119,10 +119,7 @@ fn backpressure_basic()
 
 		// Create mailbox for peer
 		//
-		let (tx, rx)    = mpsc::channel( 16 )                                                             ;
-		let mb_peer     = Inbox::new( Some( "server".into() ), Box::new( rx ) )                   ;
-		let tx          = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
-		let peer_addr   = Addr::new( mb_peer.id(), mb_peer.name(), tx )                                   ;
+		let(peer_addr, peer_mb) = Addr::builder().name( "server".into() ).build();
 
 		// create peer with stream/sink
 		//
@@ -133,7 +130,7 @@ fn backpressure_basic()
 		//
 		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
-		let (fut, handle) = mb_peer.start_fut(peer).remote_handle();
+		let (fut, handle) = peer_mb.start_fut(peer).remote_handle();
 
 		exec.spawn( fut ).expect( "start mailbox of Peer" );
 		handle.await;
@@ -163,7 +160,7 @@ fn backpressure_basic()
 		ex3.spawn( add1_fut ).expect( "spawn add1"  );
 		ex3.spawn( add2_fut ).expect( "spawn add2"  );
 
-		let _ = Delay::new( Duration::from_millis(10) ).await;
+		Delay::new( Duration::from_millis(10) ).await;
 		ex3.spawn( show_fut ).expect( "spawn check" );
 
 		add1_handle.await;

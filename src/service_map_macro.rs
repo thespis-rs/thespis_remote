@@ -28,8 +28,8 @@
 ///
 ///    services:
 ///
-///    	ServiceA,
-///    	ServiceB,
+///       ServiceA,
+///       ServiceB,
 /// );
 ///
 /// mod myns
@@ -410,6 +410,8 @@ impl Clone for Services
 {
 	fn clone( &self ) -> Self
 	{
+		#[ allow(clippy::mutable_key_type) ] // false positive.
+		//
 		let mut map: HashMap< &'static ServiceID, Box<dyn Any + Send> > = HashMap::new();
 
 		for (k, v) in self.handlers.iter()

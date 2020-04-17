@@ -80,7 +80,6 @@ fn remote()
 
 	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
-	let ex2  = exec.clone();
 
 
 	let peera = async move
@@ -109,14 +108,13 @@ fn remote()
 
 	let peerb = async move
 	{
-		let (mut peera, _)  = peer_connect( client, ex2, "peer_b_to_peera" ).await;
+		let (mut peera, _)  = peer_connect( client, exec, "peer_b_to_peera" ).await;
 
 		// Call the service and receive the response
 		//
 		let mut addr  = remotes::RemoteAddr::new( peera.clone() );
 
-		let resp = addr.call( Add(5) ).await.expect( "Call failed" );
-		assert_eq!( (), resp );
+		assert_eq!( addr.call( Add(5) ).await, Ok(()) );
 
 		addr.send( Add(5) ).await.expect( "Send failed" );
 
@@ -174,7 +172,6 @@ fn parallel()
 
 	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let ex1  = exec.clone();
-	let ex2  = exec.clone();
 
 	let peera = async move
 	{
@@ -221,11 +218,11 @@ fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_tokio_async_read( peer_addr.clone(), client, 1024, ex2.clone(), None ).expect( "spawn peer" );
+		let mut peer = Peer::from_tokio_async_read( peer_addr.clone(), client, 1024, exec.clone(), None ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(19), &ex2 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(19), &exec ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -233,11 +230,11 @@ fn parallel()
 		let mut sm = remotes::Services::new();
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
-		let sm_addr = Addr::builder().start( sm, &ex2 ).expect( "spawn service map" );
+		let sm_addr = Addr::builder().start( sm, &exec ).expect( "spawn service map" );
 
 		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
-		peer_mb.start( peer, &ex2 ).expect( "Failed to start mailbox of Peer" ).detach();
+		peer_mb.start( peer, &exec ).expect( "Failed to start mailbox of Peer" ).detach();
 
 
 		// Create recipients
@@ -269,7 +266,6 @@ fn call_after_close_connection()
 	let (mut server, client) = TokioEndpoint::pair( 64, 64 );
 
 	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
 
 	let nodea = async move
 	{
@@ -279,7 +275,7 @@ fn call_after_close_connection()
 
 	let nodeb = async move
 	{
-		let (peera, mut peera_evts) = peer_connect( client, ex1, "nodeb_to_node_a" ).await;
+		let (peera, mut peera_evts) = peer_connect( client, exec, "nodeb_to_node_a" ).await;
 
 		// Call the service and receive the response
 		//
@@ -295,7 +291,7 @@ fn call_after_close_connection()
 			{
 				match e
 				{
-					ThesRemoteErr::ConnectionClosed{..} => assert!( true )                  ,
+					ThesRemoteErr::ConnectionClosed{..} => {}
 					_                                   => panic!( "wrong error: {:?}", e ) ,
 				}
 			}
