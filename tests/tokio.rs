@@ -206,7 +206,7 @@ fn parallel()
 
 		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
-		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" ).detach();
+		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
 	};
 
 
@@ -234,7 +234,7 @@ fn parallel()
 
 		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
-		peer_mb.start( peer, &exec ).expect( "Failed to start mailbox of Peer" ).detach();
+		peer_mb.start( peer, &exec ).expect( "Failed to start mailbox of Peer" );
 
 
 		// Create recipients

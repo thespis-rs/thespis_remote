@@ -99,7 +99,7 @@ fn timeout()
 
 		debug!( "start mailbox for [{}] in peerb", name );
 
-		peer_mb.start( peer, &exec ).expect( "start mailbox of Peer" ).detach();
+		peer_mb.start( peer, &exec ).expect( "start mailbox of Peer" );
 
 
 		// Call the service and receive the response

@@ -111,6 +111,9 @@ service_map!
 // Test correct async behavior. Verify that a peer can continue to
 // send/receive while waiting for the response to a call.
 //
+// TODO: the spawning is now in service map and relaymap, so we actually
+// should also test that they process requests concurrently.
+//
 #[test]
 //
 fn parallel()
@@ -147,7 +150,7 @@ fn parallel()
 
 		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
-		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" ).detach();
+		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
 	};
 
 
@@ -175,7 +178,7 @@ fn parallel()
 
 		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
 
-		peer_mb.start( peer, &exec ).expect( "Failed to start mailbox of Peer" ).detach();
+		peer_mb.start( peer, &exec ).expect( "Failed to start mailbox of Peer" );
 
 
 		// Create recipients

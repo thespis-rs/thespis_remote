@@ -1,11 +1,12 @@
 # thespis_remote TODO
 
+- store peer addr in Services? Still needs to clone for moving into spawned futures, but we no longer need to clone in peer on every request.
+- structured concurrency!
 - output service names in relaymap debug
 - should service_map work with ServiceHandler just like relaymap?
 - verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
 
 - further clean up service maps:
-  - do we need a trait ServiceMap?
   - can we move things out of macro?
   - usage with HashMany and complicated code in incoming
 
@@ -13,7 +14,6 @@
 - should UniqueID and ServiceID be Copy?
 - Kompakt?
 
-- structured concurrency!
 
 - All of these requests (at least calls) should stop when the connection
  closes. It makes no sense to process requests if we can't send a response anymore. Right now
