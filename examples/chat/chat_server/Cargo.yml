@@ -1,0 +1,44 @@
+package:
+
+  name       : chat_server
+  version    : 0.1.0
+  authors    : [ Naja Melan <najamelan@autistici.org> ]
+  edition    : '2018'
+  description: An example for using websockets in rust WASM.
+  repository : https::/github.com/najamelan/ws_stream
+
+
+
+dependencies:
+
+  bytes                 : { version: ^0.4 }
+  chat_format           : { path: "../chat_format" }
+  chrono                : ^0.4
+  flexi_logger          : ^0.14
+  futures-preview       : { version: ^0.3.0-alpha, features: [ async-await ] }
+  futures_cbor_codec    : ^0.1
+  futures_codec         : ^0.3
+  locks                 : { version: ^0.3.2-alpha, package: future-parking_lot }
+  log                   : ^0.4
+  pharos                : { version: ^0.4 }
+  pin-utils             : ^0.1.0-alpha
+  regex                 : ^1
+  tokio-tungstenite     : ^0.9
+  warp                  : { version: ^0.1, default-features: false, features: [ websocket] }
+  ws_stream_tungstenite : ^0.1.0-alpha
+
+  thespis               : { path: ../../../../thespis              }
+  thespis_remote        : { path: ../../../../thespis_remote       }
+  thespis_impl          : { path: ../../../../thespis_impl         }
+  thespis_remote_impl   : { path: ../../../../thespis_remote_impl  }
+
+  tokio01               : { version: ^0.1 , default-features: false, features: [ rt-full, codec ], package: tokio }
+  futures01             : { version: ^0.1 , default-features: false, package: futures }
+
+  async_runtime         : { version: ^0.3, package: naja_async_runtime }
+
+patch:
+
+  crates-io:
+
+    futures_codec: { path: ../../../../../futures-codec }
