@@ -4,12 +4,12 @@ use crate :: { import::*, * };
 
 /// Convenience trait specifying that some address can deliver both WireFormat and peer::Call messages.
 //
-pub trait Relay: Address<WireFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Identify + Send {}
+pub trait Relay: Address<WireFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Identify + Send + Sync {}
 
-impl<T> Relay for T where T: Address<WireFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Identify + Send {}
+impl<T> Relay for T where T: Address<WireFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Identify + Send + Sync {}
 
 
-pub type RelayClosure = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay> + Send>;
+pub type RelayClosure = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay> + Send + Sync>;
 
 
 /// A wrapper type to be able to pass both an BoxAddress or a closure to RelayMap.

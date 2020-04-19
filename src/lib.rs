@@ -25,11 +25,10 @@
 
 
     mod error             ;
-    mod hash_many         ;
 pub mod peer              ;
     mod relay_map         ;
     mod service_map_macro ;
-pub mod service_map       ;
+    mod service_map       ;
     mod service_handler   ;
 pub mod wire_format       ;
 

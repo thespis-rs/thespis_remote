@@ -141,17 +141,6 @@ pub enum ThesRemoteErr
 		ctx: ErrorContext
 	},
 
-	/// Cannot deliver because the handling service map is no longer running.
-	//
-	#[ error( "Cannot deliver because the handling service map is no longer running.{ctx}" ) ]
-	//
-	ServiceMapDead
-	{
-		/// The contex in which the error happened.
-		//
-		ctx: ErrorContext
-	},
-
 	/// Failed to spawn a task.
 	//
 	#[ error( "Spawning a task failed.{ctx}" ) ]

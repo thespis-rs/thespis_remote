@@ -108,7 +108,6 @@ dependencies:
 
 dev-dependencies:
 
-  async-std         : { version: ^1, features: [ attributes ] }
   assert_matches    : ^1
   pretty_assertions : ^0.6
   flexi_logger      : { version: ^0.15, default-features: false }

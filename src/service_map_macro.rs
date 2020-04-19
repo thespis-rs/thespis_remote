@@ -97,7 +97,7 @@ use
 	// parenthesis, it will not output a trailing comma, which will be needed to separate from the next item.
 	//
 	super :: { $( $services, )+ Peer                                                          } ,
-	$crate:: { *, peer::request_error::RequestError, service_map::*                           } ,
+	$crate:: { *, peer::request_error::RequestError                                           } ,
 	std   :: { pin::Pin, collections::HashMap, fmt, any::Any, sync::{ Arc, Once }, ops::Deref } ,
 
 	$crate::external_deps::
@@ -168,40 +168,11 @@ $(
 /// The actual service map.
 /// Use it to get a recipient to a remote service.
 //
-#[ derive(Actor) ]
-//
 pub struct Services
 {
 	// The addresses to the actors that handle incoming messages.
 	//
-	handlers: HashMap< &'static ServiceID, Box< dyn Any + Send > >,
-}
-
-
-impl Handler<DeliverCall> for Services
-{
-	fn handle( &mut self, msg: DeliverCall ) -> Return<'_, ()>
-	{
-		self.call_service( msg.mesg, msg.peer )
-	}
-}
-
-
-impl Handler<DeliverSend> for Services
-{
-	fn handle( &mut self, msg: DeliverSend ) -> Return<'_, ()>
-	{
-		self.send_service( msg.mesg, msg.peer )
-	}
-}
-
-
-impl Handler<ListServices> for Services
-{
-	#[async_fn] fn handle( &mut self, msg: ListServices ) -> Vec<ServiceID>
-	{
-		self.services()
-	}
+	handlers: RwLock<HashMap< &'static ServiceID, Box< dyn Any + Send + Sync > >>,
 }
 
 
@@ -221,6 +192,7 @@ impl fmt::Debug for Services
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
 		let mut width: usize = 0;
+		let handlers = self.handlers.read();
 
 		$(
 			width = std::cmp::max( width, stringify!( $services ).len() );
@@ -244,7 +216,7 @@ impl fmt::Debug for Services
 				width = width
 			)?;
 
-			if let Some(h) = self.handlers.get( sid )
+			if let Some(h) = handlers.get( sid )
 			{
 				// This expect shouldn't ever fail. We manually make the receiver in this file.
 				//
@@ -281,7 +253,7 @@ impl Clone for Services
 		//
 		let mut map: HashMap< &'static ServiceID, Box<dyn Any + Send> > = HashMap::new();
 
-		for (k, v) in self.handlers.iter()
+		for (k, v) in handlers.deref()
 		{
 			match k
 			{
@@ -305,7 +277,7 @@ impl Clone for Services
 
 		}
 
-		Self { handlers: map }
+		Self { handlers: RwLock::new( map ) }
 	}
 }
 
@@ -329,19 +301,19 @@ impl Services
 			}
 		)+
 
-		Self{ handlers: HashMap::new() }
+		Self{ handlers: RwLock::new( HashMap::new() ) }
 	}
 
 
 	/// Register a handler for a given service type
 	/// Calling this method twice for the same type will override the first handler.
 	//
-	pub fn register_handler<S>( &mut self, handler: BoxAddress<S, ThesErr> )
+	pub fn register_handler<S>( &self, handler: BoxAddress<S, ThesErr> )
 
 		where  S                    : Service,
 		      <S as Message>::Return: Serialize + DeserializeOwned,
 	{
-		self.handlers.insert( <S as Service>::sid(), Box::new( Receiver::new(handler) ) );
+		self.handlers.write().insert( <S as Service>::sid(), Box::new( Receiver::new(handler) ) );
 	}
 
 
@@ -349,9 +321,9 @@ impl Services
 	//
 	fn call_service_gen<S>
 	(
-		    msg        :  WireFormat            ,
-		    receiver   : &Box< dyn Any + Send > ,
-		mut peer       :  Addr<Peer>            ,
+		    msg        :  WireFormat                   ,
+		    receiver   : &Box< dyn Any + Send + Sync > ,
+		mut peer       :  Addr<Peer>                   ,
 
 	) -> Return<'static, ()>
 
@@ -465,16 +437,20 @@ impl Services
 			);
 		}
 	}
+}
 
 
+impl ServiceMap for Services
+{
 	// We need to make a Vec here because the hashmap.keys() doesn't have a static lifetime.
 	//
 	fn services( &self ) -> Vec<ServiceID>
 	{
+		let handlers = self.handlers.read();
 
-		let mut s: Vec<ServiceID> = Vec::with_capacity( self.handlers.len() );
+		let mut s: Vec<ServiceID> = Vec::with_capacity( handlers.len() );
 
-		for sid in self.handlers.keys()
+		for sid in handlers.keys()
 		{
 			s.push( (*sid).clone() );
 		}
@@ -497,11 +473,12 @@ impl Services
 		-> Return<'static, ()>
 
 	{
-		let sid = msg.service();
+		let sid      = msg.service();
+		let handlers = self.handlers.read();
 
 		// This sid should be in our map.
 		//
-		let receiver = match self.handlers.get( &sid )
+		let receiver = match handlers.get( &sid )
 		{
 			Some(x) => x,
 
@@ -598,8 +575,9 @@ impl Services
 	) -> Return<'static, ()>
 	{
 		let sid      = msg.service();
+		let handlers = self.handlers.read();
 
-		let receiver = match self.handlers.get( &sid )
+		let receiver = match handlers.get( &sid )
 		{
 			Some(x) => x,
 

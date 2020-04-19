@@ -44,16 +44,14 @@ fn close_connection()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
-		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
-
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, sm_addr, ex1.clone(), "nodea" ).await;
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
 		handle.await;
 	};
@@ -103,16 +101,14 @@ fn close_connection_call()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
-		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
-
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, sm_addr, ex1.clone(), "nodea" ).await;
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
 		handle.await;
 	};
@@ -164,14 +160,12 @@ fn header_unknown_service_error()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 		sm.register_handler::<Add >( addr_handler.clone_box() );
-
-		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
 
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, sm_addr, ex1.clone(), "nodea" ).await;
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
 		let sid = Some( ServiceID::from( Bytes::from( vec![3;16] ) ) );
 
@@ -244,14 +238,12 @@ fn header_deserialize()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 		sm.register_handler::<Add >( addr_handler.clone_box() );
-
-		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
 
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, sm_addr, ex1.clone(), "nodea" ).await;
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
 
 		match evts.next().await.unwrap()
@@ -341,14 +333,12 @@ fn sm_deserialize_error()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 		sm.register_handler::<Add >( addr_handler.clone_box() );
-
-		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
 
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, sm_addr, ex1.clone(), "nodea" ).await;
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
 
 		match evts.next().await.unwrap()
 		{

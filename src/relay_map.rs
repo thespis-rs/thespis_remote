@@ -6,8 +6,6 @@ use crate :: { import::*, *, peer::request_error::RequestError };
 /// used for local handlers is that handlers here don't have to implement `Handler<M>` for the actual message type.
 /// They only have to implement `Handler<WireFormat>` (for sends) and `Handler<peer::Call>` for calls.
 //
-#[ derive(Actor) ]
-//
 pub struct RelayMap
 {
 	// I decided not to take a static reference to ServiceID, because it seems kind or limiting how people
@@ -46,37 +44,7 @@ impl RelayMap
 
 
 
-
-
-impl Handler<DeliverCall> for RelayMap
-{
-	fn handle( &mut self, msg: DeliverCall ) -> Return<'_, ()>
-	{
-		self.call_service( msg.mesg, msg.peer )
-	}
-}
-
-
-impl Handler<DeliverSend> for RelayMap
-{
-	fn handle( &mut self, msg: DeliverSend ) -> Return<'_, ()>
-	{
-		self.send_service( msg.mesg, msg.peer )
-	}
-}
-
-
-impl Handler<ListServices> for RelayMap
-{
-	#[async_fn] fn handle( &mut self, _msg: ListServices ) -> Vec<ServiceID>
-	{
-		self.services()
-	}
-}
-
-
-
-impl RelayMap
+impl ServiceMap for RelayMap
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//

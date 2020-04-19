@@ -45,17 +45,16 @@ fn relay_once()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
-		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
 
 		// get a framed connection
 		//
 		debug!( "start mailbox for provider" );
-		let (peer_addr, _peer_evts, handle) = peer_listen( ab, sm_addr, ex1.clone(), "provider" ).await;
+		let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
 
 		drop( peer_addr );
 
@@ -135,16 +134,15 @@ fn relay_multi()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
-		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( ab, sm_addr, ex1.clone(), "provider" ).await;
+		let (_, _, handle) = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
 
 		handle.await;
 
@@ -210,15 +208,14 @@ fn relay_unknown_service()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new();
+		let sm = remotes::Services::new();
 
 		sm.register_handler::<Add >( addr_handler.clone_box() );
 
-		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( ab, sm_addr, ex1.clone(), "provider" ).await;
+		let (_, _, handle) = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
 
 		handle.await;
 

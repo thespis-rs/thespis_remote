@@ -1,9 +1,5 @@
 # thespis_remote TODO
 
-- store peer addr in Services? Still needs to clone for moving into spawned futures, but we no longer need to clone in peer on every request.
-- structured concurrency!
-- output service names in relaymap debug
-- should service_map work with ServiceHandler just like relaymap?
 - verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
 
 - further clean up service maps:

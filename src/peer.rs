@@ -1,7 +1,7 @@
 //! The peer module holds everything that deals with managing a remote connection over which
 //! actor messages can be sent and received.
 //
-use crate :: { import::*, *, service_map::{ ListServices }, hash_many::HashMany };
+use crate :: { import::*, * };
 
 
     mod backpressure      ;
@@ -157,7 +157,7 @@ pub struct Peer
 	/// Information required to process incoming messages. The first element is a boxed Receiver, and the second is
 	/// the service map that takes care of this service type.
 	//
-	services      : HashMany<ServiceID, Box< dyn ServiceMap > >,
+	services      : HashMap< ServiceID, Arc<dyn ServiceMap> >,
 
 	/// We use oneshot channels to give clients a future that will resolve to their response.
 	//
@@ -253,7 +253,7 @@ impl Peer
 			outgoing     : Some( Box::new(outgoing) ) ,
 			addr         : Some( addr )               ,
 			responses    : HashMap::new()             ,
-			services     : HashMany::new()            ,
+			services     : HashMap::new()             ,
 			listen_handle: Some( handle )             ,
 			pharos       : Pharos::default()          ,
 			exec         : Arc::new( exec )           ,
@@ -347,27 +347,20 @@ impl Peer
 	/// Each service map and each service should be registered only once, including relayed services. Trying to
 	/// register them twice will panic in debug mode.
 	//
-	// TODO: log warning if user tries to register a service map with no handlers.
-	//
-	pub async fn register_services( &mut self, mut sm: Box< dyn ServiceMap > ) -> Result<(), ThesRemoteErr>
+	pub fn register_services( &mut self, sm: Arc< dyn ServiceMap> )
 	{
-		let map = sm.call( ListServices ).await?;
-
-		for sid in map.iter()
+		for sid in sm.services().into_iter()
 		{
+			trace!( "{}: Register Service: {:?}", self.identify(), &sid );
+
 			debug_assert!
 			(
-				!self.services.contains_key( sid ),
+				!self.services.contains_key( &sid ),
 				"{}: Register Service: Can't register same service twice. sid: {}", self.identify(), &sid ,
 			);
 
-			trace!( "{}: Register Service: {:?}", self.identify(), &sid );
+			self.services.insert( sid, sm.clone() );
 		}
-
-		self.services.insert_many( map, sm );
-
-
-		Ok(())
 	}
 
 
@@ -464,11 +457,11 @@ impl Peer
 	}
 
 
-	pub fn identify( &self ) -> Arc<str>
+	pub fn identify( &self ) -> String
 	{
 		match &self.addr
 		{
-			Some (addr) => format!( "{}", addr ).into()  ,
+			Some (addr) => format!( "{}", addr )         ,
 			None        => "Peer (shutting down)".into() ,
 		}
 	}

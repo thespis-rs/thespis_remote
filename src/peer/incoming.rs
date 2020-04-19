@@ -1,6 +1,7 @@
 use
 {
-	super::* ,
+	crate::{ import::*, * },
+	super::RequestError    ,
 };
 
 
@@ -205,8 +206,6 @@ impl Peer
 
 	// Process incoming Send requests.
 	//
-	// 1.
-	//
 	async fn incoming_send
 	(
 		&mut self            ,
@@ -214,81 +213,48 @@ impl Peer
 		frame   : WireFormat ,
 	)
 	{
-		let identity  = self.identify();
+		let identity = self.identify();
+
 		trace!( "{}: Incoming Send, sid: {}", identity, &sid );
 
-		let self_addr = self.addr.as_mut().expect( "Peer not closing down" );
+		let self_addr = self.addr.as_mut().take().expect( "Peer not closing down" );
 
-		// See if we have a handler for this service.
-		//
-		let smb = self.services.get( &sid ).map( |s| s.clone_box() );
 
-		let mut sm = match smb
+		if let Some( sm ) = self.services.get( &sid )
 		{
-			Some(s) => s,
+			trace!( "{}: Incoming Send", &identity );
 
-			// service_id unknown => send back and log error
+			// Call handling actor,
 			//
-			None =>
+			if self.exec.spawn( sm.send_service( frame, self_addr.clone() ) ).is_err()
 			{
-				let ctx = Peer::err_ctx( &self_addr, sid, None, "Process incoming Send".to_string() );
-
-				self.handle( RequestError::from( ThesRemoteErr::UnknownService{ ctx } ) ).await;
-
-				return;
-			}
-		};
-
-
-
-		// Create future that sends the frame to the service map.
-		//
-		trace!( "{}: Incoming Send", &identity );
-
-		let mut sa        = self_addr.clone();
-		let     sid_      = sid.clone();
-		let     identity_ = identity.clone();
-
-		let send = async move
-		{
-			let msg = DeliverSend::new( frame, sa.clone() );
-
-			if sm.send( msg ).await.is_err()
-			{
-				let err = ThesRemoteErr::ServiceMapDead
+				let err = ThesRemoteErr::Spawn
 				{
-					ctx: Peer::err_ctx( &sa, sid_, None, "sm DeliverSend".to_string() )
+					ctx: Peer::err_ctx( &self_addr, sid, None, "sm.call_service".to_string() )
 				};
 
 
 				// If we are no longer around, just log the error.
 				//
-				if sa.send( RequestError::from( err.clone() ) ).await.is_err()
+				if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
 				{
-					error!( "{}: {}.", &identity_, &err );
+					error!( "{}: {}.", identity, &err );
 				}
 			}
-		};
+		}
 
 
-		// Spawn and report error
+		// service_id unknown => send back and log error
 		//
-		let sp = self.exec.spawn( send );
-
-		if sp.is_err()
+		else
 		{
-			let err = ThesRemoteErr::Spawn
-			{
-				ctx: Peer::err_ctx( &self_addr, sid, None, "sm DeliverSend".to_string() )
-			};
+			let ctx = Peer::err_ctx( &self_addr, sid, None, "Process incoming Send".to_string() );
 
-
-			// If we are no longer around, just log the error.
-			//
-			if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
+			self.handle(
 			{
-				error!( "{}: {}.", &identity, &err );
-			}
+				RequestError::from( ThesRemoteErr::UnknownService{ ctx } )
+
+			}).await;
 		}
 	}
 
@@ -302,81 +268,48 @@ impl Peer
 		frame   : WireFormat ,
 	)
 	{
-		let identity = self.identify();
-		trace!( "{}: Incoming Call", identity );
+		trace!( "{}: Incoming Call", self.identify() );
 
 		let mut self_addr = self.addr.as_ref().expect( "Peer not closing down" ).clone();
+		let identity = self.identify();
 
-
-		// See if we have a handler for this service.
+		// It's a call for a local actor
 		//
-		let smb = self.services.get( &sid ).map( |s| s.clone_box() );
-
-		let mut sm = match smb
+		if let Some( sm ) = self.services.get( &sid )
 		{
-			Some(s) => s,
+			trace!( "{}: Incoming Call", &identity );
 
-			// service_id unknown => send back and log error
+			// Call handling actor,
 			//
-			None =>
+			if self.exec.spawn( sm.call_service( frame, self_addr.clone() ) ).is_err()
 			{
-				let ctx = Peer::err_ctx( &self_addr, sid, cid, "Process incoming Call".to_string() );
-
-				self.handle( RequestError::from( ThesRemoteErr::UnknownService{ctx} ) ).await;
-
-				return;
-			}
-		};
-
-
-		// Create future that sends the frame to the service map.
-		//
-		trace!( "{}: Incoming Call", &identity );
-
-		let mut sa        = self_addr.clone();
-		let     sid_      = sid.clone();
-		let     identity_ = identity.clone();
-
-		let send = async move
-		{
-			let msg = DeliverCall::new( frame, sa.clone() );
-
-			if sm.send( msg ).await.is_err()
-			{
-				let err = ThesRemoteErr::ServiceMapDead
+				let err = ThesRemoteErr::Spawn
 				{
-					ctx: Peer::err_ctx( &sa, sid_, None, "sm DeliverCall".to_string() )
+					ctx: Peer::err_ctx( &self_addr, sid, None, "sm.call_service".to_string() )
 				};
 
 
 				// If we are no longer around, just log the error.
 				//
-				if sa.send( RequestError::from( err.clone() ) ).await.is_err()
+				if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
 				{
-					error!( "{}: {}.", &identity_, &err );
+					error!( "{}: {}.", &identity, &err );
 				}
 			}
-		};
+		}
 
 
-		// Spawn and report error
+		// service_id unknown => send back and log error
 		//
-		let sp = self.exec.spawn( send );
-
-		if sp.is_err()
+		else
 		{
-			let err = ThesRemoteErr::Spawn
-			{
-				ctx: Peer::err_ctx( &self_addr, sid, None, "sm DeliverCall".to_string() )
-			};
+			let ctx = Self::err_ctx( &self_addr, sid, cid, "Process incoming Call".to_string() );
 
-
-			// If we are no longer around, just log the error.
-			//
-			if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
+			self.handle(
 			{
-				error!( "{}: {}.", &identity, &err );
-			}
+				RequestError::from( ThesRemoteErr::UnknownService{ ctx } )
+
+			}).await;
 		}
 	}
 }

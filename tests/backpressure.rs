@@ -107,15 +107,13 @@ fn backpressure_basic()
 
 		// Create a service map
 		//
-		let mut sm = bpsm::Services::new();
+		let sm = bpsm::Services::new();
 
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( slow .clone_box() );
 		sm.register_handler::<Add2>( slow2.clone_box() );
 		sm.register_handler::<Show>( after.clone_box() );
-
-		let sm_addr = Addr::builder().start( sm , &ex1 ).expect( "spawn actor mailbox" );
 
 		// Create mailbox for peer
 		//
@@ -128,7 +126,7 @@ fn backpressure_basic()
 
 		// register service map with peer
 		//
-		peer.register_services( Box::new( sm_addr ) ).await.expect( "register services" );
+		peer.register_services( Arc::new( sm ) );
 
 		let (fut, handle) = peer_mb.start_fut(peer).remote_handle();
 

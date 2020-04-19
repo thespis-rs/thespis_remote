@@ -121,10 +121,9 @@ impl Handler<RequestError> for Peer
 			}
 
 
-			  ThesRemoteErr::RelayGone      { ctx, .. }
-			| ThesRemoteErr::NoHandler      { ctx     }
-			| ThesRemoteErr::ServiceMapDead { ctx     }
-			| ThesRemoteErr::HandlerDead    { ctx     } =>
+			  ThesRemoteErr::RelayGone  { ctx, .. }
+			| ThesRemoteErr::NoHandler  { ctx     }
+			| ThesRemoteErr::HandlerDead{ ctx     } =>
 			{
 				// Report to remote, we don't close the connection because we might expose other
 				// services that are still operational, or the actor might be in the process of

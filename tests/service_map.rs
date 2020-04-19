@@ -91,7 +91,7 @@ fn clone()
 
 	// Create a service map
 	//
-	let mut sm = remotes::Services::new();
+	let sm = remotes::Services::new();
 
 	// Register our handlers
 	//
@@ -119,7 +119,7 @@ fn debug()
 	//
 	let (sum_addr, _) = Addr::<Sum>::builder().name( "for_debug".into() ).build();
 
-	let mut sm = remotes::Services::new();
+	let sm = remotes::Services::new();
 
 	sm.register_handler::<Add >( sum_addr.clone_box() );
 	sm.register_handler::<Show>( sum_addr.clone_box() );
