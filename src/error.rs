@@ -236,7 +236,7 @@ impl From< std::io::Error > for ThesRemoteErr
 
 
 
-#[ derive( Debug, Clone, PartialEq, Eq ) ]
+#[ derive( Default, Debug, Clone, PartialEq, Eq ) ]
 //
 pub struct ErrorContext
 {
@@ -281,18 +281,3 @@ impl fmt::Display for ErrorContext
 	}
 }
 
-
-impl Default for ErrorContext
-{
-	fn default() -> Self
-	{
-		ErrorContext
-		{
-			context  : None ,
-			peer_id  : None ,
-			peer_name: None ,
-			sid      : None ,
-			cid      : None ,
-		}
-	}
-}
