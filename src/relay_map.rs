@@ -27,19 +27,19 @@ impl RelayMap
 	}
 
 
-	async fn handle_err( mut peer: Addr<Peer>, err: ThesRemoteErr )
-	{
-		if peer.send( RequestError::from( err.clone() ) ).await.is_err()
-		{
-			error!
-			(
-				"Peer ({}, {:?}): Processing incoming call: peer to client is closed, but processing request errored on: {}.",
-				peer.id(),
-				peer.name(),
-				&err
-			);
-		}
-	}
+	// async fn handle_err( mut peer: Addr<Peer>, err: ThesRemoteErr )
+	// {
+	// 	if peer.send( RequestError::from( err.clone() ) ).await.is_err()
+	// 	{
+	// 		error!
+	// 		(
+	// 			"Peer ({}, {:?}): Processing incoming call: peer to client is closed, but processing request errored on: {}.",
+	// 			peer.id(),
+	// 			peer.name(),
+	// 			&err
+	// 		);
+	// 	}
+	// }
 }
 
 
@@ -48,7 +48,7 @@ impl ServiceMap for RelayMap
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//
-	fn send_service( &self, msg: WireFormat, _peer: Addr<Peer> )
+	fn send_service( &self, msg: WireFormat )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 	{

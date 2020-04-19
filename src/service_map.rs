@@ -11,7 +11,7 @@ pub trait ServiceMap: fmt::Debug + Send + Sync
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//
-	fn send_service( &self, msg: WireFormat, peer_addr: Addr<Peer> )
+	fn send_service( &self, msg: WireFormat )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 	;

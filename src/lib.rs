@@ -4,10 +4,10 @@
 //!
 //! - tokio: makes the tokio executor available. enabled by default.
 
-#![ doc    ( html_root_url = "https://docs.rs/thespis_remote_impl" ) ]
-#![ deny   ( /*missing_docs,*/ bare_trait_objects                      ) ]
-#![ forbid ( unsafe_code                                           ) ]
-#![ allow  ( clippy::suspicious_else_formatting                    ) ]
+#![ doc    ( html_root_url = "https://docs.rs/thespis_remote_impl"       ) ]
+#![ deny   ( /*missing_docs,*/ bare_trait_objects                        ) ]
+#![ forbid ( unsafe_code                                                 ) ]
+#![ allow  ( clippy::suspicious_else_formatting, clippy::type_complexity ) ]
 
 #![ warn
 (
@@ -84,7 +84,7 @@ mod import
 		futures_timer   :: { Delay                                       } ,
 		parking_lot     :: { Mutex                                       } ,
 		async_nursery   :: { NurseExt, Nursery                           } ,
-		async_executors :: { SpawnHandle, SpawnHandleExt                 } ,
+		async_executors :: { SpawnHandle                                 } ,
 
 		std ::
 		{
@@ -105,13 +105,12 @@ mod import
 
 		futures ::
 		{
-			prelude :: { Stream, Sink                } ,
-			channel :: { oneshot                     } ,
-			future  :: { FutureExt, TryFutureExt     } ,
-			sink    :: { SinkExt                     } ,
-			stream  :: { StreamExt                   } ,
-			task    :: { SpawnError } ,
-			lock    :: { Mutex as FutMutex           } ,
+			prelude :: { Stream, Sink      } ,
+			channel :: { oneshot           } ,
+			future  :: { FutureExt         } ,
+			sink    :: { SinkExt           } ,
+			stream  :: { StreamExt         } ,
+			lock    :: { Mutex as FutMutex } ,
 		},
 	};
 

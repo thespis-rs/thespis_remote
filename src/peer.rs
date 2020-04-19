@@ -395,7 +395,7 @@ impl Peer
 
 
 
-	// actually send the error accross the wire. This is for when errors happen on receiving
+	// Actually send the error accross the wire. This is for when errors happen on receiving
 	// messages (eg. Deserialization errors).
 	//
 	// sid null is important so the remote knows that this is an error.
@@ -473,6 +473,8 @@ impl Peer
 
 	// Doesn't take &self, because it needs to be called from spawned tasks
 	// which have to be 'static.
+	//
+	// TODO: no longer used in spawned tasks?
 	//
 	#[ doc( hidden ) ]
 	//

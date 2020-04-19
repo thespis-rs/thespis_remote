@@ -283,7 +283,7 @@ async fn call_deserialize()
 
 		let mesg  = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
-		let _rx = peera.call( mesg ).await.expect( "send ms to peera" ).expect( "no network error" );
+		peera.call( mesg ).await.expect( "send ms to peera" ).expect( "no network error" );
 
 		assert_eq!
 		(

@@ -4,6 +4,9 @@
 - eleminate the need for passing peer addr to service map where we can
 - deal with the errors coming out of the nursery. Should return Internal server errors.
 
+- we removed the possibility to add/remove services. Think about user scenarios. Should it be possible
+  to add/remove entire service maps? After login for example?
+
 - verify all sends to self so they are spawned, not awaited. Create tests to show the deadlock.
 - verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
 

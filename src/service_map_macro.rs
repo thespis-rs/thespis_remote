@@ -460,7 +460,7 @@ impl ServiceMap for Services
 	/// - ThesRemoteErr::Deserialize
 	///
 	//
-	fn send_service( &self, msg: WireFormat, peer: Addr<Peer> )
+	fn send_service( &self, msg: WireFormat )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 
@@ -483,25 +483,20 @@ impl ServiceMap for Services
 			$(
 				_ if sid == *<$services as Service>::sid() =>
 				{
+					// TODO: This should always succeed. Verify and change to debug_assert?
+					//
 					let rec: &Receiver<$services> = match receiver.downcast_ref()
 					{
 						Some(x) => x,
-
-						None =>
-						{
-							Err( ThesRemoteErr::Downcast{ ctx: Default::default() } )?
-						}
+						None    => Err( ThesRemoteErr::Downcast{ ctx: Default::default() } )?,
 					};
 
-
+					// Deserialize.
+					//
 					let message: $services = match des( &msg.mesg() )
 					{
-						Ok(x) => x,
-
-						Err(_) =>
-						{
-							Err( ThesRemoteErr::Deserialize{ ctx: Default::default() } )?
-						}
+						Ok (x) => x,
+						Err(_) => Err( ThesRemoteErr::Deserialize{ ctx: Default::default() } )?,
 					};
 
 

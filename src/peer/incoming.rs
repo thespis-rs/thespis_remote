@@ -228,8 +228,7 @@ impl Peer
 
 			// Send to handling actor,
 			//
-			let addr = self_addr.clone();
-			let fut = match sm.send_service( frame, addr )
+			let fut = match sm.send_service( frame )
 			{
 				Ok(f) => f,
 
