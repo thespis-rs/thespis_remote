@@ -175,7 +175,7 @@ pub async fn relay
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1.clone(), None ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1, None ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
@@ -189,7 +189,7 @@ pub async fn relay
 			relayed.push( show.clone() );
 		}
 
-		let rm = RelayMap::new( handler.into(), relayed, ex1 );
+		let rm = RelayMap::new( handler.into(), relayed );
 		let rm_addr = Addr::builder().start( rm, &ex2 ).expect( "spawn relay map" );
 
 		peer.register_services( Box::new( rm_addr ) ).await.expect( "register services" );
@@ -256,7 +256,7 @@ pub async fn relay_closure
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1.clone(), None ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1, None ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
@@ -281,7 +281,7 @@ pub async fn relay_closure
 			relayed.push( show.clone() );
 		}
 
-		let rm = RelayMap::new( ServiceHandler::Closure( handler ), relayed, ex1 );
+		let rm = RelayMap::new( ServiceHandler::Closure( handler ), relayed );
 		let rm_addr = Addr::builder().start( rm, &ex2 ).expect( "spawn relay map" );
 
 		peer.register_services( Box::new( rm_addr ) ).await.expect( "register services" );
