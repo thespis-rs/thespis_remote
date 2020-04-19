@@ -249,21 +249,45 @@ impl Peer
 		let     sid_      = sid.clone();
 		let     identity_ = identity.clone();
 
-		let msg = DeliverSend::new( frame, sa.clone() );
-
-		if sm.send( msg ).await.is_err()
+		let send = async move
 		{
-			let err = ThesRemoteErr::ServiceMapDead
+			let msg = DeliverSend::new( frame, sa.clone() );
+
+			if sm.send( msg ).await.is_err()
 			{
-				ctx: Peer::err_ctx( &sa, sid_, None, "sm DeliverSend".to_string() )
+				let err = ThesRemoteErr::ServiceMapDead
+				{
+					ctx: Peer::err_ctx( &sa, sid_, None, "sm DeliverSend".to_string() )
+				};
+
+
+				// If we are no longer around, just log the error.
+				//
+				if sa.send( RequestError::from( err.clone() ) ).await.is_err()
+				{
+					error!( "{}: {}.", &identity_, &err );
+				}
+			}
+		};
+
+
+		// Spawn and report error
+		//
+		let sp = self.exec.spawn( send );
+
+		if sp.is_err()
+		{
+			let err = ThesRemoteErr::Spawn
+			{
+				ctx: Peer::err_ctx( &self_addr, sid, None, "sm DeliverSend".to_string() )
 			};
 
 
 			// If we are no longer around, just log the error.
 			//
-			if sa.send( RequestError::from( err.clone() ) ).await.is_err()
+			if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
 			{
-				error!( "{}: {}.", &identity_, &err );
+				error!( "{}: {}.", &identity, &err );
 			}
 		}
 	}
@@ -281,7 +305,7 @@ impl Peer
 		let identity = self.identify();
 		trace!( "{}: Incoming Call", identity );
 
-		let self_addr = self.addr.as_ref().expect( "Peer not closing down" ).clone();
+		let mut self_addr = self.addr.as_ref().expect( "Peer not closing down" ).clone();
 
 
 		// See if we have a handler for this service.
@@ -313,22 +337,45 @@ impl Peer
 		let     sid_      = sid.clone();
 		let     identity_ = identity.clone();
 
-		let msg = DeliverCall::new( frame, sa.clone() );
-
-
-		if sm.send( msg ).await.is_err()
+		let send = async move
 		{
-			let err = ThesRemoteErr::ServiceMapDead
+			let msg = DeliverCall::new( frame, sa.clone() );
+
+			if sm.send( msg ).await.is_err()
 			{
-				ctx: Peer::err_ctx( &sa, sid_, None, "sm DeliverCall".to_string() )
+				let err = ThesRemoteErr::ServiceMapDead
+				{
+					ctx: Peer::err_ctx( &sa, sid_, None, "sm DeliverCall".to_string() )
+				};
+
+
+				// If we are no longer around, just log the error.
+				//
+				if sa.send( RequestError::from( err.clone() ) ).await.is_err()
+				{
+					error!( "{}: {}.", &identity_, &err );
+				}
+			}
+		};
+
+
+		// Spawn and report error
+		//
+		let sp = self.exec.spawn( send );
+
+		if sp.is_err()
+		{
+			let err = ThesRemoteErr::Spawn
+			{
+				ctx: Peer::err_ctx( &self_addr, sid, None, "sm DeliverCall".to_string() )
 			};
 
 
 			// If we are no longer around, just log the error.
 			//
-			if sa.send( RequestError::from( err.clone() ) ).await.is_err()
+			if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
 			{
-				error!( "{}: {}.", &identity_, &err );
+				error!( "{}: {}.", &identity, &err );
 			}
 		}
 	}

@@ -174,157 +174,24 @@ pub struct Services
 {
 	// The addresses to the actors that handle incoming messages.
 	//
-	handlers: HashMap< &'static ServiceID, Box< dyn Any + Send > > ,
-	// exec    : Box< dyn Spawn + Send >                              ,
+	handlers: HashMap< &'static ServiceID, Box< dyn Any + Send > >,
 }
 
 
-/// Will match the type of the service id to deserialize the message and call the handling actor.
-///
-/// This can return the following errors:
-/// - ThesRemoteErr::Downcast
-/// - ThesRemoteErr::UnknownService
-/// - ThesRemoteErr::Deserialize
-/// - ThesRemoteErr::ThesErr -> Spawn error
-///
-/// # Panics
-/// For the moment this can panic if the downcast to Receiver fails. It should never happen unless there
-/// is a programmer error, but even then, it should be type checked, so for now I have decided to leave
-/// the expect in there. See if anyone manages to trigger it, we can take it from there.
-///
-//
 impl Handler<DeliverCall> for Services
 {
 	fn handle( &mut self, msg: DeliverCall ) -> Return<'_, ()>
 	{
-		let peer = msg.peer;
-		let msg  = msg.mesg;
-		let sid  = msg.service();
-
-		let receiver = match self.handlers.get( &sid )
-		{
-			Some(x) => x,
-
-			None =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid, msg.conn_id(), "Processing incoming Call".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
-			}
-		};
-
-		match sid
-		{
-			$(
-				_ if sid == *<$services as Service>::sid() =>
-				{
-					Self::call_service_gen::<$services>( msg, receiver, peer )
-				}
-			)+
-
-
-			_ =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid, msg.conn_id(), "Processing incoming Call".to_string() );
-
-				Self::handle_err( peer, ThesRemoteErr::UnknownService{ ctx } ).boxed()
-			}
-		}
+		self.call_service( msg.mesg, msg.peer )
 	}
 }
 
 
 impl Handler<DeliverSend> for Services
 {
-	/// Will match the type of the service id to deserialize the message and send it to the handling actor.
-	/// This spawns the processing of the request as a new task, to avoid blocking while the backend
-	/// generates a response.
-	///
-	/// This can return the following errors:
-	/// - ThesRemoteErr::Downcast
-	/// - ThesRemoteErr::UnknownService
-	/// - ThesRemoteErr::Deserialize
-	///
-	//
 	fn handle( &mut self, msg: DeliverSend ) -> Return<'_, ()>
 	{
-		let peer = msg.peer;
-		let msg  = msg.mesg;
-
-		let sid = msg.service();
-
-		// This sid should be in our map.
-		//
-		let receiver = match self.handlers.get( &sid )
-		{
-			Some(x) => x,
-
-			None =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid, None, "Processing incoming Send".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
-			}
-		};
-
-
-		// Map the sid to a type S.
-		//
-		match sid
-		{
-			$(
-				_ if sid == *<$services as Service>::sid() =>
-				{
-					let rec: &Receiver<$services> = match receiver.downcast_ref()
-					{
-						Some(x) => x,
-
-						None =>
-						{
-							let ctx = Peer::err_ctx( &peer, sid, None, "Receiver in send_service".to_string() );
-
-							return Self::handle_err( peer, ThesRemoteErr::Downcast{ ctx } ).boxed()
-						}
-					};
-
-
-					let message: $services = match des( &msg.mesg() )
-					{
-						Ok(x) => x,
-
-						Err(_) =>
-						{
-							let ctx = Peer::err_ctx( &peer, sid, None, "Actor message in send_service".to_string() );
-
-							return Self::handle_err( peer, ThesRemoteErr::Deserialize{ ctx } ).boxed()
-						}
-					};
-
-
-					// We need to clone the receiver so it can be inside the future as &mut self.
-					//
-					let mut rec = rec.clone_box();
-
-					async move
-					{
-						if rec.send( message ).await.is_err()
-						{
-							let ctx = Peer::err_ctx( &peer, sid, None, "Process Send for local Actor".to_string() );
-
-							return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
-						}
-
-					}.boxed()
-				},
-			)+
-
-			_ =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid, None, "Processing incoming Send".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
-			}
-		}
+		self.send_service( msg.mesg, msg.peer )
 	}
 }
 
@@ -613,6 +480,154 @@ impl Services
 		}
 
 		s
+	}
+
+
+
+	/// Will match the type of the service id to deserialize the message and send it to the handling actor.
+	///
+	/// This can return the following errors:
+	/// - ThesRemoteErr::Downcast
+	/// - ThesRemoteErr::UnknownService
+	/// - ThesRemoteErr::Deserialize
+	///
+	//
+	fn send_service( &self, msg: WireFormat, peer: Addr<Peer> )
+
+		-> Return<'static, ()>
+
+	{
+		let sid = msg.service();
+
+		// This sid should be in our map.
+		//
+		let receiver = match self.handlers.get( &sid )
+		{
+			Some(x) => x,
+
+			None =>
+			{
+				let ctx = Peer::err_ctx( &peer, sid, None, "Processing incoming Send".to_string() );
+
+				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
+			}
+		};
+
+
+		// Map the sid to a type S.
+		//
+		match sid
+		{
+			$(
+				_ if sid == *<$services as Service>::sid() =>
+				{
+					let rec: &Receiver<$services> = match receiver.downcast_ref()
+					{
+						Some(x) => x,
+
+						None =>
+						{
+							let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Receiver in send_service".to_string() );
+
+							return Self::handle_err( peer, ThesRemoteErr::Downcast{ ctx } ).boxed()
+						}
+					};
+
+
+					let message: $services = match des( &msg.mesg() )
+					{
+						Ok(x) => x,
+
+						Err(_) =>
+						{
+							let ctx = Peer::err_ctx( &peer, sid, None, "Actor message in send_service".to_string() );
+
+							return Self::handle_err( peer, ThesRemoteErr::Deserialize{ ctx } ).boxed()
+						}
+					};
+
+
+					// We need to clone the receiver so it can be inside the future as &mut self.
+					//
+					let mut rec = rec.clone_box();
+
+					async move
+					{
+						if rec.send( message ).await.is_err()
+						{
+							let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Process Send for local Actor".to_string() );
+
+							return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
+						}
+
+					}.boxed()
+				},
+			)+
+
+			_ =>
+			{
+				let ctx = Peer::err_ctx( &peer, sid, None, "Processing incoming Send".to_string() );
+
+				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
+			}
+		}
+	}
+
+
+
+	/// Will match the type of the service id to deserialize the message and call the handling actor.
+	///
+	/// This can return the following errors:
+	/// - ThesRemoteErr::Downcast
+	/// - ThesRemoteErr::UnknownService
+	/// - ThesRemoteErr::Deserialize
+	/// - ThesRemoteErr::ThesErr -> Spawn error
+	///
+	/// # Panics
+	/// For the moment this can panic if the downcast to Receiver fails. It should never happen unless there
+	/// is a programmer error, but even then, it should be type checked, so for now I have decided to leave
+	/// the expect in there. See if anyone manages to trigger it, we can take it from there.
+	///
+	//
+	fn call_service
+	(
+		&self               ,
+		msg   :  WireFormat ,
+		peer  :  Addr<Peer> ,
+
+	) -> Return<'static, ()>
+	{
+		let sid      = msg.service();
+
+		let receiver = match self.handlers.get( &sid )
+		{
+			Some(x) => x,
+
+			None =>
+			{
+				let ctx = Peer::err_ctx( &peer, sid, msg.conn_id(), "Processing incoming Call".to_string() );
+
+				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
+			}
+		};
+
+		match sid
+		{
+			$(
+				_ if sid == *<$services as Service>::sid() =>
+				{
+					Self::call_service_gen::<$services>( msg, receiver, peer )
+				}
+			)+
+
+
+			_ =>
+			{
+				let ctx = Peer::err_ctx( &peer, sid, msg.conn_id(), "Processing incoming Call".to_string() );
+
+				return Self::handle_err( peer, ThesRemoteErr::UnknownService{ ctx } ).boxed()
+			}
+		}
 	}
 }
 
