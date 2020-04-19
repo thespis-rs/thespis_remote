@@ -61,7 +61,7 @@ fn timeout()
 
 		// Create a service map
 		//
-		let mut sm = timeouts::Services::new( ex1.clone() );
+		let mut sm = timeouts::Services::new();
 
 		// Register our handlers
 		//
@@ -71,7 +71,7 @@ fn timeout()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, sm_addr, ex1, "peera" ).await;
+		let (_, _, handle) = peer_listen( server, sm_addr, ex1.clone(), "peera" ).await;
 
 		handle.await;
 

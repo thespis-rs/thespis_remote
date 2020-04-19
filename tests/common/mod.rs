@@ -124,7 +124,7 @@ pub async fn provider
 
 	// register Sum with peer as handler for Add and Show
 	//
-	let mut sm = remotes::Services::new( exec.clone() );
+	let mut sm = remotes::Services::new();
 
 	sm.register_handler::<Add >( addr_handler.clone_box() );
 	sm.register_handler::<Show>( addr_handler.clone_box() );

@@ -34,7 +34,7 @@ fn basic_remote()
 
 		// Create a service map
 		//
-		let mut sm = remotes::Services::new( ex1.clone() );
+		let mut sm = remotes::Services::new();
 
 		// Register our handlers
 		//
@@ -143,7 +143,7 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = parallel::Services::new( ex1.clone() );
+		let mut sm = parallel::Services::new();
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 		let sm_addr = Addr::builder().start( sm, &ex1 ).expect( "spawn service map" );
@@ -171,7 +171,7 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let mut sm = remotes::Services::new( exec.clone() );
+		let mut sm = remotes::Services::new();
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 		let sm_addr = Addr::builder().start( sm, &exec ).expect( "spawn service map" );

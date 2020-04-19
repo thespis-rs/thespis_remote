@@ -107,7 +107,7 @@ fn backpressure_basic()
 
 		// Create a service map
 		//
-		let mut sm = bpsm::Services::new( ex1.clone() );
+		let mut sm = bpsm::Services::new();
 
 		// Register our handlers
 		//
