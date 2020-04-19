@@ -109,7 +109,7 @@ use
 		serde_cbor      :: { self, from_slice as des                      } ,
 		serde           :: { Serialize, Deserialize, de::DeserializeOwned } ,
 		log             :: { error                                        } ,
-		parking_lot     :: { RwLock                                       } ,
+		parking_lot     :: { Mutex                                        } ,
 		paste,
 	},
 };
@@ -172,7 +172,7 @@ pub struct Services
 {
 	// The addresses to the actors that handle incoming messages.
 	//
-	handlers: RwLock<HashMap< &'static ServiceID, Box< dyn Any + Send + Sync > >>,
+	handlers: HashMap< &'static ServiceID, Mutex<Box<dyn Any + Send>> >,
 }
 
 
@@ -192,7 +192,6 @@ impl fmt::Debug for Services
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
 		let mut width: usize = 0;
-		let handlers = self.handlers.read();
 
 		$(
 			width = std::cmp::max( width, stringify!( $services ).len() );
@@ -216,8 +215,10 @@ impl fmt::Debug for Services
 				width = width
 			)?;
 
-			if let Some(h) = handlers.get( sid )
+			if let Some(h) = self.handlers.get( sid )
 			{
+				let h = h.lock();
+
 				// This expect shouldn't ever fail. We manually make the receiver in this file.
 				//
 				let handler: &Receiver<$services> = h.downcast_ref().expect( "downcast receiver in Debug for Services" );
@@ -251,9 +252,9 @@ impl Clone for Services
 	{
 		#[ allow(clippy::mutable_key_type) ] // false positive.
 		//
-		let mut map: HashMap< &'static ServiceID, Box<dyn Any + Send> > = HashMap::new();
+		let mut handlers: HashMap< &'static ServiceID, Mutex<Box<dyn Any + Send>> > = HashMap::new();
 
-		for (k, v) in handlers.deref()
+		for (k, v) in &self.handlers
 		{
 			match k
 			{
@@ -262,9 +263,10 @@ impl Clone for Services
 					{
 						// This should never fail, so the expect should be fine.
 						//
+						let v = v.lock();
 						let h: &Receiver<$services> = v.downcast_ref().expect( "downcast receiver in Clone" );
 
-						map.insert( k, Box::new( h.clone() ) );
+						handlers.insert( k, Mutex::new( Box::new( h.clone() ) ) );
 					},
 				)+
 
@@ -277,7 +279,7 @@ impl Clone for Services
 
 		}
 
-		Self { handlers: RwLock::new( map ) }
+		Self { handlers }
 	}
 }
 
@@ -301,19 +303,19 @@ impl Services
 			}
 		)+
 
-		Self{ handlers: RwLock::new( HashMap::new() ) }
+		Self{ handlers: HashMap::new() }
 	}
 
 
 	/// Register a handler for a given service type
 	/// Calling this method twice for the same type will override the first handler.
 	//
-	pub fn register_handler<S>( &self, handler: BoxAddress<S, ThesErr> )
+	pub fn register_handler<S>( &mut self, handler: BoxAddress<S, ThesErr> )
 
 		where  S                    : Service,
 		      <S as Message>::Return: Serialize + DeserializeOwned,
 	{
-		self.handlers.write().insert( <S as Service>::sid(), Box::new( Receiver::new(handler) ) );
+		self.handlers.insert( <S as Service>::sid(), Mutex::new(Box::new( Receiver::new(handler) )) );
 	}
 
 
@@ -321,9 +323,9 @@ impl Services
 	//
 	fn call_service_gen<S>
 	(
-		    msg        :  WireFormat                   ,
-		    receiver   : &Box< dyn Any + Send + Sync > ,
-		mut peer       :  Addr<Peer>                   ,
+		    msg        :  WireFormat            ,
+		    receiver   : &Box< dyn Any + Send > ,
+		mut peer       :  Addr<Peer>            ,
 
 	) -> Return<'static, ()>
 
@@ -446,11 +448,9 @@ impl ServiceMap for Services
 	//
 	fn services( &self ) -> Vec<ServiceID>
 	{
-		let handlers = self.handlers.read();
+		let mut s: Vec<ServiceID> = Vec::with_capacity( self.handlers.len() );
 
-		let mut s: Vec<ServiceID> = Vec::with_capacity( handlers.len() );
-
-		for sid in handlers.keys()
+		for sid in self.handlers.keys()
 		{
 			s.push( (*sid).clone() );
 		}
@@ -474,13 +474,12 @@ impl ServiceMap for Services
 
 	{
 		let sid      = msg.service();
-		let handlers = self.handlers.read();
 
 		// This sid should be in our map.
 		//
-		let receiver = match handlers.get( &sid )
+		let receiver = match self.handlers.get( &sid )
 		{
-			Some(x) => x,
+			Some(x) => x.lock(),
 
 			None =>
 			{
@@ -575,11 +574,10 @@ impl ServiceMap for Services
 	) -> Return<'static, ()>
 	{
 		let sid      = msg.service();
-		let handlers = self.handlers.read();
 
-		let receiver = match handlers.get( &sid )
+		let receiver = match self.handlers.get( &sid )
 		{
-			Some(x) => x,
+			Some(x) => x.lock(),
 
 			None =>
 			{
@@ -594,7 +592,7 @@ impl ServiceMap for Services
 			$(
 				_ if sid == *<$services as Service>::sid() =>
 				{
-					Self::call_service_gen::<$services>( msg, receiver, peer )
+					Self::call_service_gen::<$services>( msg, &*receiver, peer )
 				}
 			)+
 

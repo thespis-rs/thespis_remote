@@ -12,8 +12,8 @@ pub struct RelayMap
 	// can store them. In this case, the process does not need to compile in the actual handlers.
 	// ServiceID is just 16 bytes of data.
 	//
-	handler : ServiceHandler ,
-	services: Vec<ServiceID> ,
+	handler : Mutex<ServiceHandler> ,
+	services: Vec<ServiceID>        ,
 }
 
 
@@ -23,7 +23,7 @@ impl RelayMap
 	//
 	pub fn new( handler: ServiceHandler, services: Vec<ServiceID> ) -> Self
 	{
-		Self { handler, services }
+		Self { handler: Mutex::new( handler ), services }
 	}
 
 
@@ -56,7 +56,7 @@ impl ServiceMap for RelayMap
 
 		// This sid should be in our map.
 		//
-		match &self.handler
+		match &*self.handler.lock()
 		{
 			ServiceHandler::Address( a ) =>
 			{
@@ -105,7 +105,7 @@ impl ServiceMap for RelayMap
 
 		let sid = frame.service();
 
-		match &self.handler
+		match &*self.handler.lock()
 		{
 			ServiceHandler::Address( a ) => make_call( a.clone_box(), frame, peer ).boxed() ,
 			ServiceHandler::Closure( c ) => make_call( c(&sid)      , frame, peer ).boxed() ,
@@ -262,7 +262,7 @@ impl fmt::Debug for RelayMap
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
-		write!( f, "RelayMap, handler: {}, services:\n{{\n", self.handler )?;
+		write!( f, "RelayMap, handler: {}, services:\n{{\n", &*self.handler.lock() )?;
 
 		for sid in &self.services
 		{

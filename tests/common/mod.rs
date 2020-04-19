@@ -59,10 +59,7 @@ pub fn peer_listen
 {
 	// Create mailbox for peer
 	//
-	let (tx, rx)    = mpsc::channel( 16 )                                                             ;
-	let mb_peer     = Inbox::new( Some( name.into() ), Box::new( rx ) )                               ;
-	let tx          = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
-	let peer_addr   = Addr::new( mb_peer.id(), mb_peer.name(), tx )                                   ;
+	let (peer_addr, peer_mb) = Addr::builder().name( name.into() ).build();
 
 	// create peer with stream/sink
 	//
@@ -74,7 +71,7 @@ pub fn peer_listen
 	//
 	peer.register_services( sm );
 
-	let handle = exec.spawn_handle( mb_peer.start_fut(peer) ).expect( "start mailbox of Peer" );
+	let handle = exec.spawn_handle( peer_mb.start_fut(peer) ).expect( "start mailbox of Peer" );
 
 	(peer_addr, peer_evts, handle)
 }
@@ -127,7 +124,7 @@ pub fn provider
 
 	// register Sum with peer as handler for Add and Show
 	//
-	let sm = remotes::Services::new();
+	let mut sm = remotes::Services::new();
 
 	sm.register_handler::<Add >( addr_handler.clone_box() );
 	sm.register_handler::<Show>( addr_handler.clone_box() );
@@ -248,10 +245,7 @@ pub async fn relay_closure
 	{
 		// Create mailbox for peer
 		//
-		let (tx, rx)    = mpsc::channel( 16 )                                                             ;
-		let mb_peer     = Inbox::new( Some( "relay_to_consumer".into() ), Box::new( rx ) )                ;
-		let tx          = Box::new( TokioSender::new( tx ).sink_map_err( |e| Box::new(e) as SinkError ) ) ;
-		let peer_addr   = Addr::new( mb_peer.id(), mb_peer.name(), tx )                                   ;
+		let (peer_addr, peer_mb) = Addr::builder().name( "relay_to_consumer".into() ).build();
 
 		// create peer with stream/sink + service map
 		//
@@ -285,7 +279,7 @@ pub async fn relay_closure
 		peer.register_services( rm );
 
 		debug!( "start mailbox for relay_to_consumer" );
-		mb_peer.start_fut( peer ).await;
+		peer_mb.start_fut( peer ).await;
 		warn!( "relay async block finished" );
 	};
 

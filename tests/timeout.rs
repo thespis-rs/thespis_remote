@@ -61,7 +61,7 @@ fn timeout()
 
 		// Create a service map
 		//
-		let sm = timeouts::Services::new();
+		let mut sm = timeouts::Services::new();
 
 		// Register our handlers
 		//

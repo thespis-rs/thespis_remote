@@ -90,7 +90,7 @@ fn remote()
 
 		// Create a service map
 		//
-		let sm = remotes::Services::new();
+		let mut sm = remotes::Services::new();
 		// Register our handlers
 		//
 		sm.register_handler::<Add >( addr_handler.clone_box() );
@@ -197,7 +197,7 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let sm = parallel::Services::new();
+		let mut sm = parallel::Services::new();
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 		peer.register_services( Arc::new( sm ) );
@@ -223,7 +223,7 @@ fn parallel()
 
 		// register Sum with peer as handler for Add and Show
 		//
-		let sm = remotes::Services::new();
+		let mut sm = remotes::Services::new();
 		sm.register_handler::<Show>( addr_handler.clone_box() );
 
 		peer.register_services( Arc::new( sm ) );
