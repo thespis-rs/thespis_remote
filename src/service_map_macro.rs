@@ -98,7 +98,7 @@ use
 	//
 	super :: { $( $services, )+ Peer                                                          } ,
 	$crate:: { *, peer::request_error::RequestError                                           } ,
-	std   :: { pin::Pin, collections::HashMap, fmt, any::Any, sync::{ Arc, Once }, ops::Deref } ,
+	std   :: { pin::Pin, collections::HashMap, fmt, any::Any, sync::{ Arc, Once }, ops::Deref, future::Future } ,
 
 	$crate::external_deps::
 	{
@@ -327,7 +327,7 @@ impl Services
 		    receiver   : &Box< dyn Any + Send > ,
 		mut peer       :  Addr<Peer>            ,
 
-	) -> Return<'static, ()>
+	) -> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -341,12 +341,7 @@ impl Services
 		{
 			Ok(x) => x,
 
-			Err(_) =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid.clone(), msg.conn_id(), "Actor message while processing call for local Actor".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::Deserialize{ ctx } ).boxed();
-			}
+			Err(_) => Err( ThesRemoteErr::Deserialize{ ctx: Default::default() } )?
 		};
 
 
@@ -356,19 +351,14 @@ impl Services
 		{
 			Some(x) => x,
 
-			None =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid.clone(), msg.conn_id(), "Handler".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::Downcast{ ctx } ).boxed();
-			}
+			None => Err( ThesRemoteErr::Downcast{ ctx: Default::default() } )?
 		};
 
 
 		let mut rec  = backup.clone_box() ;
 		let     cid  = msg.conn_id()      ;
 
-		async move
+		Ok( async move
 		{
 			// Call the service and wait for the response
 			//
@@ -380,7 +370,7 @@ impl Services
 				{
 					let ctx = Peer::err_ctx( &peer, sid.clone(), cid, "Process call for local Actor".to_string() );
 
-					return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
+					return Err( ThesRemoteErr::HandlerDead{ ctx } );
 				}
 			};
 
@@ -397,14 +387,14 @@ impl Services
 				{
 					let ctx = Peer::err_ctx( &peer, sid, cid, "Response to remote call".to_string() );
 
-					return Self::handle_err( peer, ThesRemoteErr::Serialize{ ctx } ).await;
+					return Err( ThesRemoteErr::Serialize{ ctx } );
 				}
 			};
 
 
 			// Create a WireFormat response.
 			// The sid must be full to differentiate a response from a request. If the request
-			// has timed out, the peer will no longer have the cid in their list of open requests,
+			// has timed out, the remote peer will no longer have the cid in their list of open requests,
 			// so they would not know this was a response otherwise.
 			//
 			let response = WireFormat::create( ServiceID::full(), cid, serialized.into() ) ;
@@ -422,7 +412,9 @@ impl Services
 				);
 			}
 
-		}.boxed()
+			Ok(())
+
+		}.boxed() )
 	}
 
 
@@ -470,24 +462,18 @@ impl ServiceMap for Services
 	//
 	fn send_service( &self, msg: WireFormat, peer: Addr<Peer> )
 
-		-> Return<'static, ()>
+		-> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 
 	{
-		let sid      = msg.service();
+		let sid = msg.service();
 
 		// This sid should be in our map.
 		//
-		let receiver = match self.handlers.get( &sid )
-		{
-			Some(x) => x.lock(),
+		let receiver = self.handlers.get( &sid )
 
-			None =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid, None, "Processing incoming Send".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
-			}
-		};
+			.ok_or( ThesRemoteErr::NoHandler{ ctx: Default::default() } )?
+			.lock()
+		;
 
 
 		// Map the sid to a type S.
@@ -503,9 +489,7 @@ impl ServiceMap for Services
 
 						None =>
 						{
-							let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Receiver in send_service".to_string() );
-
-							return Self::handle_err( peer, ThesRemoteErr::Downcast{ ctx } ).boxed()
+							Err( ThesRemoteErr::Downcast{ ctx: Default::default() } )?
 						}
 					};
 
@@ -516,9 +500,7 @@ impl ServiceMap for Services
 
 						Err(_) =>
 						{
-							let ctx = Peer::err_ctx( &peer, sid, None, "Actor message in send_service".to_string() );
-
-							return Self::handle_err( peer, ThesRemoteErr::Deserialize{ ctx } ).boxed()
+							Err( ThesRemoteErr::Deserialize{ ctx: Default::default() } )?
 						}
 					};
 
@@ -527,24 +509,17 @@ impl ServiceMap for Services
 					//
 					let mut rec = rec.clone_box();
 
-					async move
+					Ok( async move
 					{
-						if rec.send( message ).await.is_err()
-						{
-							let ctx = Peer::err_ctx( &peer, sid.clone(), None, "Process Send for local Actor".to_string() );
+						rec.send( message ).await.map_err( |_| ThesRemoteErr::HandlerDead{ ctx: Default::default() } )
 
-							return Self::handle_err( peer, ThesRemoteErr::HandlerDead{ ctx } ).await;
-						}
-
-					}.boxed()
+					}.boxed() )
 				},
 			)+
 
 			_ =>
 			{
-				let ctx = Peer::err_ctx( &peer, sid, None, "Processing incoming Send".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
+				Err( ThesRemoteErr::NoHandler{ ctx: Default::default() } )?
 			}
 		}
 	}
@@ -571,9 +546,9 @@ impl ServiceMap for Services
 		msg   :  WireFormat ,
 		peer  :  Addr<Peer> ,
 
-	) -> Return<'static, ()>
+	) -> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 	{
-		let sid      = msg.service();
+		let sid = msg.service();
 
 		let receiver = match self.handlers.get( &sid )
 		{
@@ -581,9 +556,7 @@ impl ServiceMap for Services
 
 			None =>
 			{
-				let ctx = Peer::err_ctx( &peer, sid, msg.conn_id(), "Processing incoming Call".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::NoHandler{ ctx } ).boxed()
+				Err( ThesRemoteErr::NoHandler{ ctx: Default::default() } )?
 			}
 		};
 
@@ -597,12 +570,7 @@ impl ServiceMap for Services
 			)+
 
 
-			_ =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid, msg.conn_id(), "Processing incoming Call".to_string() );
-
-				return Self::handle_err( peer, ThesRemoteErr::UnknownService{ ctx } ).boxed()
-			}
+			_ => Err( ThesRemoteErr::UnknownService{ ctx: Default::default() } )?
 		}
 	}
 }

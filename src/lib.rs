@@ -71,18 +71,20 @@ mod import
 {
 	pub(crate) use
 	{
-		thespis        :: { *                                           } ,
-		thespis_impl   :: { Addr, ThesErr                               } ,
-		log            :: { *                                           } ,
-		bytes          :: { Bytes, BytesMut, BufMut                     } ,
-		rand           :: { Rng                                         } ,
-		twox_hash      :: { XxHash64                                    } ,
-		pharos         :: { Pharos, Observable, ObserveConfig, Events   } ,
-		serde          :: { Serialize, Deserialize                      } ,
-		thiserror      :: { Error                                       } ,
-		once_cell      :: { sync::Lazy as SyncLazy                      } ,
-		futures_timer  :: { Delay                                       } ,
-		parking_lot    :: { Mutex                                       } ,
+		thespis         :: { *                                           } ,
+		thespis_impl    :: { Addr, ThesErr                               } ,
+		log             :: { *                                           } ,
+		bytes           :: { Bytes, BytesMut, BufMut                     } ,
+		rand            :: { Rng                                         } ,
+		twox_hash       :: { XxHash64                                    } ,
+		pharos          :: { Pharos, Observable, ObserveConfig, Events   } ,
+		serde           :: { Serialize, Deserialize                      } ,
+		thiserror       :: { Error                                       } ,
+		once_cell       :: { sync::Lazy as SyncLazy                      } ,
+		futures_timer   :: { Delay                                       } ,
+		parking_lot     :: { Mutex                                       } ,
+		async_nursery   :: { NurseExt, Nursery                           } ,
+		async_executors :: { SpawnHandle, SpawnHandleExt                 } ,
 
 		std ::
 		{
@@ -103,13 +105,13 @@ mod import
 
 		futures ::
 		{
-			prelude :: { Stream, Sink            } ,
-			channel :: { oneshot                 } ,
-			future  :: { FutureExt, RemoteHandle } ,
-			sink    :: { SinkExt                 } ,
-			stream  :: { StreamExt               } ,
-			task    :: { Spawn, SpawnExt         } ,
-			lock    :: { Mutex as FutMutex       } ,
+			prelude :: { Stream, Sink                } ,
+			channel :: { oneshot                     } ,
+			future  :: { FutureExt, TryFutureExt     } ,
+			sink    :: { SinkExt                     } ,
+			stream  :: { StreamExt                   } ,
+			task    :: { SpawnError } ,
+			lock    :: { Mutex as FutMutex           } ,
 		},
 	};
 

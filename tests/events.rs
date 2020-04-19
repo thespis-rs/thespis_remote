@@ -216,13 +216,13 @@ fn header_unknown_service_error()
 
 
 
-// Test Header Unknown Service (Remote)Error.
+// Test Call deserialize (Remote)Error.
 //
-#[test]
+#[async_std::test]
 //
-fn header_deserialize()
+async fn call_deserialize()
 {
-	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=debug, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=debug, thespis_remote=trace, tokio=warn" ).start().unwrap();
 	//
 	let (server, client) = Endpoint::pair( 64, 64 );
 
@@ -250,7 +250,7 @@ fn header_deserialize()
 		{
 			PeerEvent::Error( ThesRemoteErr::Deserialize{ ctx } ) =>
 			{
-				assert_eq!( ctx.context.unwrap(), "Actor message in send_service" );
+				assert_eq!( ctx.context.unwrap(), "sm.call_service" );
 			}
 
 			_ => unreachable!( "Should be PeerEvent::Error( ThesRemoteErr::Deserialize" )
@@ -267,7 +267,7 @@ fn header_deserialize()
 		// Create some random data that shouldn't deserialize
 		//
 		let sid: Bytes = <Add as remotes::Service>::sid().clone().into();
-		let cid: Bytes = ConnID::null().into();
+		let cid: Bytes = ConnID::random().into();
 		let msg: Bytes = serde_cbor::to_vec( &Add(5) ).unwrap().into();
 
 		// This is the corrupt one that should trigger a deserialization error and close the connection
@@ -281,9 +281,9 @@ fn header_deserialize()
 		buf.extend( cod );
 		buf.extend( msg );
 
-		let ms  = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
+		let mesg  = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
-		peera.call( ms ).await.expect( "send ms to peera" ).expect( "no network error" );
+		let _rx = peera.call( mesg ).await.expect( "send ms to peera" ).expect( "no network error" );
 
 		assert_eq!
 		(
@@ -306,7 +306,7 @@ fn header_deserialize()
 	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
 	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	block_on( join( a_handle, b_handle ) );
+	join( a_handle, b_handle ).await;
 }
 
 
@@ -344,7 +344,7 @@ fn sm_deserialize_error()
 		{
 			PeerEvent::Error( ThesRemoteErr::Deserialize{ ctx } ) =>
 			{
-				assert_eq!( ctx.context.unwrap(), "Actor message in send_service" );
+				assert_eq!( ctx.context.unwrap(), "sm.send_service" );
 			}
 
 			_ => unreachable!( "Should be PeerEvent::Error( ThesRemoteErr::Deserialize" )

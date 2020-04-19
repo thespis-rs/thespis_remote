@@ -51,7 +51,7 @@ pub fn peer_listen
 (
 	socket: Endpoint                                                     ,
 	sm    : Arc<impl ServiceMap + Send + Sync + 'static>                 ,
-	exec  : impl Spawn + SpawnHandle< Option<Inbox<Peer>> > + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle< Option<Inbox<Peer>> > + SpawnHandle< Result<(), ThesRemoteErr> > + Clone + Send + Sync + 'static ,
 	name  : &str                                                         ,
 )
 
@@ -82,7 +82,7 @@ pub fn peer_listen
 pub fn peer_connect
 (
 	socket: Endpoint                                   ,
-	exec  : impl Spawn + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle< Result<(), ThesRemoteErr> > + Clone + Send + Sync + 'static ,
 	name  : &str                                       ,
 )
 	-> (Addr<Peer>, Events<PeerEvent>)
@@ -110,7 +110,7 @@ pub fn peer_connect
 pub fn provider
 (
 	name: Option<Arc<str>>,
-	exec  : impl Spawn + SpawnHandle< Option<Inbox<Peer>> > + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle< Option<Inbox<Peer>> > + SpawnHandle< Result<(), ThesRemoteErr> > + Clone + Send + Sync + 'static ,
 )
 	-> (Endpoint, JoinHandle< Option<Inbox<Peer>> >)
 
@@ -153,7 +153,7 @@ pub async fn relay
 	listen    : Endpoint                                 ,
 	next      : Pin<Box< dyn Future<Output=()> + Send >> ,
 	relay_show: bool                                     ,
-	exec      : Arc<dyn Spawn + Send + Sync + 'static >  ,
+	exec      : impl Spawn + SpawnHandle< Result<(), ThesRemoteErr> > + Clone + Send + Sync + 'static  ,
 )
 {
 	debug!( "start mailbox for relay_to_provider" );
@@ -221,7 +221,7 @@ pub async fn relay_closure
 	listen    : Endpoint                                 ,
 	next      : Pin<Box< dyn Future<Output=()> + Send >> ,
 	relay_show: bool                                     ,
-	exec      : Arc<dyn Spawn + Send + Sync + 'static >  ,
+	exec      : impl Spawn + SpawnHandle< Result<(), ThesRemoteErr> > + Clone + Send + Sync + 'static,
 )
 {
 	debug!( "start mailbox for relay_to_provider" );

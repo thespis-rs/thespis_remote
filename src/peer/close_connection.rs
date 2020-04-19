@@ -35,10 +35,11 @@ impl Message for CloseConnection { type Return = (); }
 
 impl Handler<CloseConnection> for Peer
 {
-	fn handle( &mut self, msg: CloseConnection ) -> Return<'_, ()> { async move
+	#[async_fn] fn handle( &mut self, msg: CloseConnection )
 	{
 		trace!( "{}: CloseConnection, by remote: {}, reason: {}", self.identify(), msg.remote, &msg.reason );
 
+		self.closed = true;
 
 		if msg.remote { self.pharos.send( PeerEvent::ClosedByRemote ).await.expect( "pharos not closed" ) }
 		else          { self.pharos.send( PeerEvent::Closed         ).await.expect( "pharos not closed" ) }
@@ -64,8 +65,8 @@ impl Handler<CloseConnection> for Peer
 
 		// try to drop close our mailbox and drop ourselves
 		//
-		self.addr          = None;
-		self.listen_handle = None;
+		self.addr    = None;
+		self.nursery = None;
 
 
 		// Also clear everything else, because services might have our address, because they
@@ -74,6 +75,5 @@ impl Handler<CloseConnection> for Peer
 		//
 		self.services .clear();
 		self.responses.clear();
-
-	}.boxed() }
+	}
 }

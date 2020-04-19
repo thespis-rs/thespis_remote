@@ -139,7 +139,7 @@ pub struct Peer
 {
 	/// The sink
 	//
-	outgoing      : Option< Box<dyn BoundsOut> >,
+	outgoing: Option< Box<dyn BoundsOut> >,
 
 	/// This is needed so that the loop listening to the incoming stream can send messages to this actor.
 	/// The loop runs in parallel of the rest of the actor, yet processing incoming messages need mutable
@@ -148,36 +148,36 @@ pub struct Peer
 	///
 	/// It also allows us to hand out our address to things that have to respond to the remote on our connection.
 	//
-	addr          : Option< Addr<Self> >,
-
-	/// The handle to the spawned listen function. If we drop this, the listen function immediately stops.
-	//
-	listen_handle : Option< RemoteHandle<()>>,
+	addr: Option< Addr<Self> >,
 
 	/// Information required to process incoming messages. The first element is a boxed Receiver, and the second is
 	/// the service map that takes care of this service type.
 	//
-	services      : HashMap< ServiceID, Arc<dyn ServiceMap> >,
+	services: HashMap< ServiceID, Arc<dyn ServiceMap> >,
 
 	/// We use oneshot channels to give clients a future that will resolve to their response.
 	//
-	responses     : HashMap< ConnID, oneshot::Sender<Result<WireFormat, ConnectionError>> >,
+	responses: HashMap< ConnID, oneshot::Sender<Result<WireFormat, ConnectionError>> >,
 
 	/// The pharos allows us to have observers.
 	//
-	pharos        : Pharos<PeerEvent>,
-
-	// An executor to spawn tasks, for processing requests.
-	//
-	exec          : Arc< dyn Spawn + Send + Sync + 'static >,
+	pharos: Pharos<PeerEvent>,
 
 	// How long to wait for responses to outgoing requests before timing out.
 	//
-	timeout       : Duration,
+	timeout: Duration,
 
 	// How long to wait for responses to outgoing requests before timing out.
 	//
-	backpressure  : Option<Arc< BackPressure >>,
+	backpressure: Option<Arc< BackPressure >>,
+
+	// All spawned requests will be collected here.
+	//
+	nursery: Option<Nursery<Arc< dyn SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static >, Result<(), ThesRemoteErr>>>,
+
+	// Set by close connection. We no longer want to process any messages after this.
+	//
+	closed: bool,
 }
 
 
@@ -192,7 +192,7 @@ impl Peer
 		    addr        : Addr<Self>                         ,
 		mut incoming    : impl BoundsIn                      ,
 		    outgoing    : impl BoundsOut                     ,
-		    exec        : impl Spawn + Send + Sync + 'static ,
+		    exec        : impl SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static ,
 		    bp          : Option<Arc<BackPressure>>          ,
 	)
 
@@ -203,8 +203,11 @@ impl Peer
 
 		// Hook up the incoming stream to our address.
 		//
-		let mut addr2 = addr.clone();
-		let     bp2   = bp  .clone();
+		let mut addr2   = addr.clone();
+		let     bp2     = bp  .clone();
+
+		let exec: Arc< dyn SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static > = Arc::new(exec);
+		let nursery = Nursery::new( exec );
 
 		let listen = async move
 		{
@@ -234,14 +237,14 @@ impl Peer
 			// Same as above.
 			//
 			addr2.send( CloseConnection{ remote: true, reason: "Connection closed by remote.".to_string() } ).await.expect( "peer send to self");
+
+			Ok(())
 		};
 
 		// When we need to stop listening, we have to drop this future, because it contains
 		// our address, and we won't be dropped as long as there are adresses around.
 		//
-		let (remote, handle) = listen.remote_handle();
-
-		exec.spawn( remote ).map_err( |e| -> ThesRemoteErr
+		nursery.nurse( listen ).map_err( |e| -> ThesRemoteErr
 		{
 			ThesErr::Spawn{ actor: format!( "Incoming stream for peer: {}", e ) }.into()
 
@@ -254,11 +257,11 @@ impl Peer
 			addr         : Some( addr )               ,
 			responses    : HashMap::new()             ,
 			services     : HashMap::new()             ,
-			listen_handle: Some( handle )             ,
 			pharos       : Pharos::default()          ,
-			exec         : Arc::new( exec )           ,
 			timeout      : Duration::from_secs(60)    ,
 			backpressure : bp                         ,
+			nursery      : Some( nursery )            ,
+			closed       : false                      ,
 		})
 	}
 
@@ -282,7 +285,7 @@ impl Peer
 		addr        : Addr<Self>                                                 ,
 		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static ,
 		max_size    : usize                                                      ,
-		exec        : impl Spawn + Send + Sync + 'static                         ,
+		exec        : impl SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static ,
 		bp          : Option<Arc<BackPressure>>                                  ,
 	)
 
@@ -316,7 +319,7 @@ impl Peer
 		addr        : Addr<Self>                                              ,
 		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static ,
 		max_size    : usize                                                   ,
-		exec        : impl Spawn + Send + Sync + 'static                      ,
+		exec        : impl SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static ,
 		bp          : Option<Arc<BackPressure>>                               ,
 	)
 

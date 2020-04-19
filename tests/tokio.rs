@@ -21,7 +21,7 @@ pub fn peer_listen
 (
 	socket: TokioEndpoint                                ,
 	sm    : Arc<impl ServiceMap + Send + Sync + 'static> ,
-	exec  : Arc< dyn Spawn + Send + Sync + 'static>      ,
+	exec  : impl Spawn + SpawnHandle< Result<(), ThesRemoteErr> > + Clone + Send + Sync + 'static      ,
 	name  : &'static str                                 ,
 )
 
@@ -47,7 +47,7 @@ pub fn peer_listen
 }
 
 
-pub async fn peer_connect( socket: TokioEndpoint, exec: Arc<dyn Spawn + Send + Sync + 'static>, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+pub async fn peer_connect( socket: TokioEndpoint, exec: impl Spawn + SpawnHandle< Result<(), ThesRemoteErr> > + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
 {
 	// Create mailbox for peer
 	//

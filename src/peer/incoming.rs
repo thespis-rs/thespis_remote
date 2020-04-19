@@ -213,24 +213,55 @@ impl Peer
 		frame   : WireFormat ,
 	)
 	{
+		if self.closed { return };
+
 		let identity = self.identify();
 
 		trace!( "{}: Incoming Send, sid: {}", identity, &sid );
 
-		let self_addr = self.addr.as_mut().take().expect( "Peer not closing down" );
+		let self_addr = self.addr.as_mut().take().unwrap();
 
 
 		if let Some( sm ) = self.services.get( &sid )
 		{
 			trace!( "{}: Incoming Send", &identity );
 
-			// Call handling actor,
+			// Send to handling actor,
 			//
-			if self.exec.spawn( sm.send_service( frame, self_addr.clone() ) ).is_err()
+			let addr = self_addr.clone();
+			let fut = match sm.send_service( frame, addr )
+			{
+				Ok(f) => f,
+
+				Err(e) =>
+				{
+					let ctx = Peer::err_ctx( &self_addr, sid, None, "sm.send_service".to_string() );
+
+					let err = match e
+					{
+						ThesRemoteErr::NoHandler  {..} => ThesRemoteErr::NoHandler  {ctx},
+						ThesRemoteErr::Downcast   {..} => ThesRemoteErr::Downcast   {ctx},
+						ThesRemoteErr::Deserialize{..} => ThesRemoteErr::Deserialize{ctx},
+						_                              => unreachable!(),
+					};
+
+					// If we are no longer around, just log the error.
+					//
+					if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
+					{
+						error!( "{}: {}.", identity, &err );
+					}
+
+					return
+				}
+			};
+
+
+			if self.nursery.as_ref().unwrap().nurse( fut ).is_err()
 			{
 				let err = ThesRemoteErr::Spawn
 				{
-					ctx: Peer::err_ctx( &self_addr, sid, None, "sm.call_service".to_string() )
+					ctx: Peer::err_ctx( &self_addr, sid, None, "sm.send_service".to_string() )
 				};
 
 
@@ -268,9 +299,11 @@ impl Peer
 		frame   : WireFormat ,
 	)
 	{
+		if self.closed { return }
+
 		trace!( "{}: Incoming Call", self.identify() );
 
-		let mut self_addr = self.addr.as_ref().expect( "Peer not closing down" ).clone();
+		let mut self_addr = self.addr.as_ref().unwrap().clone();
 		let identity = self.identify();
 
 		// It's a call for a local actor
@@ -279,9 +312,37 @@ impl Peer
 		{
 			trace!( "{}: Incoming Call", &identity );
 
+			let addr = self_addr.clone();
+			let fut = match sm.call_service( frame, addr )
+			{
+				Ok(f) => f,
+
+				Err(e) =>
+				{
+					let ctx = Peer::err_ctx( &self_addr, sid, None, "sm.call_service".to_string() );
+
+					let err = match e
+					{
+						ThesRemoteErr::NoHandler  {..} => ThesRemoteErr::NoHandler  {ctx},
+						ThesRemoteErr::Downcast   {..} => ThesRemoteErr::Downcast   {ctx},
+						ThesRemoteErr::Deserialize{..} => ThesRemoteErr::Deserialize{ctx},
+						_                              => unreachable!(),
+					};
+
+					// If we are no longer around, just log the error.
+					//
+					if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
+					{
+						error!( "{}: {}.", identity, &err );
+					}
+
+					return
+				}
+			};
+
 			// Call handling actor,
 			//
-			if self.exec.spawn( sm.call_service( frame, self_addr.clone() ) ).is_err()
+			if self.nursery.as_ref().unwrap().nurse( fut ).is_err()
 			{
 				let err = ThesRemoteErr::Spawn
 				{

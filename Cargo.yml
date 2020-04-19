@@ -72,6 +72,7 @@ dependencies:
   futures             : { version: ^0.3, features: [ std, compat ], default-features: false }
   futures_codec_crate : { version: ^0.3, optional: true, package: futures_codec             }
   futures_cbor_codec  : { version: ^0.2, optional: true                                     }
+  async_executors     : { version: ^0.2, features: [ spawn_handle ]                         }
 
   # Bytes is a public dep of futures_codec
   #
@@ -99,6 +100,7 @@ dependencies:
   tokio-serde-cbor    : { version: ^0.4, optional: true }
   futures-timer       : { version: ^3 }
   num_cpus            : ^1
+  async_nursery       : { path: ../../async_nursery }
 
   # thiserror shouldn't have any public impact, but if they make a breaking change, take care to double check.
   #
@@ -118,7 +120,7 @@ dev-dependencies:
   futures           : { version: ^0.3, features: [ thread-pool ] }
   tokio             : { version: ^0.2, features: [ sync, stream ] }
   thespis_impl      : { path: ../thespis_impl }
-
+  async-std         : { version: ^1, features: [ attributes ] }
 
 profile:
 

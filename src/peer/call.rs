@@ -4,9 +4,7 @@ use crate::{ import::*, * };
 /// Type representing the outgoing call. Used by a recipient to a remote service to communicate
 /// an outgoing call to [Peer]. Also used by [Peer] to call a remote service when relaying.
 ///
-/// MS must be of the same type as the type parameter on [Peer].
-///
-/// Normally you don't use this directly, but use the recipient a service map gives you to call
+/// Normally you don't use this directly, but use the RemoteAddress to call
 /// remote services.
 //
 #[ derive( Debug ) ]
@@ -46,81 +44,83 @@ impl Call
 //
 impl Handler<Call> for Peer
 {
-	fn handle( &mut self, call: Call ) -> Return< '_, <Call as Message>::Return >
+	#[async_fn] fn handle( &mut self, call: Call ) -> <Call as Message>::Return
 	{
 		let identity = self.identify();
 
 		trace!( "{}: starting Handler<Call>", &identity );
 
-		async move
+		let self_addr = match &mut self.addr
 		{
-			let self_addr = match &mut self.addr
-			{
-				Some(ref mut addr) => addr.clone(),
+			Some(ref mut addr) => addr.clone(),
 
-				// we no longer have our address, we're shutting down. we can't really do anything
-				// without our address we won't have the sink for the connection either. We can
-				// no longer send outgoing messages. Don't process any.
-				//
-				None =>
-				{
-					let ctx = ErrorContext
-					{
-						context  : Some( "register_relayed_services".to_string() ),
-						peer_id  : None ,
-						peer_name: None ,
-						sid      : None ,
-						cid      : None ,
-					};
-
-					return Err( ThesRemoteErr::ConnectionClosed{ ctx } );
-				}
-			};
-
-
-			trace!( "{}: polled Handler<Call>", &identity );
-
-			let conn_id = call.mesg.conn_id();
-			let sid     = call.mesg.service();
-
-			self.send_msg( call.mesg ).await?;
-
-			// If the above succeeded, store the other end of the channel
+			// we no longer have our address, we're shutting down. we can't really do anything
+			// without our address we won't have the sink for the connection either. We can
+			// no longer send outgoing messages. Don't process any.
 			//
-			let (sender, receiver) = oneshot::channel::< Result<WireFormat, ConnectionError> >() ;
-
-
-			// send a timeout message to ourselves.
-			//
-			let delay          = self.timeout         ;
-			let cid            = conn_id      .clone();
-			let sid2           = sid          .clone();
-			let mut self_addr2 = self_addr    .clone();
-
-			let task = async move
+			None =>
 			{
-				Delay::new( delay ).await;
-
-				if self_addr2.send( super::Timeout{ cid, sid } ).await.is_err()
+				let ctx = ErrorContext
 				{
-					error!( "{}: Failed to send timeout to self.", &identity );
-				}
-			};
+					context  : Some( "register_relayed_services".to_string() ),
+					peer_id  : None ,
+					peer_name: None ,
+					sid      : None ,
+					cid      : None ,
+				};
 
-			self.exec.spawn( task ).map_err( |_|
+				return Err( ThesRemoteErr::ConnectionClosed{ ctx } );
+			}
+		};
+
+
+		trace!( "{}: polled Handler<Call>", &identity );
+
+		let conn_id = call.mesg.conn_id();
+		let sid     = call.mesg.service();
+
+		// Otherwise the remote will consider it a send, and it's reserved anyway.
+		//
+		debug_assert!( conn_id != ConnID::null() );
+
+		self.send_msg( call.mesg ).await?;
+
+		// If the above succeeded, store the other end of the channel
+		//
+		let (sender, receiver) = oneshot::channel::< Result<WireFormat, ConnectionError> >() ;
+
+
+		// send a timeout message to ourselves.
+		//
+		let delay          = self.timeout         ;
+		let cid            = conn_id      .clone();
+		let sid2           = sid          .clone();
+		let mut self_addr2 = self_addr    .clone();
+
+		let task = async move
+		{
+			Delay::new( delay ).await;
+
+			if self_addr2.send( super::Timeout{ cid, sid } ).await.is_err()
 			{
-				ThesRemoteErr::Spawn
-				{
-					ctx: Peer::err_ctx( &self_addr, sid2, None, "timeout for outgoing Call".to_string() )
-				}
+				error!( "{}: Failed to send timeout to self.", &identity );
+			}
 
-			})?;
+			Ok(())
+		};
+
+		self.nursery.as_ref().unwrap().nurse( task ).map_err( |_|
+		{
+			ThesRemoteErr::Spawn
+			{
+				ctx: Peer::err_ctx( &self_addr, sid2, None, "timeout for outgoing Call".to_string() )
+			}
+
+		})?;
 
 
-			self.responses.insert( conn_id, sender );
+		self.responses.insert( conn_id, sender );
 
-			Ok( receiver )
-
-		}.boxed()
+		Ok( receiver )
 	}
 }
