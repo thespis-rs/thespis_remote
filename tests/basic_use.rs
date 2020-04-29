@@ -145,7 +145,7 @@ fn parallel()
 
 		peer.register_services( Arc::new( sm ) );
 
-		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.spawn( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
 	};
 
 
@@ -171,7 +171,7 @@ fn parallel()
 
 		peer.register_services( Arc::new( sm ) );
 
-		peer_mb.start( peer, &exec ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.spawn( peer, &exec ).expect( "Failed to start mailbox of Peer" );
 
 
 		// Create recipients

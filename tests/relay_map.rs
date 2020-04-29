@@ -107,7 +107,7 @@ fn debug()
 	let id              = peer_addr.id()                                            ;
 
 	let peer = Peer::from_async_read( peer_addr.clone(), cx, 1024, exec.clone(), None ).expect( "spawn peer" );
-	mb.start( peer, &exec ).expect( "spawn peer" );
+	mb.spawn( peer, &exec ).expect( "spawn peer" );
 
 
 	let add  = <Add  as remotes::Service>::sid();

@@ -71,7 +71,7 @@ pub fn peer_listen
 	//
 	peer.register_services( sm );
 
-	let handle = exec.spawn_handle( peer_mb.start_fut(peer) ).expect( "start mailbox of Peer" );
+	let handle = exec.spawn_handle( peer_mb.start(peer) ).expect( "start mailbox of Peer" );
 
 	(peer_addr, peer_evts, handle)
 }
@@ -101,7 +101,7 @@ pub fn peer_connect
 
 	debug!( "start mailbox for [{}] in peer_connect", name );
 
-	exec.spawn( async{ peer_mb.start_fut(peer).await; } ).expect( "start mailbox of Peer" );
+	exec.spawn( async{ peer_mb.start(peer).await; } ).expect( "start mailbox of Peer" );
 
 	(peer_addr, evts)
 }
@@ -190,7 +190,7 @@ pub async fn relay
 		peer.register_services( rm );
 
 		debug!( "start mailbox for relay_to_consumer" );
-		peer_mb.start_fut( peer ).await;
+		peer_mb.start( peer ).await;
 		warn!( "relay async block finished" );
 	};
 
@@ -279,7 +279,7 @@ pub async fn relay_closure
 		peer.register_services( rm );
 
 		debug!( "start mailbox for relay_to_consumer" );
-		peer_mb.start_fut( peer ).await;
+		peer_mb.start( peer ).await;
 		warn!( "relay async block finished" );
 	};
 

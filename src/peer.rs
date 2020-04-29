@@ -173,6 +173,10 @@ pub struct Peer
 
 	// All spawned requests will be collected here.
 	//
+	nursery_stream: Option<NurseryStream<Result<(), ThesRemoteErr>>>,
+
+	// All spawned requests will be collected here.
+	//
 	nursery: Option<Nursery<Arc< dyn SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static >, Result<(), ThesRemoteErr>>>,
 
 	// Set by close connection. We no longer want to process any messages after this.
@@ -207,7 +211,7 @@ impl Peer
 		let     bp2     = bp  .clone();
 
 		let exec: Arc< dyn SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static > = Arc::new(exec);
-		let nursery = Nursery::new( exec );
+		let (nursery, nursery_stream) = Nursery::new( exec );
 
 		let listen = async move
 		{
@@ -253,15 +257,16 @@ impl Peer
 
 		Ok( Self
 		{
-			outgoing     : Some( Box::new(outgoing) ) ,
-			addr         : Some( addr )               ,
-			responses    : HashMap::new()             ,
-			services     : HashMap::new()             ,
-			pharos       : Pharos::default()          ,
-			timeout      : Duration::from_secs(60)    ,
-			backpressure : bp                         ,
-			nursery      : Some( nursery )            ,
-			closed       : false                      ,
+			outgoing       : Some( Box::new(outgoing) )    ,
+			addr           : Some( addr )                  ,
+			responses      : HashMap::new()                ,
+			services       : HashMap::new()                ,
+			pharos         : Pharos::default()             ,
+			timeout        : Duration::from_secs(60)       ,
+			backpressure   : bp                            ,
+			nursery        : Some( nursery )               ,
+			nursery_stream : Some( nursery_stream )        ,
+			closed         : false                         ,
 		})
 	}
 

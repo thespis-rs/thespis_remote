@@ -128,7 +128,7 @@ fn backpressure_basic()
 		//
 		peer.register_services( Arc::new( sm ) );
 
-		let (fut, handle) = peer_mb.start_fut(peer).remote_handle();
+		let (fut, handle) = peer_mb.start(peer).remote_handle();
 
 		exec.spawn( fut ).expect( "start mailbox of Peer" );
 		handle.await;

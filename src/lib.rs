@@ -83,7 +83,7 @@ mod import
 		once_cell       :: { sync::Lazy as SyncLazy                      } ,
 		futures_timer   :: { Delay                                       } ,
 		parking_lot     :: { Mutex                                       } ,
-		async_nursery   :: { NurseExt, Nursery                           } ,
+		async_nursery   :: { NurseExt, Nursery, NurseryStream, Nurse     } ,
 		async_executors :: { SpawnHandle                                 } ,
 
 		std ::

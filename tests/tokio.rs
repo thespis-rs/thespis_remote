@@ -41,7 +41,7 @@ pub fn peer_listen
 	//
 	peer.register_services( sm );
 
-	exec.spawn( async { peer_mb.start_fut(peer).await; } ).expect( "start mailbox of Peer" );
+	exec.spawn( async { peer_mb.start(peer).await; } ).expect( "start mailbox of Peer" );
 
 	(peer_addr, peer_evts)
 }
@@ -61,7 +61,7 @@ pub async fn peer_connect( socket: TokioEndpoint, exec: impl Spawn + SpawnHandle
 
 	debug!( "start mailbox for [{}] in peer_connect", name );
 
-	exec.spawn( async { mb.start_fut(peer).await; } ).expect( "start mailbox of Peer" );
+	exec.spawn( async { mb.start(peer).await; } ).expect( "start mailbox of Peer" );
 
 	(addr, evts)
 }
@@ -202,7 +202,7 @@ fn parallel()
 
 		peer.register_services( Arc::new( sm ) );
 
-		peer_mb.start( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.spawn( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
 	};
 
 
@@ -228,7 +228,7 @@ fn parallel()
 
 		peer.register_services( Arc::new( sm ) );
 
-		peer_mb.start( peer, &exec ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.spawn( peer, &exec ).expect( "Failed to start mailbox of Peer" );
 
 
 		// Create recipients
