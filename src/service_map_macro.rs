@@ -458,7 +458,6 @@ impl ServiceMap for Services
 	/// - ThesRemoteErr::Downcast
 	/// - ThesRemoteErr::UnknownService
 	/// - ThesRemoteErr::Deserialize
-	///
 	//
 	fn send_service( &self, msg: WireFormat )
 

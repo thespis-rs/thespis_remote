@@ -65,8 +65,8 @@ impl Handler<CloseConnection> for Peer
 
 		// try to drop close our mailbox and drop ourselves
 		//
-		self.addr    = None;
-		self.nursery = None;
+		self.addr           = None;
+		self.nursery_stream = None;
 
 
 		// Also clear everything else, because services might have our address, because they

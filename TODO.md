@@ -1,5 +1,7 @@
 # thespis_remote TODO
 
+- update to new tokio codec version
+
 - verify the ctx of errors from service maps
 - eleminate the need for passing peer addr to service map where we can
 - deal with the errors coming out of the nursery. Should return Internal server errors.

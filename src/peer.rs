@@ -177,7 +177,7 @@ pub struct Peer
 
 	// All spawned requests will be collected here.
 	//
-	nursery: Option<Nursery<Arc< dyn SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static >, Result<(), ThesRemoteErr>>>,
+	nursery: Nursery<Arc< dyn SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static >, Result<(), ThesRemoteErr>>,
 
 	// Set by close connection. We no longer want to process any messages after this.
 	//
@@ -193,11 +193,11 @@ impl Peer
 	//
 	pub fn new
 	(
-		    addr        : Addr<Self>                         ,
-		mut incoming    : impl BoundsIn                      ,
-		    outgoing    : impl BoundsOut                     ,
-		    exec        : impl SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static ,
-		    bp          : Option<Arc<BackPressure>>          ,
+		addr     : Addr<Self>                                                          ,
+		incoming : impl BoundsIn                                                       ,
+		outgoing : impl BoundsOut                                                      ,
+		exec     : impl SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static ,
+		bp       : Option<Arc<BackPressure>>                                           ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -205,50 +205,12 @@ impl Peer
 	{
 		trace!( "{}: Create peer", &addr );
 
-		// Hook up the incoming stream to our address.
-		//
-		let mut addr2   = addr.clone();
-		let     bp2     = bp  .clone();
 
 		let exec: Arc< dyn SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static > = Arc::new(exec);
 		let (nursery, nursery_stream) = Nursery::new( exec );
 
-		let listen = async move
-		{
-			// This can fail if:
-			// - the receiver is dropped. The receiver is our mailbox, so it should never be dropped
-			//   as long as we have an address to it.
-			//
-			// So, I think we can unwrap for now.
-			//
-			while let Some(msg) = incoming.next().await
-			{
-				if let Some( ref bp ) = bp2
-				{
-					trace!( "check for backpressure" );
 
-					bp.wait().await;
-
-					trace!( "backpressure allows progress now." );
-				}
-
-				trace!( "{}: incoming message.", &addr2 );
-				addr2.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" );
-			}
-
-			trace!( "{}:  incoming stream end, closing out.", &addr2 );
-
-			// Same as above.
-			//
-			addr2.send( CloseConnection{ remote: true, reason: "Connection closed by remote.".to_string() } ).await.expect( "peer send to self");
-
-			Ok(())
-		};
-
-		// When we need to stop listening, we have to drop this future, because it contains
-		// our address, and we won't be dropped as long as there are adresses around.
-		//
-		nursery.nurse( listen ).map_err( |e| -> ThesRemoteErr
+		nursery.nurse( Self::listen_incoming( incoming, addr.clone(), bp.clone() ) ).map_err( |e| -> ThesRemoteErr
 		{
 			ThesErr::Spawn{ actor: format!( "Incoming stream for peer: {}", e ) }.into()
 
@@ -257,17 +219,62 @@ impl Peer
 
 		Ok( Self
 		{
-			outgoing       : Some( Box::new(outgoing) )    ,
-			addr           : Some( addr )                  ,
-			responses      : HashMap::new()                ,
-			services       : HashMap::new()                ,
-			pharos         : Pharos::default()             ,
-			timeout        : Duration::from_secs(60)       ,
-			backpressure   : bp                            ,
-			nursery        : Some( nursery )               ,
-			nursery_stream : Some( nursery_stream )        ,
-			closed         : false                         ,
+			outgoing       : Some( Box::new(outgoing) ) ,
+			addr           : Some( addr )               ,
+			responses      : HashMap::new()             ,
+			services       : HashMap::new()             ,
+			pharos         : Pharos::default()          ,
+			timeout        : Duration::from_secs(60)    ,
+			backpressure   : bp                         ,
+			nursery        : nursery                    ,
+			nursery_stream : Some( nursery_stream )     ,
+			closed         : false                      ,
 		})
+	}
+
+
+
+	/// The task that will listen to incoming messages on the network connection and send them to our
+	/// the peer's address.
+	//
+	async fn listen_incoming
+	(
+		mut incoming: impl BoundsIn             ,
+		mut addr    : Addr<Peer>                ,
+		    bp      : Option<Arc<BackPressure>> ,
+	)
+		-> Result<(), ThesRemoteErr>
+
+	{
+		// This can fail if:
+		//
+		// - the receiver is dropped. The receiver is our mailbox, so it should never be dropped
+		//   as long as we have an address to it.
+		//
+		// So, I think we can unwrap for now.
+		//
+		while let Some(msg) = incoming.next().await
+		{
+			if let Some( ref bp ) = bp
+			{
+				trace!( "check for backpressure" );
+
+				bp.wait().await;
+
+				trace!( "backpressure allows progress now." );
+			}
+
+			trace!( "{}: incoming message.", &addr );
+			addr.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" );
+		}
+
+		trace!( "{}:  incoming stream end, closing out.", &addr );
+
+		// Same as above.
+		//
+		addr.send( CloseConnection{ remote: true, reason: "Connection closed by remote.".to_string() } ).await.expect( "peer send to self");
+
+		Ok(())
 	}
 
 
@@ -287,11 +294,11 @@ impl Peer
 	//
 	pub fn from_async_read
 	(
-		addr        : Addr<Self>                                                 ,
-		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static ,
-		max_size    : usize                                                      ,
+		addr        : Addr<Self>                                                          ,
+		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static          ,
+		max_size    : usize                                                               ,
 		exec        : impl SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static ,
-		bp          : Option<Arc<BackPressure>>                                  ,
+		bp          : Option<Arc<BackPressure>>                                           ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -321,11 +328,11 @@ impl Peer
 	//
 	pub fn from_tokio_async_read
 	(
-		addr        : Addr<Self>                                              ,
-		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static ,
-		max_size    : usize                                                   ,
+		addr        : Addr<Self>                                                          ,
+		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static             ,
+		max_size    : usize                                                               ,
 		exec        : impl SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static ,
-		bp          : Option<Arc<BackPressure>>                               ,
+		bp          : Option<Arc<BackPressure>>                                           ,
 	)
 
 		-> Result< Self, ThesRemoteErr >

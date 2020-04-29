@@ -232,7 +232,7 @@ fn relay_unknown_service()
 		// Create some random data that shouldn't deserialize
 		//
 		let sid        = Bytes::from( vec![ 5;16 ]);
-		let cid: Bytes = ConnID::null().into();
+		let cid: Bytes = ConnID::random().into();
 		let msg: Bytes = serde_cbor::to_vec( &Add(5) ).unwrap().into();
 
 		// This is the corrupt one that should trigger a deserialization error and close the connection
@@ -240,7 +240,7 @@ fn relay_unknown_service()
 		let mut buf = BytesMut::new();
 
 		buf.extend( sid.clone() );
-		buf.extend( cid         );
+		buf.extend( cid.clone() );
 		buf.extend( msg         );
 
 		let corrupt = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
@@ -256,7 +256,7 @@ fn relay_unknown_service()
 		(
 			// TODO, why is there no cid here?
 			//
-			ConnectionError::UnknownService{ sid: ServiceID::from( sid ).into(), cid: None },
+			ConnectionError::UnknownService{ sid: ServiceID::from( sid ).into(), cid: Some( cid.into() ) },
 			rx.await.expect( "return error, don't drop connection" ).unwrap_err()
 		);
 

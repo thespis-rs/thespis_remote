@@ -71,20 +71,20 @@ mod import
 {
 	pub(crate) use
 	{
-		thespis         :: { *                                           } ,
-		thespis_impl    :: { Addr, ThesErr                               } ,
-		log             :: { *                                           } ,
-		bytes           :: { Bytes, BytesMut, BufMut                     } ,
-		rand            :: { Rng                                         } ,
-		twox_hash       :: { XxHash64                                    } ,
-		pharos          :: { Pharos, Observable, ObserveConfig, Events   } ,
-		serde           :: { Serialize, Deserialize                      } ,
-		thiserror       :: { Error                                       } ,
-		once_cell       :: { sync::Lazy as SyncLazy                      } ,
-		futures_timer   :: { Delay                                       } ,
-		parking_lot     :: { Mutex                                       } ,
-		async_nursery   :: { NurseExt, Nursery, NurseryStream, Nurse     } ,
-		async_executors :: { SpawnHandle                                 } ,
+		thespis         :: { *                                         } ,
+		thespis_impl    :: { Addr, ThesErr                             } ,
+		log             :: { *                                         } ,
+		bytes           :: { Bytes, BytesMut, BufMut                   } ,
+		rand            :: { Rng                                       } ,
+		twox_hash       :: { XxHash64                                  } ,
+		pharos          :: { Pharos, Observable, ObserveConfig, Events } ,
+		serde           :: { Serialize, Deserialize                    } ,
+		thiserror       :: { Error                                     } ,
+		once_cell       :: { sync::Lazy as SyncLazy                    } ,
+		futures_timer   :: { Delay                                     } ,
+		parking_lot     :: { Mutex                                     } ,
+		async_nursery   :: { NurseExt, Nursery, NurseryStream          } ,
+		async_executors :: { SpawnHandle                               } ,
 
 		std ::
 		{

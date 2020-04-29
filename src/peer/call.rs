@@ -109,7 +109,7 @@ impl Handler<Call> for Peer
 			Ok(())
 		};
 
-		self.nursery.as_ref().unwrap().nurse( task ).map_err( |_|
+		self.nursery.nurse( task ).map_err( |_|
 		{
 			ThesRemoteErr::Spawn
 			{

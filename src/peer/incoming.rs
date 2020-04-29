@@ -256,7 +256,7 @@ impl Peer
 			};
 
 
-			if self.nursery.as_ref().unwrap().nurse( fut ).is_err()
+			if self.nursery.nurse( fut ).is_err()
 			{
 				let err = ThesRemoteErr::Spawn
 				{
@@ -341,7 +341,7 @@ impl Peer
 
 			// Call handling actor,
 			//
-			if self.nursery.as_ref().unwrap().nurse( fut ).is_err()
+			if self.nursery.nurse( fut ).is_err()
 			{
 				let err = ThesRemoteErr::Spawn
 				{
