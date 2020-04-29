@@ -319,7 +319,8 @@ impl Services
 	}
 
 
-	// Helper function for call_service below
+	// Helper function for call_service below.
+	// The receiver passed in here has keeps a mutex locked. This method should never be async, nor await anything.
 	//
 	fn call_service_gen<S>
 	(
@@ -339,8 +340,7 @@ impl Services
 		//
 		let message: S = match des( &msg.mesg() )
 		{
-			Ok(x) => x,
-
+			Ok (x) => x,
 			Err(_) => Err( ThesRemoteErr::Deserialize{ ctx: Default::default() } )?
 		};
 
@@ -350,8 +350,7 @@ impl Services
 		let backup: &Receiver<S> = match receiver.downcast_ref()
 		{
 			Some(x) => x,
-
-			None => Err( ThesRemoteErr::Downcast{ ctx: Default::default() } )?
+			None    => return Err( ThesRemoteErr::Downcast{ ctx: Default::default() } )
 		};
 
 
@@ -521,18 +520,13 @@ impl ServiceMap for Services
 
 
 	/// Will match the type of the service id to deserialize the message and call the handling actor.
+	/// It returns a future that actually calls the handling actor. This futures is spawned by Peer.
 	///
 	/// This can return the following errors:
 	/// - ThesRemoteErr::Downcast
 	/// - ThesRemoteErr::UnknownService
 	/// - ThesRemoteErr::Deserialize
 	/// - ThesRemoteErr::ThesErr -> Spawn error
-	///
-	/// # Panics
-	/// For the moment this can panic if the downcast to Receiver fails. It should never happen unless there
-	/// is a programmer error, but even then, it should be type checked, so for now I have decided to leave
-	/// the expect in there. See if anyone manages to trigger it, we can take it from there.
-	///
 	//
 	fn call_service
 	(
@@ -546,6 +540,8 @@ impl ServiceMap for Services
 
 		let receiver = match self.handlers.get( &sid )
 		{
+			// TODO: don't block the thread.
+			//
 			Some(x) => x.lock(),
 
 			None =>

@@ -1,5 +1,8 @@
 # thespis_remote TODO
 
+- passing an address to register_handler requires clone_box...
+- we could possibly provide update_handler for services, but not insert handler on a shared reference.
+
 - update to new tokio codec version
 
 - verify the ctx of errors from service maps

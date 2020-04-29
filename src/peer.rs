@@ -173,7 +173,7 @@ pub struct Peer
 
 	// All spawned requests will be collected here.
 	//
-	nursery_stream: Option<NurseryStream<Result<(), ThesRemoteErr>>>,
+	nursery_stream: Option<JoinHandle<Result<(), ThesRemoteErr>>>,
 
 	// All spawned requests will be collected here.
 	//
@@ -207,14 +207,27 @@ impl Peer
 
 
 		let exec: Arc< dyn SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static > = Arc::new(exec);
-		let (nursery, nursery_stream) = Nursery::new( exec );
+		let (nursery, nursery_stream) = Nursery::new( exec.clone() );
 
 
-		nursery.nurse( Self::listen_incoming( incoming, addr.clone(), bp.clone() ) ).map_err( |e| -> ThesRemoteErr
-		{
-			ThesErr::Spawn{ actor: format!( "Incoming stream for peer: {}", e ) }.into()
+		let nursery_handle = exec.spawn_handle( Self::listen_request_results( nursery_stream, addr.clone() ) )
 
-		})?;
+			.map_err( |e| -> ThesRemoteErr
+			{
+				ThesErr::Spawn{ actor: format!( "Request results stream for peer: {}", e ) }.into()
+
+			})?
+		;
+
+
+		nursery.nurse( Self::listen_incoming( incoming, addr.clone(), bp.clone() ) )
+
+			.map_err( |e| -> ThesRemoteErr
+			{
+				ThesErr::Spawn{ actor: format!( "Incoming stream for peer: {}", e ) }.into()
+
+			})?
+		;
 
 
 		Ok( Self
@@ -227,9 +240,56 @@ impl Peer
 			timeout        : Duration::from_secs(60)    ,
 			backpressure   : bp                         ,
 			nursery        : nursery                    ,
-			nursery_stream : Some( nursery_stream )     ,
+			nursery_stream : Some( nursery_handle )     ,
 			closed         : false                      ,
 		})
+	}
+
+
+
+	/// The task that will listen to results returned by the spawned tasks that process requests.
+	/// These can be errors. In general it is considered that the errors returned directly by the
+	/// methods on ServiceMap contain relevant information for the Remote, but errors coming from
+	/// within the spawned tasks are just internal server errors. In any case RequestError will do
+	/// the right thing based on the error type, so this just forwards it to the handler for
+	/// RequestError.
+	///
+	/// It just returns a result so that it can be spawned on the same executor. It's infallible.
+	//
+	async fn listen_request_results
+	(
+		mut stream: NurseryStream<Result<(), ThesRemoteErr>> ,
+		mut addr  : Addr<Peer>                ,
+	)
+		-> Result<(), ThesRemoteErr>
+
+	{
+		while let Some(result) = stream.next().await
+		{
+			match result
+			{
+				Ok(_) => {}
+
+				Err(err) =>
+				{
+					// TODO: we should probably only send it out for calls, not for sends.
+					//
+					if addr.send( RequestError::from( err.clone() ) ).await.is_err()
+					{
+						error!
+						(
+							"Peer ({}, {:?}): Processing incoming request: peer to client is closed, but processing request errored on: {}.",
+							addr.id()   ,
+							addr.name() ,
+							&err
+						);
+					}
+				}
+			}
+
+		}
+
+		Ok(())
 	}
 
 

@@ -84,7 +84,7 @@ mod import
 		futures_timer   :: { Delay                                     } ,
 		parking_lot     :: { Mutex                                     } ,
 		async_nursery   :: { NurseExt, Nursery, NurseryStream          } ,
-		async_executors :: { SpawnHandle                               } ,
+		async_executors :: { SpawnHandle, SpawnHandleExt, JoinHandle   } ,
 
 		std ::
 		{
