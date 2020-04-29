@@ -39,7 +39,7 @@ version = "^0.2"
 [dependencies.futures_codec_crate]
 optional = true
 package = "futures_codec"
-version = "^0.3"
+version = "^0.4"
 
 [dependencies.parking_lot]
 version = "^0.10"

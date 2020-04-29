@@ -70,7 +70,7 @@ dependencies:
   serde_bytes         : ^0.11
   serde_cbor          : { version: ^0.11                                                    }
   futures             : { version: ^0.3, features: [ std, compat ], default-features: false }
-  futures_codec_crate : { version: ^0.3, optional: true, package: futures_codec             }
+  futures_codec_crate : { version: ^0.4, optional: true, package: futures_codec             }
   futures_cbor_codec  : { version: ^0.2, optional: true                                     }
   async_executors     : { version: ^0.2, features: [ spawn_handle ]                         }
 
