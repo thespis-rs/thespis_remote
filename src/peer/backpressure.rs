@@ -3,8 +3,10 @@ use { crate :: { import::* }};
 
 
 // An async counter that keeps track of the number of available slots for processing. When the counter
-// is <= 0, this will return Pending and can be awaited. When the counter becomes > 1, the last waker
+// is <= 0, this will return Pending and can be awaited. When the counter becomes >= 1, the last waker
 // that awaits it will be woken up. Thus you should only use it from within one context.
+//
+// Currently used only for incoming calls, not incoming sends.
 //
 #[ derive( Debug, Actor ) ]
 //
@@ -12,9 +14,9 @@ pub struct BackPressure
 {
 	// The total number of available slots.
 	//
-	available: Arc<AtomicI64>                 ,
+	available: Arc<AtomicI64>              ,
 	wakers   : Arc<Mutex<VecDeque<Waker>>> ,
-	future   : FutMutex<BPInner>              ,
+	future   : FutMutex<BPInner>           ,
 }
 
 

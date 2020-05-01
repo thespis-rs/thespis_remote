@@ -324,9 +324,10 @@ impl Services
 	//
 	fn call_service_gen<S>
 	(
-		    msg        :  WireFormat            ,
-		    receiver   : &Box< dyn Any + Send > ,
-		mut peer       :  Addr<Peer>            ,
+		    msg      :  WireFormat            ,
+		    receiver : &Box< dyn Any + Send > ,
+		mut peer     :  Addr<Peer>            ,
+		mut ctx      :  ErrorContext          ,
 
 	) -> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 
@@ -341,7 +342,7 @@ impl Services
 		let message: S = match des( &msg.mesg() )
 		{
 			Ok (x) => x,
-			Err(_) => Err( ThesRemoteErr::Deserialize{ ctx: Default::default() } )?
+			Err(_) => return Err( ThesRemoteErr::Deserialize{ ctx } )
 		};
 
 
@@ -350,12 +351,12 @@ impl Services
 		let backup: &Receiver<S> = match receiver.downcast_ref()
 		{
 			Some(x) => x,
-			None    => return Err( ThesRemoteErr::Downcast{ ctx: Default::default() } )
+			None    => return Err( ThesRemoteErr::Downcast{ ctx } )
 		};
 
 
-		let mut rec  = backup.clone_box() ;
-		let     cid  = msg.conn_id()      ;
+		let mut rec = backup.clone_box() ;
+		let     cid = msg.conn_id()      ;
 
 		Ok( async move
 		{
@@ -367,7 +368,9 @@ impl Services
 
 				Err(_) =>
 				{
-					let ctx = Peer::err_ctx( &peer, sid.clone(), cid, "Process call for local Actor".to_string() );
+					// unwrap: we pass it in from below in this file, it has a context guaranteed.
+					//
+					ctx.context.as_mut().map( |c| c.push_str( " - Process call for local Actor" ) );
 
 					return Err( ThesRemoteErr::HandlerDead{ ctx } );
 				}
@@ -384,7 +387,9 @@ impl Services
 
 				Err(_) =>
 				{
-					let ctx = Peer::err_ctx( &peer, sid, cid, "Response to remote call".to_string() );
+					// unwrap: we pass it in from below in this file, it has a context guaranteed.
+					//
+					ctx.context.as_mut().map( |c| c.push_str( " - Response to remote call" ) );
 
 					return Err( ThesRemoteErr::Serialize{ ctx } );
 				}
@@ -443,18 +448,19 @@ impl ServiceMap for Services
 	/// - ThesRemoteErr::UnknownService
 	/// - ThesRemoteErr::Deserialize
 	//
-	fn send_service( &self, msg: WireFormat )
+	fn send_service( &self, msg: WireFormat, ctx: ErrorContext )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 
 	{
 		let sid = msg.service();
+		let ctx = ctx.context( "Services::send_service".to_string() );
 
 		// This sid should be in our map.
 		//
 		let receiver = self.handlers.get( &sid )
 
-			.ok_or( ThesRemoteErr::NoHandler{ ctx: Default::default() } )?
+			.ok_or_else( || ThesRemoteErr::NoHandler{ ctx: ctx.clone() } )?
 			.lock()
 		;
 
@@ -471,7 +477,7 @@ impl ServiceMap for Services
 					let rec: &Receiver<$services> = match receiver.downcast_ref()
 					{
 						Some(x) => x,
-						None    => Err( ThesRemoteErr::Downcast{ ctx: Default::default() } )?,
+						None    => return Err( ThesRemoteErr::Downcast{ ctx } ),
 					};
 
 					// Deserialize.
@@ -479,7 +485,7 @@ impl ServiceMap for Services
 					let message: $services = match des( &msg.mesg() )
 					{
 						Ok (x) => x,
-						Err(_) => Err( ThesRemoteErr::Deserialize{ ctx: Default::default() } )?,
+						Err(_) => return Err( ThesRemoteErr::Deserialize{ ctx } ),
 					};
 
 
@@ -489,7 +495,7 @@ impl ServiceMap for Services
 
 					Ok( async move
 					{
-						rec.send( message ).await.map_err( |_| ThesRemoteErr::HandlerDead{ ctx: Default::default() } )
+						rec.send( message ).await.map_err( |_| ThesRemoteErr::HandlerDead{ ctx } )
 
 					}.boxed() )
 				},
@@ -497,7 +503,7 @@ impl ServiceMap for Services
 
 			_ =>
 			{
-				Err( ThesRemoteErr::NoHandler{ ctx: Default::default() } )?
+				Err( ThesRemoteErr::NoHandler{ ctx } )
 			}
 		}
 	}
@@ -515,13 +521,15 @@ impl ServiceMap for Services
 	//
 	fn call_service
 	(
-		&self               ,
-		msg   :  WireFormat ,
-		peer  :  Addr<Peer> ,
+		&self                ,
+		msg   : WireFormat   ,
+		peer  : Addr<Peer>   ,
+		ctx   : ErrorContext ,
 
 	) -> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 	{
 		let sid = msg.service();
+		let ctx = ctx.context( "Services::call_service".to_string() );
 
 		let receiver = match self.handlers.get( &sid )
 		{
@@ -531,7 +539,7 @@ impl ServiceMap for Services
 
 			None =>
 			{
-				Err( ThesRemoteErr::NoHandler{ ctx: Default::default() } )?
+				return Err( ThesRemoteErr::NoHandler{ ctx } )
 			}
 		};
 
@@ -540,12 +548,12 @@ impl ServiceMap for Services
 			$(
 				_ if sid == *<$services as Service>::sid() =>
 				{
-					Self::call_service_gen::<$services>( msg, &*receiver, peer )
+					Self::call_service_gen::<$services>( msg, &*receiver, peer, ctx )
 				}
 			)+
 
 
-			_ => Err( ThesRemoteErr::UnknownService{ ctx: Default::default() } )?
+			_ => return Err( ThesRemoteErr::UnknownService{ ctx } )
 		}
 	}
 }

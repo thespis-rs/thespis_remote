@@ -1,4 +1,4 @@
-use crate :: { import::*, *, peer::request_error::RequestError };
+use crate :: { import::*, * };
 
 
 
@@ -33,7 +33,7 @@ impl ServiceMap for RelayMap
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//
-	fn send_service( &self, msg: WireFormat )
+	fn send_service( &self, msg: WireFormat, ctx: ErrorContext )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 	{
@@ -53,8 +53,6 @@ impl ServiceMap for RelayMap
 				{
 					a.send( msg ).await.map_err( |_|
 					{
-						let mut ctx = ErrorContext::default();
-						ctx.sid = Some(sid);
 						ThesRemoteErr::HandlerDead{ ctx }
 					})
 				};
@@ -71,8 +69,6 @@ impl ServiceMap for RelayMap
 				{
 					a.send( msg ).await.map_err( |_|
 					{
-						let mut ctx = ErrorContext::default();
-						ctx.sid = Some(sid);
 						ThesRemoteErr::HandlerDead{ ctx }
 					})
 				};
@@ -86,7 +82,7 @@ impl ServiceMap for RelayMap
 	/// This should take care of deserialization. The return address is the address of the peer
 	/// to which the serialized answer shall be send.
 	//
-	fn call_service( &self, frame: WireFormat, peer: Addr<Peer> )
+	fn call_service( &self, frame: WireFormat, peer: Addr<Peer>, ctx: ErrorContext )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
 	{
@@ -96,8 +92,8 @@ impl ServiceMap for RelayMap
 
 		match &*self.handler.lock()
 		{
-			ServiceHandler::Address( a ) => Ok( make_call( a.clone_box(), frame, peer ).boxed() ),
-			ServiceHandler::Closure( c ) => Ok( make_call( c(&sid)      , frame, peer ).boxed() ),
+			ServiceHandler::Address( a ) => Ok( make_call( a.clone_box(), frame, peer, ctx ).boxed() ),
+			ServiceHandler::Closure( c ) => Ok( make_call( c(&sid)      , frame, peer, ctx ).boxed() ),
 		}
 	}
 
@@ -112,122 +108,95 @@ impl ServiceMap for RelayMap
 
 #[ allow(clippy::needless_return) ]
 //
-async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, mut peer: Addr<Peer> )
+async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, mut peer: Addr<Peer>, ctx: ErrorContext )
 
 	-> Result<(), ThesRemoteErr >
 
 	where T: Address<Call, Error=ThesErr> + ?Sized
 
 {
-	let sid = frame.service();
-	let cid = frame.conn_id();
+	let cid        = frame.conn_id();
+	let ctx        = ctx.context( "Process incoming Call to relay".to_string() );
 
+	let relay_id   = relay.id();
+	let relay_name = relay.name();
+	let relay_gone = ThesRemoteErr::RelayGone{ ctx, relay_id, relay_name };
+
+	// Peer for relay still online.
+	// TODO: use map_err when rustc supports it... currently relay_gone would have to be cloned.
+	//
 	let called = match relay.call( Call::new( frame ) ).await
 	{
-		// Peer for relay still online.
-		//
 		Ok(c) => c,
 
 		// For now can only be mailbox closed.
 		//
-		Err(_) =>
-		{
-			let ctx = Peer::err_ctx( &peer, sid, cid, "Process incoming Call to relay".to_string() );
-
-			return Err( ThesRemoteErr::RelayGone{ ctx, relay_id: relay.id(), relay_name: relay.name() } );
-		}
+		Err(_) => return Err( relay_gone ),
 	};
 
 
-
-	match called
+	// Sending out over the sink (connection) didn't fail
+	//
+	let receiver = match called
 	{
-		// Sending out over the sink (connection) didn't fail
-		//
-		Ok( receiver ) =>	{ match receiver.await
-		{
-			// The channel was not dropped before resolving, so the relayed connection didn't close
-			// until we got a response.
-			//
-			Ok( result ) =>
-			{
-				match result
-				{
-					// The remote managed to process the message and send a result back
-					// (no connection errors like deserialization failures etc)
-					//
-					Ok( resp ) =>
-					{
-						trace!( "Peer {}: Got response from relayed call, sending out.", &peer.id() );
-
-						// This can fail if we are no longer connected, in which case there isn't much to do.
-						//
-						if peer.send( resp ).await.is_err()
-						{
-							error!( "Peer {}: processing incoming call for relay: peer to client is closed before we finished sending a response to the request.", &peer.id() );
-						}
-
-						return Ok(())
-					},
-
-					// The relayed remote had errors while processing the request, such as deserialization.
-					// Our own peer might send a Timeout error back as well.
-					//
-					Err(e) =>
-					{
-						let wire_format = Peer::prep_error( cid, &e );
-
-						// Just forward the error to the client.
-						//
-						if peer.send( wire_format ).await.is_err()
-						{
-							error!( "Peer {}: processing incoming call for relay: peer to client is closed before we finished sending a response to the request.", &peer.id() );
-						}
-
-						return Ok(())
-					},
-				}
-			},
-
-
-			// This can only happen if the sender got dropped. Eg, if the remote relay goes down
-			// Inform peer that their call failed because we lost connection to the relay after
-			// it was sent out.
-			//
-			Err(_) =>
-			{
-				let ctx = Peer::err_ctx( &peer, sid, cid, "Process incoming Call to relay".to_string() );
-
-				let err = ThesRemoteErr::RelayGone{ ctx, relay_id: relay.id(), relay_name: relay.name() };
-				let err = RequestError::from( err );
-
-
-				if peer.send( err ).await.is_err()
-				{
-					error!( "Peer {}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &peer.id() );
-				}
-
-				return Ok(())
-			}
-		}},
+		Ok(c) => c,
 
 		// Sending out call to relayed failed. This normally only happens if the connection
 		// was closed, or a network transport malfunctioned.
 		//
-		Err(_) =>
+		Err(_) => return Err( relay_gone ),
+	};
+
+
+	// The channel was not dropped before resolving, so the relayed connection didn't close
+	// until we got a response.
+	//
+	let received = receiver.await
+
+		// This can only happen if the sender got dropped. Eg, if the remote relay goes down
+		// Inform peer that their call failed because we lost connection to the relay after
+		// it was sent out.
+		//
+		.map_err( |_| relay_gone )?
+	;
+
+
+
+	match received
+	{
+		// The remote managed to process the message and send a result back
+		// (no connection errors like deserialization failures etc)
+		//
+		Ok( resp ) =>
 		{
-			let ctx = Peer::err_ctx( &peer, sid, cid, "Process incoming Call to relay".to_string() );
+			trace!( "Peer {}: Got response from relayed call, sending out.", &peer.id() );
 
-			let err = ThesRemoteErr::RelayGone{ ctx, relay_id: relay.id(), relay_name: relay.name() };
-			let err = RequestError::from( err );
-
-			if peer.send( err ).await.is_err()
+			// This can fail if we are no longer connected, in which case there isn't much to do.
+			//
+			if peer.send( resp ).await.is_err()
 			{
-				error!( "Peer {}: processing incoming call for relay: peer to client is closed before we finished sending a response to a request.", &peer.id() );
+				error!( "Peer {}: processing incoming call for relay: peer to client is closed before we finished sending a response to the request.", &peer.id() );
 			}
 
-			return Ok(())
-		}
+			Ok(())
+		},
+
+		// The relayed remote had errors while processing the request, such as deserialization.
+		// Our own peer might send a Timeout error back as well.
+		//
+		Err(e) =>
+		{
+			let wire_format = Peer::prep_error( cid, &e );
+
+			// Just forward the error to the client.
+			//
+			if peer.send( wire_format ).await.is_err()
+			{
+				error!( "Peer {}: processing incoming call for relay failed and peer to client is closed before we finished sending an error back.", &peer.id() );
+			}
+
+			Ok(())
+		},
 	}
 }
 

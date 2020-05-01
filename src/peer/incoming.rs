@@ -28,131 +28,118 @@ impl Message for Incoming
 //
 impl Handler<Incoming> for Peer
 {
-fn handle( &mut self, incoming: Incoming ) -> Return<'_, ()>
-{
-
-async move
-{
-	match &mut self.addr
+	#[async_fn] fn handle( &mut self, incoming: Incoming )
 	{
-		Some(ref mut addr) => addr,
-
-		// we no longer have our address, we're shutting down. we can't really do anything
-		// without our address we won't have the sink for the connection either. We can
-		// no longer send outgoing messages. Don't process any more incoming message.
+		// We're shut down. we can't really do anything useful.
 		//
-		None => return,
-	};
+		if self.closed { return }
 
-
-	let frame = match incoming.msg
-	{
-		Ok ( mesg  ) => mesg,
-		Err( error ) =>
+		let frame = match incoming.msg
 		{
-			// Can be:
-			// - MessageSizeExceeded (Codec)
-			// - DeserializeWireFormat (WireFormat)
+			Ok ( mesg  ) => mesg,
+			Err( error ) =>
+			{
+				// Can be:
+				// - MessageSizeExceeded (Codec)
+				// - DeserializeWireFormat (WireFormat)
+				//
+				self.handle( RequestError::from( error ) ).await;
+
+				return
+			}
+		};
+
+
+		// algorithm for incoming messages. Options are:
+		//
+		// 1. incoming send/call               for local/relayed/unknown actor     (6 options)
+		// 2.       response to outgoing call from local/relayed actor             (2 options)
+		// 3.       response to outgoing call from local/relayed actor (timed out) (2 options)
+		// 4. error response to outgoing call from local/relayed actor             (2 options)
+		//
+		// 4 possibilities with ServiceID and ConnID. These can be augmented with
+		// predicates about our local state (sid in local table, routing table, unknown), + the codec
+		// which gives us largely the 10 needed states:
+		//
+		// SID  present -> always tells us if it's for local/relayed/unknown actor
+		//                 based on our routing tables
+		//
+		//                 if it's null, it means the message is meant for this peer (ConnectionError).
+		//
+		// (leaves distinguishing between send/call/response/error)
+		//
+		// CID   absent  -> Send
+		// CID   unknown -> Call or timed out response (SID full)
+		//
+		// CID   present -> Return/Error
+		//
+		// (leaves Return/Error)
+		//
+		// sid null      -> ConnectionError
+		//
+		// I think these should never fail, because they accept random data in the current implementation.
+		// However, since it's implementation dependant, and we are generic, we can't know that. It's probably
+		// safer to assume that if these do fail we close the connection because all bet's are off for following
+		// messages.
+		//
+		let sid = frame.service();
+		let cid = frame.conn_id();
+
+
+		// It's a connection error from the remote peer
+		//
+		if sid.is_null()
+		{
+			self.remote_conn_err( frame.mesg(), cid ).await;
+		}
+
+
+		// it's an incoming send
+		//
+		else if cid.is_null()
+		{
+			self.incoming_send( sid, frame ).await;
+		}
+
+
+		// it's a succesful response to a (relayed) call
+		//
+		else if let Some( channel ) = self.responses.remove( &cid )
+		{
+			// It's a response
 			//
-			self.handle( RequestError::from( error ) ).await;
+			trace!( "{}: Incoming Return", self.identify() );
 
-			return
+			// Normally if this fails it means the receiver of the channel was dropped...
+			//
+			if channel.send( Ok( frame ) ).is_err()
+			{
+				warn!( "{}: Received response for dead actor, cid: {}.", self.identify(), cid );
+			}
 		}
-	};
 
-
-	// algorithm for incoming messages. Options are:
-	//
-	// 1. incoming send/call               for local/relayed/unknown actor     (6 options)
-	// 2.       response to outgoing call from local/relayed actor             (2 options)
-	// 3.       response to outgoing call from local/relayed actor (timed out) (2 options)
-	// 4. error response to outgoing call from local/relayed actor             (2 options)
-	//
-	// 4 possibilities with ServiceID and ConnID. These can be augmented with
-	// predicates about our local state (sid in local table, routing table, unknown), + the codec
-	// which gives us largely the 10 needed states:
-	//
-	// SID  present -> always tells us if it's for local/relayed/unknown actor
-	//                 based on our routing tables
-	//
-	//                 if it's null, it means the message is meant for this peer (ConnectionError).
-	//
-	// (leaves distinguishing between send/call/response/error)
-	//
-	// CID   absent  -> Send
-	// CID   unknown -> Call or timed out response (SID full)
-	//
-	// CID   present -> Return/Error
-	//
-	// (leaves Return/Error)
-	//
-	// sid null      -> ConnectionError
-	//
-	// I think these should never fail, because they accept random data in the current implementation.
-	// However, since it's implementation dependant, and we are generic, we can't know that. It's probably
-	// safer to assume that if these do fail we close the connection because all bet's are off for following
-	// messages.
-	//
-	let sid = frame.service();
-	let cid = frame.conn_id();
-
-
-	// It's a connection error from the remote peer
-	//
-	if sid.is_null()
-	{
-		self.remote_conn_err( frame.mesg(), cid ).await;
-	}
-
-
-	// it's an incoming send
-	//
-	else if cid.is_null()
-	{
-		self.incoming_send( sid, frame ).await;
-	}
-
-
-	// it's a succesful response to a (relayed) call
-	//
-	else if let Some( channel ) = self.responses.remove( &cid )
-	{
-		// It's a response
+		// There is a CID, so it's a response, but it's not in our self.responses, so it has timed out.
+		// We are no longer waiting for this response, so we can only drop it.
 		//
-		trace!( "{}: Incoming Return", self.identify() );
+		else if sid.is_full()
+		{
+			warn!( "{}: Received response for a timed out outgoing request, cid: {}. Dropping response.", self.identify(), cid );
+		}
 
-		// Normally if this fails it means the receiver of the channel was dropped...
+
+		// it's a call (!cid.is_null() and cid is unknown and there is a sid not null and not full)
 		//
-		if channel.send( Ok( frame ) ).is_err()
+		else
 		{
-			warn!( "{}: Received response for dead actor, cid: {}.", self.identify(), cid );
-		}
-	}
+			if let Some( ref bp ) = self.backpressure
+			{
+				bp.remove_slots( NonZeroUsize::new(1).unwrap() );
+			}
 
-	// There is a CID, so it's a response, but it's not in our self.responses, so it has timed out.
-	// We are no longer waiting for this response, so we can only drop it.
-	//
-	else if sid.is_full()
-	{
-		warn!( "{}: Received response for a timed out outgoing request, cid: {}. Dropping response.", self.identify(), cid );
-	}
-
-
-	// it's a call (!cid.is_null() and cid is unknown and there is a sid not null)
-	//
-	else
-	{
-		if let Some( ref bp ) = self.backpressure
-		{
-			bp.remove_slots( NonZeroUsize::new(1).unwrap() );
+			self.incoming_call( cid, sid, frame ).await;
 		}
 
-		self.incoming_call( cid, sid, frame ).await;
-	}
-
-}.boxed() // End of async move
-
-} // end of handle
+	} // end of handle
 } // end of impl Handler
 
 
@@ -213,78 +200,64 @@ impl Peer
 		frame   : WireFormat ,
 	)
 	{
-		if self.closed { return };
-
 		let identity = self.identify();
 
-		trace!( "{}: Incoming Send, sid: {}", identity, &sid );
+		trace!( "{}: Incoming Send, sid: {}", &identity, &sid );
 
-		let self_addr = self.addr.as_mut().take().unwrap();
+		let ctx = self.ctx( sid.clone(), None, "Peer: Handle incoming send" );
 
-
-		if let Some( sm ) = self.services.get( &sid )
+		let sm = match self.services.get( &sid )
 		{
-			trace!( "{}: Incoming Send", &identity );
+			Some( sm ) => sm,
 
-			// Send to handling actor,
+			// service_id unknown => send back and log error
 			//
-			let fut = match sm.send_service( frame )
+			None =>
 			{
-				Ok(f) => f,
+				let err = ThesRemoteErr::UnknownService{ ctx };
 
-				Err(e) =>
-				{
-					let ctx = Peer::err_ctx( &self_addr, sid, None, "sm.send_service".to_string() );
+				self.handle( RequestError::from( err ) ).await;
 
-					let err = match e
-					{
-						ThesRemoteErr::NoHandler  {..} => ThesRemoteErr::NoHandler  {ctx},
-						ThesRemoteErr::Downcast   {..} => ThesRemoteErr::Downcast   {ctx},
-						ThesRemoteErr::Deserialize{..} => ThesRemoteErr::Deserialize{ctx},
-						_                              => unreachable!(),
-					};
-
-					// If we are no longer around, just log the error.
-					//
-					if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
-					{
-						error!( "{}: {}.", identity, &err );
-					}
-
-					return
-				}
-			};
+				return;
+			}
+		};
 
 
-			if self.nursery.nurse( fut ).is_err()
+		// Send to handling actor,
+		//
+		let fut = match sm.send_service( frame, ctx )
+		{
+			Ok(f) => f,
+
+			Err(e) =>
 			{
-				let err = ThesRemoteErr::Spawn
+				let ctx = self.ctx( sid.clone(), None, "sm.send_service" );
+
+				let err = match e
 				{
-					ctx: Peer::err_ctx( &self_addr, sid, None, "sm.send_service".to_string() )
+					ThesRemoteErr::NoHandler  {..} => ThesRemoteErr::NoHandler  {ctx},
+					ThesRemoteErr::Downcast   {..} => ThesRemoteErr::Downcast   {ctx},
+					ThesRemoteErr::Deserialize{..} => ThesRemoteErr::Deserialize{ctx},
+					_                              => unreachable!(),
 				};
 
 
 				// If we are no longer around, just log the error.
 				//
-				if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
-				{
-					error!( "{}: {}.", identity, &err );
-				}
+				return self.handle( RequestError::from(err) ).await;
 			}
-		}
+		};
 
 
-		// service_id unknown => send back and log error
-		//
-		else
+		if self.nursery.nurse( fut ).is_err()
 		{
-			let ctx = Peer::err_ctx( &self_addr, sid, None, "Process incoming Send".to_string() );
+			let ctx = self.ctx( sid.clone(), None, "sm.send_service" );
 
-			self.handle(
-			{
-				RequestError::from( ThesRemoteErr::UnknownService{ ctx } )
+			let err = ThesRemoteErr::Spawn { ctx };
 
-			}).await;
+			// If we are no longer around, just log the error.
+			//
+			self.handle( RequestError::from(err) ).await
 		}
 	}
 
@@ -300,76 +273,46 @@ impl Peer
 	{
 		if self.closed { return }
 
-		trace!( "{}: Incoming Call", self.identify() );
+		trace!( "{}: Incoming Call, sid: {}, cid: {}", self.identify(), &sid, &cid );
 
-		let mut self_addr = self.addr.as_ref().unwrap().clone();
-		let identity = self.identify();
+		let ctx = self.ctx( sid.clone(), cid.clone(), "Peer: Handle incoming call" );
 
-		// It's a call for a local actor
+
+		// Find our handler.
 		//
-		if let Some( sm ) = self.services.get( &sid )
+		let sm = match self.services.get( &sid )
 		{
-			trace!( "{}: Incoming Call", &identity );
+			Some( sm ) => sm,
 
-			let addr = self_addr.clone();
-			let fut = match sm.call_service( frame, addr )
-			{
-				Ok(f) => f,
-
-				Err(e) =>
-				{
-					let ctx = Peer::err_ctx( &self_addr, sid, None, "sm.call_service".to_string() );
-
-					let err = match e
-					{
-						ThesRemoteErr::NoHandler  {..} => ThesRemoteErr::NoHandler  {ctx},
-						ThesRemoteErr::Downcast   {..} => ThesRemoteErr::Downcast   {ctx},
-						ThesRemoteErr::Deserialize{..} => ThesRemoteErr::Deserialize{ctx},
-						_                              => unreachable!(),
-					};
-
-					// If we are no longer around, just log the error.
-					//
-					if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
-					{
-						error!( "{}: {}.", identity, &err );
-					}
-
-					return
-				}
-			};
-
-			// Call handling actor,
+			// service_id unknown => send back and log error
 			//
-			if self.nursery.nurse( fut ).is_err()
+			None =>
 			{
-				let err = ThesRemoteErr::Spawn
-				{
-					ctx: Peer::err_ctx( &self_addr, sid, None, "sm.call_service".to_string() )
-				};
+				let err = ThesRemoteErr::UnknownService{ ctx };
 
-
-				// If we are no longer around, just log the error.
-				//
-				if self_addr.send( RequestError::from( err.clone() ) ).await.is_err()
-				{
-					error!( "{}: {}.", &identity, &err );
-				}
+				return self.handle( RequestError::from( err ) ).await;
 			}
-		}
+		};
 
 
-		// service_id unknown => send back and log error
+		// Get future from service map.
 		//
-		else
+		let self_addr = self.addr.as_ref().unwrap().clone();
+
+		let fut = match sm.call_service( frame, self_addr, ctx.clone() )
 		{
-			let ctx = Self::err_ctx( &self_addr, sid, cid, "Process incoming Call".to_string() );
+			Ok (f) => f,
+			Err(e) => return self.handle( RequestError::from( e ) ).await,
+		};
 
-			self.handle(
-			{
-				RequestError::from( ThesRemoteErr::UnknownService{ ctx } )
 
-			}).await;
+		// Call handling actor,
+		//
+		if self.nursery.nurse( fut ).is_err()
+		{
+			let err = ThesRemoteErr::Spawn{ ctx	};
+
+			self.handle( RequestError::from( err ) ).await;
 		}
 	}
 }

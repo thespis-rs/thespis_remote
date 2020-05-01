@@ -47,19 +47,15 @@ impl Handler<CloseConnection> for Peer
 
 		// Try to close the connection properly
 		//
-		match &mut self.outgoing
+		if let Some(out) = &mut self.outgoing
 		{
-			Some( out ) =>
-			{
-				// TODO: this expect is not necessarily desirable. It can be triggered remotely
-				// I think by not properly closing the connection.
-				//
-				// out.close().await.expect( "CloseConnection: close sink for peer" );
-				let _ = out.close().await;
-				self.outgoing = None;
-			},
-
-			None => {},
+			// TODO: this expect is not necessarily desirable. It can be triggered remotely
+			// I think by not properly closing the connection.
+			//
+			// out.close().await.expect( "CloseConnection: close sink for peer" );
+			//
+			let _ = out.close().await;
+			self.outgoing = None;
 		};
 
 

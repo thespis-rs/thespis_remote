@@ -38,23 +38,19 @@ impl CallResponse
 //
 impl Handler<CallResponse> for Peer
 {
-	fn handle( &mut self, wrap: CallResponse ) -> Return< '_, <CallResponse as Message>::Return >
+	#[async_fn] fn handle( &mut self, wrap: CallResponse ) -> <CallResponse as Message>::Return
 	{
-		async move
+		trace!( "{}: sending OUT CallResponse", self.identify() );
+
+		let res = self.send_msg( wrap.msg ).await;
+
+		if let Some( ref bp ) = self.backpressure
 		{
-			trace!( "{}: sending OUT CallResponse", self.identify() );
+			trace!( "Liberate slot for backpressure." );
 
-			let res = self.send_msg( wrap.msg ).await;
+			bp.add_slots( NonZeroUsize::new( 1 ).expect( "1 != 0" ) );
+		}
 
-			if let Some( ref bp ) = self.backpressure
-			{
-				trace!( "Liberate slot for backpressure." );
-
-				bp.add_slots( NonZeroUsize::new( 1 ).expect( "1 != 0" ) );
-			}
-
-			res
-
-		}.boxed()
+		res
 	}
 }

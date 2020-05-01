@@ -150,6 +150,13 @@ pub struct Peer
 	//
 	addr: Option< Addr<Self> >,
 
+	// The ID of this actor. Since the addr isn't always there (eg. after we start closing the connection),
+	// it's a royal PITA not to have these directly available. Keeping them after the addr is gone also means
+	// better error messages.
+	//
+	id  : usize,
+	name: Option<Arc<str>>,
+
 	/// Information required to process incoming messages. The first element is a boxed Receiver, and the second is
 	/// the service map that takes care of this service type.
 	//
@@ -232,6 +239,8 @@ impl Peer
 
 		Ok( Self
 		{
+			id             : addr.id()                  ,
+			name           : addr.name()                ,
 			outgoing       : Some( Box::new(outgoing) ) ,
 			addr           : Some( addr )               ,
 			responses      : HashMap::new()             ,
@@ -259,7 +268,7 @@ impl Peer
 	async fn listen_request_results
 	(
 		mut stream: NurseryStream<Result<(), ThesRemoteErr>> ,
-		mut addr  : Addr<Peer>                ,
+		mut addr  : Addr<Peer>                               ,
 	)
 		-> Result<(), ThesRemoteErr>
 
@@ -451,14 +460,7 @@ impl Peer
 
 			None =>
 			{
-				let ctx = ErrorContext
-				{
-					context  : Some( "register_relayed_services".to_string() ),
-					peer_id  : None ,
-					peer_name: None ,
-					sid      : None ,
-					cid      : None ,
-				};
+				let ctx = ErrorContext::default().context( "register_relayed_services".to_string() );
 
 				Err( ThesRemoteErr::ConnectionClosed{ ctx } )
 			}
@@ -538,10 +540,34 @@ impl Peer
 
 	pub fn identify( &self ) -> String
 	{
-		match &self.addr
+		match self.name
 		{
-			Some (addr) => format!( "{}", addr )         ,
-			None        => "Peer (shutting down)".into() ,
+			None           => format!( "Peer: id: {}"          , self.id       ),
+			Some(ref name) => format!( "Peer: id: {}, name: {}", self.id, name ),
+		}
+	}
+
+
+
+	// generate an error context for convenience.
+	//
+	fn ctx
+	(
+		&self                                 ,
+		sid    : impl Into<Option<ServiceID>> ,
+		cid    : impl Into<Option<ConnID>>    ,
+		context: impl AsRef<str>              ,
+	)
+
+		-> ErrorContext
+	{
+		ErrorContext
+		{
+			peer_id  : self.id.into()                      ,
+			peer_name: self.name.clone()                   ,
+			context  : context.as_ref().to_string().into() ,
+			sid      : sid.into()                          ,
+			cid      : cid.into().into()                   ,
 		}
 	}
 

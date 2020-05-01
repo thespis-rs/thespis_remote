@@ -39,7 +39,7 @@ impl Call
 /// If the sending to the remote succeeds, you get back a oneshot receiver.
 ///
 /// If sending to the remote fails, you get a ThesRemoteErr.
-/// If the connection gets dropped before the answer comes, the onshot::Receiver will err with Cancelled.
+/// If the connection gets dropped before the answer comes, the oneshot::Receiver will err with Canceled.
 /// If the remote fails to process the message, you will get a ConnectionError out of the channel.
 //
 impl Handler<Call> for Peer
@@ -48,36 +48,23 @@ impl Handler<Call> for Peer
 	{
 		let identity = self.identify();
 
-		trace!( "{}: starting Handler<Call>", &identity );
+		trace!( "{}: polled Handler<Call>", &identity );
 
-		let self_addr = match &mut self.addr
+		// we no longer have our address, we're shutting down. we can't really do anything
+		// without our address we won't have the sink for the connection either. We can
+		// no longer send outgoing messages. Don't process any.
+		//
+		if self.closed
 		{
-			Some(ref mut addr) => addr.clone(),
+			let ctx = self.ctx( None, None, "Handler<Call> for Peer" );
 
-			// we no longer have our address, we're shutting down. we can't really do anything
-			// without our address we won't have the sink for the connection either. We can
-			// no longer send outgoing messages. Don't process any.
-			//
-			None =>
-			{
-				let ctx = ErrorContext
-				{
-					context  : Some( "register_relayed_services".to_string() ),
-					peer_id  : None ,
-					peer_name: None ,
-					sid      : None ,
-					cid      : None ,
-				};
-
-				return Err( ThesRemoteErr::ConnectionClosed{ ctx } );
-			}
+			return Err( ThesRemoteErr::ConnectionClosed{ ctx } );
 		};
 
 
-		trace!( "{}: polled Handler<Call>", &identity );
-
-		let conn_id = call.mesg.conn_id();
-		let sid     = call.mesg.service();
+		let mut self_addr = self.addr.as_ref().unwrap().clone();
+		let     conn_id   = call.mesg.conn_id();
+		let     sid       = call.mesg.service();
 
 		// Otherwise the remote will consider it a send, and it's reserved anyway.
 		//
@@ -92,16 +79,15 @@ impl Handler<Call> for Peer
 
 		// send a timeout message to ourselves.
 		//
-		let delay          = self.timeout         ;
-		let cid            = conn_id      .clone();
-		let sid2           = sid          .clone();
-		let mut self_addr2 = self_addr    .clone();
+		let delay = self.timeout    ;
+		let cid   = conn_id.clone() ;
+		let sid2  = sid.clone()     ;
 
 		let task = async move
 		{
 			Delay::new( delay ).await;
 
-			if self_addr2.send( super::Timeout{ cid, sid } ).await.is_err()
+			if self_addr.send( super::Timeout{ cid, sid } ).await.is_err()
 			{
 				error!( "{}: Failed to send timeout to self.", &identity );
 			}
@@ -109,12 +95,12 @@ impl Handler<Call> for Peer
 			Ok(())
 		};
 
+
 		self.nursery.nurse( task ).map_err( |_|
 		{
-			ThesRemoteErr::Spawn
-			{
-				ctx: Peer::err_ctx( &self_addr, sid2, None, "timeout for outgoing Call".to_string() )
-			}
+			let ctx = self.ctx( sid2, None, "timeout for outgoing Call" );
+
+			ThesRemoteErr::Spawn{ ctx }
 
 		})?;
 

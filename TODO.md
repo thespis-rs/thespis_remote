@@ -1,5 +1,7 @@
 # thespis_remote TODO
 
+- let spawned handlers of incoming call return the response to the Nursery, that way they don't need the peer address.
+
 - verify all sends to self so they are spawned, not awaited. Create tests to show the deadlock.
 
 - how to do a relay without compiling in the types?

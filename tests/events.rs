@@ -216,7 +216,7 @@ fn header_unknown_service_error()
 
 
 
-// Test Call deserialize (Remote)Error.
+// Test Call deserialize (Remote) Error.
 //
 #[async_std::test]
 //
@@ -250,7 +250,7 @@ async fn call_deserialize()
 		{
 			PeerEvent::Error( ThesRemoteErr::Deserialize{ ctx } ) =>
 			{
-				assert_eq!( ctx.context.unwrap(), "sm.call_service" );
+				assert_eq!( ctx.context.unwrap(), "Services::call_service" );
 			}
 
 			_ => unreachable!( "Should be PeerEvent::Error( ThesRemoteErr::Deserialize" )
@@ -276,10 +276,10 @@ async fn call_deserialize()
 
 		let mut buf = BytesMut::new();
 
-		buf.extend( sid );
-		buf.extend( cid );
-		buf.extend( cod );
-		buf.extend( msg );
+		buf.extend( sid         );
+		buf.extend( cid.clone() );
+		buf.extend( cod         );
+		buf.extend( msg         );
 
 		let mesg  = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
@@ -290,7 +290,7 @@ async fn call_deserialize()
 			PeerEvent::RemoteError(ConnectionError::Deserialize
 			{
 				sid: <Add as remotes::Service>::sid().clone().into() ,
-				cid: None                                            ,
+				cid: ConnID::from( cid ).into()                      ,
 			}),
 
 			peera_evts.next().await.unwrap()
