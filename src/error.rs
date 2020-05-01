@@ -248,6 +248,40 @@ pub struct ErrorContext
 }
 
 
+impl ErrorContext
+{
+	pub fn context( mut self, context: impl Into<Option< String >> ) -> Self
+	{
+		self.context = context.into();
+		self
+	}
+
+	pub fn peer_id( mut self, peer_id: impl Into<Option< usize >> ) -> Self
+	{
+		self.peer_id = peer_id.into();
+		self
+	}
+
+	pub fn peer_name( mut self, peer_name: impl Into<Option< Arc<str> >> ) -> Self
+	{
+		self.peer_name = peer_name.into();
+		self
+	}
+
+	pub fn sid( mut self, sid: impl Into<Option< ServiceID >> ) -> Self
+	{
+		self.sid = sid.into();
+		self
+	}
+
+	pub fn cid( mut self, cid: impl Into<Option< ConnID >> ) -> Self
+	{
+		self.cid = cid.into();
+		self
+	}
+}
+
+
 impl fmt::Display for ErrorContext
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result

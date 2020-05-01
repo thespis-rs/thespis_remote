@@ -1,8 +1,9 @@
 # thespis_remote TODO
 
+- verify all sends to self so they are spawned, not awaited. Create tests to show the deadlock.
+
 - how to do a relay without compiling in the types?
 
-- verify all sends to self so they are spawned, not awaited. Create tests to show the deadlock.
 - we could possibly provide update_handler for services, but not insert handler on a shared reference.
 
 - update to new tokio codec version
