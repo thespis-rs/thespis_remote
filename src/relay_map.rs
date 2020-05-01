@@ -25,21 +25,6 @@ impl RelayMap
 	{
 		Self { handler: Mutex::new( handler ), services }
 	}
-
-
-	// async fn handle_err( mut peer: Addr<Peer>, err: ThesRemoteErr )
-	// {
-	// 	if peer.send( RequestError::from( err.clone() ) ).await.is_err()
-	// 	{
-	// 		error!
-	// 		(
-	// 			"Peer ({}, {:?}): Processing incoming call: peer to client is closed, but processing request errored on: {}.",
-	// 			peer.id(),
-	// 			peer.name(),
-	// 			&err
-	// 		);
-	// 	}
-	// }
 }
 
 
@@ -66,7 +51,12 @@ impl ServiceMap for RelayMap
 
 				let task = async move
 				{
-					a.send( msg ).await.map_err( |_| ThesRemoteErr::HandlerDead{ ctx: Default::default() } )
+					a.send( msg ).await.map_err( |_|
+					{
+						let mut ctx = ErrorContext::default();
+						ctx.sid = Some(sid);
+						ThesRemoteErr::HandlerDead{ ctx }
+					})
 				};
 
 				Ok( task.boxed() )
@@ -79,7 +69,12 @@ impl ServiceMap for RelayMap
 
 				let task = async move
 				{
-					a.send( msg ).await.map_err( |_| ThesRemoteErr::HandlerDead{ ctx: Default::default() } )
+					a.send( msg ).await.map_err( |_|
+					{
+						let mut ctx = ErrorContext::default();
+						ctx.sid = Some(sid);
+						ThesRemoteErr::HandlerDead{ ctx }
+					})
 				};
 
 				Ok( task.boxed() )			}

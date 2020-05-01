@@ -1,18 +1,17 @@
 # thespis_remote TODO
 
-- passing an address to register_handler requires clone_box...
+- how to do a relay without compiling in the types?
+
+- verify all sends to self so they are spawned, not awaited. Create tests to show the deadlock.
 - we could possibly provide update_handler for services, but not insert handler on a shared reference.
 
 - update to new tokio codec version
 
-- verify the ctx of errors from service maps
 - eleminate the need for passing peer addr to service map where we can
-- deal with the errors coming out of the nursery. Should return Internal server errors.
 
 - we removed the possibility to add/remove services. Think about user scenarios. Should it be possible
   to add/remove entire service maps? After login for example?
 
-- verify all sends to self so they are spawned, not awaited. Create tests to show the deadlock.
 - verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
 
 - further clean up service maps:
@@ -22,6 +21,7 @@
 - do we really want to use Bytes as underlying storage and use codec?
 - should UniqueID and ServiceID be Copy?
 - Kompakt?
+- https://en.wikipedia.org/wiki/Slowloris_(computer_security)
 
 
 - All of these requests (at least calls) should stop when the connection

@@ -562,11 +562,11 @@ impl Peer
 	{
 		ErrorContext
 		{
-			peer_id  : addr.id().into()         ,
-			peer_name: addr.name()              ,
-			context  : context.into()           ,
-			sid      : sid.into()               ,
-			cid      : cid.into()               ,
+			peer_id  : addr.id().into() ,
+			peer_name: addr.name()      ,
+			context  : context.into()   ,
+			sid      : sid.into()       ,
+			cid      : cid.into()       ,
 		}
 	}
 }
@@ -577,15 +577,11 @@ impl Peer
 //
 impl Handler<WireFormat> for Peer
 {
-	fn handle( &mut self, msg: WireFormat ) -> Return<'_, Result<(), ThesRemoteErr> >
+	#[async_fn] fn handle( &mut self, msg: WireFormat ) -> Result<(), ThesRemoteErr>
 	{
-		async move
-		{
-			trace!( "{}: sending OUT wireformat", self.identify() );
+		trace!( "{}: sending OUT wireformat", self.identify() );
 
-			self.send_msg( msg ).await
-
-		}.boxed()
+		self.send_msg( msg ).await
 	}
 }
 

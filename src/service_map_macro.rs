@@ -415,21 +415,6 @@ impl Services
 
 		}.boxed() )
 	}
-
-
-	async fn handle_err( mut peer: Addr<Peer>, err: ThesRemoteErr )
-	{
-		if peer.send( RequestError::from( err.clone() ) ).await.is_err()
-		{
-			error!
-			(
-				"Peer ({}, {:?}): Processing incoming call: peer to client is closed, but processing request errored on: {}.",
-				peer.id()   ,
-				peer.name() ,
-				&err
-			);
-		}
-	}
 }
 
 
