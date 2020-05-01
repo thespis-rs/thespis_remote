@@ -472,41 +472,45 @@ impl Peer
 	//
 	// sid null is important so the remote knows that this is an error.
 	//
-	async fn send_err<'a>
+	// This is currently only called from RequestError.
+	//
+	async fn send_err
 	(
-		&'a mut self               ,
+		&mut self               ,
 
-		cid  : ConnID              ,
-		err  : &'a ConnectionError ,
-		close: bool                , // whether the connection should be closed (eg stream corrupted)
+		cid  : ConnID           ,
+		err  : &ConnectionError ,
+		close: bool             , // whether the connection should be closed (eg stream corrupted)
 	)
 	{
-		let identity = self.identify();
+		trace!( "{}: sending OUT ConnectionError", self.identify() );
 
-		if let Some( ref mut out ) = self.outgoing
+		// If self.outgoing is None, we have already closed.
+		//
+		let out = match self.outgoing
 		{
-			trace!( "{}: sending OUT ConnectionError", identity );
+			Some( ref mut out ) => out,
+			None                => return,
+		};
 
-			let serialized = serde_cbor::to_vec( err ).expect( "serialize response" );
+		// There is no documentation on serde_cbor or serde_derive about why this would return an error.
+		// As far as I can tell it shouldn't ever fail.
+		//
+		let serialized = serde_cbor::to_vec( err ).expect( "serialize ConnectionError" );
 
-			// sid null is the marker that this is an error message.
-			//
-			let msg = WireFormat::create
-			(
-				ServiceID::null() ,
-				cid               ,
-				serialized.into() ,
-			);
+		// sid null is the marker that this is an error message.
+		//
+		let msg = WireFormat::create( ServiceID::null(), cid, serialized.into() );
 
-			let _ = out.send( msg ).await;
+		// We are already trying to report an error. If we can't send, just give up.
+		//
+		let _ = out.send( msg ).await;
 
-			if close {
-			if let Some( ref mut addr ) = self.addr
-			{
-				// this should never fail, since we hold our address, the mailbox should be open, so I'm leaving the expect.
-				//
-				addr.send( CloseConnection{ remote: false, reason: format!( "{:?}", err ) } ).await.expect( "send close connection" );
-			}}
+		if close
+		{
+			let close_conn = CloseConnection{ remote: false, reason: format!( "{:?}", err ) };
+
+			Handler::<CloseConnection>::handle( self, close_conn ).await
 		}
 	}
 
