@@ -1,7 +1,7 @@
 use
 {
-	crate::{ import::*, * },
-	super::RequestError    ,
+	crate::{ import::*, *, WireType },
+	super::RequestError              ,
 };
 
 
@@ -50,97 +50,48 @@ impl Handler<Incoming> for Peer
 		};
 
 
-		// algorithm for incoming messages. Options are:
-		//
-		// 1. incoming send/call               for local/relayed/unknown actor     (6 options)
-		// 2.       response to outgoing call from local/relayed actor             (2 options)
-		// 3.       response to outgoing call from local/relayed actor (timed out) (2 options)
-		// 4. error response to outgoing call from local/relayed actor             (2 options)
-		//
-		// 4 possibilities with ServiceID and ConnID. These can be augmented with
-		// predicates about our local state (sid in local table, routing table, unknown), + the codec
-		// which gives us largely the 10 needed states:
-		//
-		// SID  present -> always tells us if it's for local/relayed/unknown actor
-		//                 based on our routing tables
-		//
-		//                 if it's null, it means the message is meant for this peer (ConnectionError).
-		//
-		// (leaves distinguishing between send/call/response/error)
-		//
-		// CID   absent  -> Send
-		// CID   unknown -> Call or timed out response (SID full)
-		//
-		// CID   present -> Return/Error
-		//
-		// (leaves Return/Error)
-		//
-		// sid null      -> ConnectionError
-		//
-		// I think these should never fail, because they accept random data in the current implementation.
-		// However, since it's implementation dependant, and we are generic, we can't know that. It's probably
-		// safer to assume that if these do fail we close the connection because all bet's are off for following
-		// messages.
-		//
 		let sid = frame.service();
 		let cid = frame.conn_id();
 
 
-		// It's a connection error from the remote peer
+		// TODO: when we have benchmarks, verify if it's better to return boxed submethods here
+		// rather than awaiting. Implies the rest of this method can run sync.
 		//
-		if sid.is_null()
+		match frame.kind()
 		{
-			self.remote_conn_err( frame.mesg(), cid ).await;
-		}
+			WireType::ConnectionError => self.remote_conn_err( frame.mesg(), cid ).await,
+			WireType::IncomingSend    => self.incoming_send  ( sid, frame        ).await,
+			WireType::IncomingCall    => self.incoming_call  ( cid, sid, frame   ).await,
 
-
-		// it's an incoming send
-		//
-		else if cid.is_null()
-		{
-			self.incoming_send( sid, frame ).await;
-		}
-
-
-		// it's a succesful response to a (relayed) call
-		//
-		else if let Some( channel ) = self.responses.remove( &cid )
-		{
-			// It's a response
-			//
-			trace!( "{}: Incoming Return", self.identify() );
-
-			// Normally if this fails it means the receiver of the channel was dropped...
-			//
-			if channel.send( Ok( frame ) ).is_err()
+			WireType::CallResponse =>
 			{
-				warn!( "{}: Received response for dead actor, cid: {}.", self.identify(), cid );
+				// it's a succesful response to a (relayed) call
+				//
+				if let Some( channel ) = self.responses.remove( &cid )
+				{
+					// It's a response
+					//
+					trace!( "{}: Incoming Return", self.identify() );
+
+					// Normally if this fails it means the receiver of the channel was dropped...
+					//
+					if channel.send( Ok(frame) ).is_err()
+					{
+						warn!( "{}: Received response for dead actor, cid: {}.", self.identify(), cid );
+					}
+				}
+
+				// There is a CID, so it's a response, but it's not in our self.responses, so it has timed out.
+				// We are no longer waiting for this response, so we can only drop it.
+				//
+				else
+				{
+					warn!( "{}: Received response for a timed out outgoing request, cid: {}. Dropping response.", self.identify(), cid );
+				}
 			}
 		}
-
-		// There is a CID, so it's a response, but it's not in our self.responses, so it has timed out.
-		// We are no longer waiting for this response, so we can only drop it.
-		//
-		else if sid.is_full()
-		{
-			warn!( "{}: Received response for a timed out outgoing request, cid: {}. Dropping response.", self.identify(), cid );
-		}
-
-
-		// it's a call (!cid.is_null() and cid is unknown and there is a sid not null and not full)
-		//
-		else
-		{
-			if let Some( ref bp ) = self.backpressure
-			{
-				bp.remove_slots( NonZeroUsize::new(1).unwrap() );
-			}
-
-			self.incoming_call( cid, sid, frame ).await;
-		}
-
-	} // end of handle
-} // end of impl Handler
+	}
+}
 
 
 impl Peer
@@ -174,7 +125,7 @@ impl Peer
 
 			// Notify observers
 			//
-			let shine = PeerEvent::RemoteError( err.clone() );
+			let shine = PeerEvent::RemoteError( err );
 			self.pharos.send( shine ).await.expect( "pharos not closed" );
 
 		}
@@ -273,6 +224,11 @@ impl Peer
 	{
 		if self.closed { return }
 
+		if let Some( ref bp ) = self.backpressure
+		{
+			bp.remove_slots( NonZeroUsize::new(1).unwrap() );
+		}
+
 		trace!( "{}: Incoming Call, sid: {}, cid: {}", self.identify(), &sid, &cid );
 
 		let ctx = self.ctx( sid.clone(), cid.clone(), "Peer: Handle incoming call" );
@@ -297,9 +253,7 @@ impl Peer
 
 		// Get future from service map.
 		//
-		let self_addr = self.addr.as_ref().unwrap().clone();
-
-		let fut = match sm.call_service( frame, self_addr, ctx.clone() )
+		let fut = match sm.call_service( frame, ctx.clone() )
 		{
 			Ok (f) => f,
 			Err(e) => return self.handle( RequestError::from( e ) ).await,

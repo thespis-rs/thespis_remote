@@ -250,9 +250,9 @@ impl Peer
 			pharos         : Pharos::default()          ,
 			timeout        : Duration::from_secs(60)    ,
 			backpressure   : bp                         ,
-			nursery        : nursery                    ,
-			nursery_stream : Some( nursery_handle )     ,
 			closed         : false                      ,
+			nursery_stream : Some( nursery_handle )     ,
+			nursery                                     ,
 		})
 	}
 
@@ -582,7 +582,7 @@ impl Peer
 			peer_name: self.name.clone()                   ,
 			context  : context.as_ref().to_string().into() ,
 			sid      : sid.into()                          ,
-			cid      : cid.into().into()                   ,
+			cid      : cid.into()                          ,
 		}
 	}
 

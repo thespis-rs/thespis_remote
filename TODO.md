@@ -3,6 +3,8 @@
 - currently errors are returned to the remote even for Send. Should the nursery_stream or Handler<RequestError>
   filter these out? Or should service maps not return them at all?
 
+- remove logging from peer and return events through pharos. Clients can log if and how they want to.
+
 - verify all sends to self so they are spawned, not awaited. Create tests to show the deadlock.
 
 - how to do a relay without compiling in the types?

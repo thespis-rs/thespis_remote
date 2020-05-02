@@ -3,12 +3,15 @@
 mod unique_id  ;
 mod conn_id    ;
 mod service_id ;
+mod wire_type  ;
 
 pub use
 {
 	service_id :: * ,
 	conn_id    :: * ,
 };
+
+pub(crate) use wire_type::WireType;
 
 
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub mod codec   ;
@@ -48,20 +51,15 @@ const HEADER_LEN: usize = 32;
 /// The algorithm for receiving messages should interprete the message like this:
 ///
 /// ```text
-/// - msg for a local actor -> service sid is in our in_process table
+/// - msg for a local actor -> service sid is in our table
 ///   - send                -> no connID
 ///   - call                -> connID
-///
-/// - msg for a relayed actor -> service sid is in our routing table
-///   - send                  -> no connID
-///   - call                  -> connID
 ///
 /// - a send/call for an actor we don't know -> sid unknown: respond with error
 ///
 /// - a response to a call    -> valid connID
 ///   - when the call was made, we gave a onshot-channel receiver to the caller,
 ///     look it up in our open connections table and put the response in there.
-///     Maybe need 2 different tables, one for in process and one for rely.
 ///
 /// - an error message (eg. deserialization failed on the remote) -> service sid null.
 ///
@@ -140,6 +138,26 @@ impl WireFormat
 	pub fn len( &self ) -> usize
 	{
 		self.bytes.len()
+	}
+
+	/// Find out what kind of message this is.
+	//
+	pub(crate) fn kind( &self ) -> WireType
+	{
+		match self.service()
+		{
+			x if x.is_null() => WireType::ConnectionError ,
+			x if x.is_full() => WireType::CallResponse    ,
+
+			_ =>
+			{
+				match self.conn_id()
+				{
+					x if x.is_null() => WireType::IncomingSend ,
+					_                => WireType::IncomingCall ,
+				}
+			}
+		}
 	}
 }
 
