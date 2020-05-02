@@ -326,10 +326,9 @@ impl Services
 	(
 		    msg      :  WireFormat            ,
 		    receiver : &Box< dyn Any + Send > ,
-		mut peer     :  Addr<Peer>            ,
 		mut ctx      :  ErrorContext          ,
 
-	) -> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
+	) -> Result< Pin<Box< dyn Future< Output=Result<Response, ThesRemoteErr> > + Send >>, ThesRemoteErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -401,22 +400,9 @@ impl Services
 			// has timed out, the remote peer will no longer have the cid in their list of open requests,
 			// so they would not know this was a response otherwise.
 			//
-			let response = WireFormat::create( ServiceID::full(), cid, serialized.into() ) ;
+			let resp = WireFormat::create( ServiceID::full(), cid, serialized.into() ) ;
 
-
-			// Send the response out over the network.
-			//
-			if peer.send( CallResponse::new( response ) ).await.is_err()
-			{
-				error!
-				(
-					"Peer: {}{:?}, processing incoming call: peer to client is closed before we finished sending a response to a request.",
-					peer.id()   ,
-					peer.name() ,
-				);
-			}
-
-			Ok(())
+			Ok( Response::CallResponse( CallResponse::new(resp) ))
 
 		}.boxed() )
 	}
@@ -450,7 +436,7 @@ impl ServiceMap for Services
 	//
 	fn send_service( &self, msg: WireFormat, ctx: ErrorContext )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response, ThesRemoteErr> > + Send >>, ThesRemoteErr >
 
 	{
 		let sid = msg.service();
@@ -495,7 +481,11 @@ impl ServiceMap for Services
 
 					Ok( async move
 					{
-						rec.send( message ).await.map_err( |_| ThesRemoteErr::HandlerDead{ ctx } )
+						match rec.send( message ).await
+						{
+							Ok (_) => Ok ( Response::Nothing                 ),
+							Err(_) => Err( ThesRemoteErr::HandlerDead{ ctx } ),
+						}
 
 					}.boxed() )
 				},
@@ -523,10 +513,9 @@ impl ServiceMap for Services
 	(
 		&self                ,
 		msg   : WireFormat   ,
-		peer  : Addr<Peer>   ,
 		ctx   : ErrorContext ,
 
-	) -> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
+	) -> Result< Pin<Box< dyn Future< Output=Result<Response, ThesRemoteErr> > + Send >>, ThesRemoteErr >
 	{
 		let sid = msg.service();
 		let ctx = ctx.context( "Services::call_service".to_string() );
@@ -548,7 +537,7 @@ impl ServiceMap for Services
 			$(
 				_ if sid == *<$services as Service>::sid() =>
 				{
-					Self::call_service_gen::<$services>( msg, &*receiver, peer, ctx )
+					Self::call_service_gen::<$services>( msg, &*receiver, ctx )
 				}
 			)+
 

@@ -92,7 +92,7 @@ impl Handler<Call> for Peer
 				error!( "{}: Failed to send timeout to self.", &identity );
 			}
 
-			Ok(())
+			Ok(Response::Nothing)
 		};
 
 

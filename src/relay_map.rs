@@ -1,4 +1,4 @@
-use crate :: { import::*, * };
+use crate :: { import::*, *, peer::Response };
 
 
 
@@ -35,7 +35,7 @@ impl ServiceMap for RelayMap
 	//
 	fn send_service( &self, msg: WireFormat, ctx: ErrorContext )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response, ThesRemoteErr> > + Send >>, ThesRemoteErr >
 	{
 		trace!( "RelayMap: Incoming Send for relayed actor." );
 
@@ -51,10 +51,11 @@ impl ServiceMap for RelayMap
 
 				let task = async move
 				{
-					a.send( msg ).await.map_err( |_|
+					match a.send( msg ).await
 					{
-						ThesRemoteErr::HandlerDead{ ctx }
-					})
+						Ok (_) => Ok ( Response::Nothing                 ) ,
+						Err(_) => Err( ThesRemoteErr::HandlerDead{ ctx } ) ,
+					}
 				};
 
 				Ok( task.boxed() )
@@ -67,10 +68,11 @@ impl ServiceMap for RelayMap
 
 				let task = async move
 				{
-					a.send( msg ).await.map_err( |_|
+					match a.send( msg ).await
 					{
-						ThesRemoteErr::HandlerDead{ ctx }
-					})
+						Ok (_) => Ok( Response::Nothing ),
+						Err(_) => Err( ThesRemoteErr::HandlerDead{ ctx } )
+					}
 				};
 
 				Ok( task.boxed() )			}
@@ -82,9 +84,9 @@ impl ServiceMap for RelayMap
 	/// This should take care of deserialization. The return address is the address of the peer
 	/// to which the serialized answer shall be send.
 	//
-	fn call_service( &self, frame: WireFormat, peer: Addr<Peer>, ctx: ErrorContext )
+	fn call_service( &self, frame: WireFormat, ctx: ErrorContext )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<(), ThesRemoteErr> > + Send >>, ThesRemoteErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response, ThesRemoteErr> > + Send >>, ThesRemoteErr >
 	{
 		trace!( "RelayMap: Incoming Call for relayed actor." );
 
@@ -92,8 +94,8 @@ impl ServiceMap for RelayMap
 
 		match &*self.handler.lock()
 		{
-			ServiceHandler::Address( a ) => Ok( make_call( a.clone_box(), frame, peer, ctx ).boxed() ),
-			ServiceHandler::Closure( c ) => Ok( make_call( c(&sid)      , frame, peer, ctx ).boxed() ),
+			ServiceHandler::Address( a ) => Ok( make_call( a.clone_box(), frame, ctx ).boxed() ),
+			ServiceHandler::Closure( c ) => Ok( make_call( c(&sid)      , frame, ctx ).boxed() ),
 		}
 	}
 
@@ -108,16 +110,16 @@ impl ServiceMap for RelayMap
 
 #[ allow(clippy::needless_return) ]
 //
-async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, mut peer: Addr<Peer>, ctx: ErrorContext )
+async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, ctx: ErrorContext )
 
-	-> Result<(), ThesRemoteErr >
+	-> Result<Response, ThesRemoteErr >
 
 	where T: Address<Call, Error=ThesErr> + ?Sized
 
 {
 	let cid        = frame.conn_id();
 	let ctx        = ctx.context( "Process incoming Call to relay".to_string() );
-
+	let peer_id    = ctx.peer_id;
 	let relay_id   = relay.id();
 	let relay_name = relay.name();
 	let relay_gone = ThesRemoteErr::RelayGone{ ctx, relay_id, relay_name };
@@ -127,7 +129,7 @@ async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, mut peer: Addr<Peer
 	//
 	let called = match relay.call( Call::new( frame ) ).await
 	{
-		Ok(c) => c,
+		Ok(x) => x,
 
 		// For now can only be mailbox closed.
 		//
@@ -139,7 +141,7 @@ async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, mut peer: Addr<Peer
 	//
 	let receiver = match called
 	{
-		Ok(c) => c,
+		Ok(x) => x,
 
 		// Sending out call to relayed failed. This normally only happens if the connection
 		// was closed, or a network transport malfunctioned.
@@ -169,16 +171,9 @@ async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, mut peer: Addr<Peer
 		//
 		Ok( resp ) =>
 		{
-			trace!( "Peer {}: Got response from relayed call, sending out.", &peer.id() );
+			trace!( "Peer {:?}: Got response from relayed call, sending out.", &peer_id );
 
-			// This can fail if we are no longer connected, in which case there isn't much to do.
-			//
-			if peer.send( resp ).await.is_err()
-			{
-				error!( "Peer {}: processing incoming call for relay: peer to client is closed before we finished sending a response to the request.", &peer.id() );
-			}
-
-			Ok(())
+			Ok( Response::CallResponse(CallResponse::new(resp)) )
 		},
 
 		// The relayed remote had errors while processing the request, such as deserialization.
@@ -188,14 +183,7 @@ async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, mut peer: Addr<Peer
 		{
 			let wire_format = Peer::prep_error( cid, &e );
 
-			// Just forward the error to the client.
-			//
-			if peer.send( wire_format ).await.is_err()
-			{
-				error!( "Peer {}: processing incoming call for relay failed and peer to client is closed before we finished sending an error back.", &peer.id() );
-			}
-
-			Ok(())
+			Ok( Response::WireFormat(wire_format) )
 		},
 	}
 }

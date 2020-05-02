@@ -12,17 +12,19 @@ use crate :: { import::*, * };
     mod call_response     ;
     mod incoming          ;
 pub mod request_error     ;
+    mod response          ;
     mod timeout           ;
 
-pub use backpressure      :: BackPressure     ;
-pub use call              :: Call             ;
-pub use call_response     :: CallResponse     ;
-pub use close_connection  :: CloseConnection  ;
-pub use connection_error  :: ConnectionError  ;
-pub use peer_event        :: PeerEvent        ;
-    use incoming          :: Incoming         ;
-    use request_error     :: RequestError     ;
-    use timeout           :: Timeout          ;
+pub use backpressure      :: BackPressure    ;
+pub use call              :: Call            ;
+pub use call_response     :: CallResponse    ;
+pub use close_connection  :: CloseConnection ;
+pub use connection_error  :: ConnectionError ;
+pub use peer_event        :: PeerEvent       ;
+    use incoming          :: Incoming        ;
+    use request_error     :: RequestError    ;
+pub use response          :: Response        ;
+    use timeout           :: Timeout         ;
 
 
 // Reduce trait bound boilerplate, since we have to repeat them all over
@@ -180,11 +182,11 @@ pub struct Peer
 
 	// All spawned requests will be collected here.
 	//
-	nursery_stream: Option<JoinHandle<Result<(), ThesRemoteErr>>>,
+	nursery_stream: Option<JoinHandle<Result<Response, ThesRemoteErr>>>,
 
 	// All spawned requests will be collected here.
 	//
-	nursery: Nursery<Arc< dyn SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static >, Result<(), ThesRemoteErr>>,
+	nursery: Nursery<Arc< dyn SpawnHandle<Result<Response, ThesRemoteErr>> + Send + Sync + 'static >, Result<Response, ThesRemoteErr>>,
 
 	// Set by close connection. We no longer want to process any messages after this.
 	//
@@ -200,11 +202,11 @@ impl Peer
 	//
 	pub fn new
 	(
-		addr     : Addr<Self>                                                          ,
-		incoming : impl BoundsIn                                                       ,
-		outgoing : impl BoundsOut                                                      ,
-		exec     : impl SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static ,
-		bp       : Option<Arc<BackPressure>>                                           ,
+		addr     : Addr<Self>                                                                ,
+		incoming : impl BoundsIn                                                             ,
+		outgoing : impl BoundsOut                                                            ,
+		exec     : impl SpawnHandle<Result<Response, ThesRemoteErr>> + Send + Sync + 'static ,
+		bp       : Option<Arc<BackPressure>>                                                 ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -213,7 +215,7 @@ impl Peer
 		trace!( "{}: Create peer", &addr );
 
 
-		let exec: Arc< dyn SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static > = Arc::new(exec);
+		let exec: Arc< dyn SpawnHandle<Result<Response, ThesRemoteErr>> + Send + Sync + 'static > = Arc::new(exec);
 		let (nursery, nursery_stream) = Nursery::new( exec.clone() );
 
 
@@ -256,9 +258,13 @@ impl Peer
 
 
 
-	/// The task that will listen to results returned by the spawned tasks that process requests.
-	/// These can be errors. In general it is considered that the errors returned directly by the
-	/// methods on ServiceMap contain relevant information for the Remote, but errors coming from
+	/// The task that will listen to results returned by the spawned tasks that process requests
+	/// as well as some other tasks that need to be confined to the lifetime of the Peer. These
+	/// include tasks spawned for timeouts, the task listening to incoming requests, ...
+	///
+	/// For request processing this either forwards responses to the peer for sending out, or errors
+	/// that need to be reported to the remote. In general it is considered that the errors returned directly
+	/// by the methods on ServiceMap contain relevant information for the Remote, but errors coming from
 	/// within the spawned tasks are just internal server errors. In any case RequestError will do
 	/// the right thing based on the error type, so this just forwards it to the handler for
 	/// RequestError.
@@ -267,38 +273,37 @@ impl Peer
 	//
 	async fn listen_request_results
 	(
-		mut stream: NurseryStream<Result<(), ThesRemoteErr>> ,
+		mut stream: NurseryStream<Result<Response, ThesRemoteErr>> ,
 		mut addr  : Addr<Peer>                               ,
 	)
-		-> Result<(), ThesRemoteErr>
+		-> Result<Response, ThesRemoteErr>
 
 	{
 		while let Some(result) = stream.next().await
 		{
-			match result
+			let res = match result
 			{
-				Ok(_) => {}
-
-				Err(err) =>
+				Ok(resp) => match resp
 				{
-					// TODO: we should probably only send it out for calls, not for sends.
-					//
-					if addr.send( RequestError::from( err.clone() ) ).await.is_err()
-					{
-						error!
-						(
-							"Peer ({}, {:?}): Processing incoming request: peer to client is closed, but processing request errored on: {}.",
-							addr.id()   ,
-							addr.name() ,
-							&err
-						);
-					}
+					Response::Nothing         => Ok(())               ,
+					Response::WireFormat  (x) => addr.send( x ).await ,
+					Response::CallResponse(x) => addr.send( x ).await ,
 				}
+
+				Err(err) => addr.send( RequestError::from( err.clone() ) ).await
+			};
+
+			// As we hold an address, the only way the mailbox can already be shut.
+			// Not much to do about it.
+			//
+			if res.is_err()
+			{
+				error!( "{} has panicked", Peer::identify_addr( &addr ) );
 			}
 
 		}
 
-		Ok(())
+		Ok(Response::Nothing)
 	}
 
 
@@ -312,7 +317,7 @@ impl Peer
 		mut addr    : Addr<Peer>                ,
 		    bp      : Option<Arc<BackPressure>> ,
 	)
-		-> Result<(), ThesRemoteErr>
+		-> Result<Response, ThesRemoteErr>
 
 	{
 		// This can fail if:
@@ -343,7 +348,7 @@ impl Peer
 		//
 		addr.send( CloseConnection{ remote: true, reason: "Connection closed by remote.".to_string() } ).await.expect( "peer send to self");
 
-		Ok(())
+		Ok(Response::Nothing)
 	}
 
 
@@ -363,10 +368,10 @@ impl Peer
 	//
 	pub fn from_async_read
 	(
-		addr        : Addr<Self>                                                          ,
-		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static          ,
-		max_size    : usize                                                               ,
-		exec        : impl SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static ,
+		addr        : Addr<Self>                                                                ,
+		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static                ,
+		max_size    : usize                                                                     ,
+		exec        : impl SpawnHandle<Result<Response, ThesRemoteErr>> + Send + Sync + 'static ,
 		bp          : Option<Arc<BackPressure>>                                           ,
 	)
 
@@ -397,11 +402,11 @@ impl Peer
 	//
 	pub fn from_tokio_async_read
 	(
-		addr        : Addr<Self>                                                          ,
-		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static             ,
-		max_size    : usize                                                               ,
-		exec        : impl SpawnHandle<Result<(), ThesRemoteErr>> + Send + Sync + 'static ,
-		bp          : Option<Arc<BackPressure>>                                           ,
+		addr        : Addr<Self>                                                                ,
+		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static                   ,
+		max_size    : usize                                                                     ,
+		exec        : impl SpawnHandle<Result<Response, ThesRemoteErr>> + Send + Sync + 'static ,
+		bp          : Option<Arc<BackPressure>>                                                 ,
 	)
 
 		-> Result< Self, ThesRemoteErr >
@@ -544,6 +549,16 @@ impl Peer
 		{
 			None           => format!( "Peer: id: {}"          , self.id       ),
 			Some(ref name) => format!( "Peer: id: {}, name: {}", self.id, name ),
+		}
+	}
+
+
+	pub fn identify_addr( addr: &Addr<Peer> ) -> String
+	{
+		match addr.name()
+		{
+			None           => format!( "Peer: id: {}"          , addr.id()       ),
+			Some(ref name) => format!( "Peer: id: {}, name: {}", addr.id(), name ),
 		}
 	}
 
