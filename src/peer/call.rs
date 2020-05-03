@@ -19,7 +19,7 @@ impl Message for Call
 	/// We do not await the receiver in the async handle method below, since we don't want
 	/// to hang the peer whilst waiting for the response. That's why we return a channel.
 	//
-	type Return = Result< oneshot::Receiver<Result<WireFormat, ConnectionError>>, ThesRemoteErr >;
+	type Return = Result< oneshot::Receiver<Result<WireFormat, ConnectionError>>, PeerErr >;
 }
 
 impl Call
@@ -38,7 +38,7 @@ impl Call
 ///
 /// If the sending to the remote succeeds, you get back a oneshot receiver.
 ///
-/// If sending to the remote fails, you get a ThesRemoteErr.
+/// If sending to the remote fails, you get a PeerErr.
 /// If the connection gets dropped before the answer comes, the oneshot::Receiver will err with Canceled.
 /// If the remote fails to process the message, you will get a ConnectionError out of the channel.
 //
@@ -58,7 +58,7 @@ impl Handler<Call> for Peer
 		{
 			let ctx = self.ctx( None, None, "Handler<Call> for Peer" );
 
-			return Err( ThesRemoteErr::ConnectionClosed{ ctx } );
+			return Err( PeerErr::ConnectionClosed{ ctx } );
 		};
 
 
@@ -100,7 +100,7 @@ impl Handler<Call> for Peer
 		{
 			let ctx = self.ctx( sid2, None, "timeout for outgoing Call" );
 
-			ThesRemoteErr::Spawn{ ctx }
+			PeerErr::Spawn{ ctx }
 
 		})?;
 

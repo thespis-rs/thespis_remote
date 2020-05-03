@@ -1,4 +1,4 @@
-use crate::{ import::*, ConnID, ServiceID, ConnectionError };
+use crate::{ import::*, ConnID, ServiceID, ConnectionError, WireErr };
 
 
 /// Errors that can happen in thespis_impl.
@@ -41,25 +41,6 @@ pub enum PeerErr
 		ctx: PeerErrCtx
 	},
 
-	/// Maximum message size exceeded.
-	//
-	#[ error( "{}", self.clone().remote_err() ) ]
-	//
-	MessageSizeExceeded
-	{
-		/// The context in which the error happened.
-		//
-		context: String ,
-
-		/// The size of the received message.
-		//
-		size: usize  ,
-
-		/// The maximum allowed message size.
-		//
-		max_size: usize  ,
-	},
-
 	/// Failed to deserialize an Actor message. The message data will be dropped and the remote will be notified of the error.
 	/// The connection shall remain functional.
 	//
@@ -72,15 +53,16 @@ pub enum PeerErr
 		ctx: PeerErrCtx
 	},
 
-	/// Failed to deserialize incoming data. The connection will be closed because the stream integrity can no longer be assumed.
+	/// Error for encoding/decoding the bytestream or underlying IO errors.
 	//
-	#[ error( "Failed to deserialize incoming data. The connection will be closed because the stream integrity can no longer be assumed{ctx}" ) ]
+	#[ error( "An error happened on the underlying stream: {source}" ) ]
 	//
-	DeserializeWireFormat
+	WireFormat
 	{
 		/// The contex in which the error happened.
 		//
-		ctx: PeerErrCtx
+		ctx   : PeerErrCtx ,
+		source: WireErr    ,
 	},
 
 	/// Failed to deserialize.
@@ -170,20 +152,8 @@ pub enum PeerErr
 	/// the same method.
 	//
 	#[ error( "PeerErr in context: {}", _0 ) ]
-	//
+
 	ThesErr( ThesErr ),
-
-
-	/// An io::Error happenend in the underlying network connection.
-	//
-	#[ error( "Io: {:?}", context ) ]
-	//
-	Io
-	{
-		/// The ErrorKind
-		//
-		context: std::io::ErrorKind
-	},
 }
 
 
@@ -196,16 +166,30 @@ impl PeerErr
 	{
 		match self
 		{
-			Self::MessageSizeExceeded{ context, size, max_size } =>
-			{
-				format!( "Maximum message size exceeded: context: {}, actual: {} bytes, allowed: {} bytes." , &context, &size, &max_size )
-			}
-
-			Self::Deserialize{ mut ctx } =>
+			Self::WireFormat{ source, mut ctx } =>
 			{
 				ctx.peer_id   = None;
 				ctx.peer_name = None;
 
+				match source
+				{
+					WireErr::MessageSizeExceeded{ context, size, max_size } =>
+
+						format!( "Maximum message size exceeded: context: {}, actual: {} bytes, allowed: {} bytes." , &context, &size, &max_size ),
+
+					WireErr::Deserialize{..} =>
+
+						format!( "Could not deserialize your message{}", &ctx ),
+
+					WireErr::Io{..} =>
+
+						format!( "An error happened on the underlying transport{}", &ctx ),
+				}
+
+			}
+
+			Self::Deserialize{ ctx } =>
+			{
 				format!( "Could not deserialize your message{}", &ctx )
 			}
 
@@ -221,16 +205,6 @@ impl From<ThesErr> for PeerErr
 	fn from( cause: ThesErr ) -> PeerErr
 	{
 		PeerErr::ThesErr( cause )
-	}
-}
-
-
-
-impl From< std::io::Error > for PeerErr
-{
-	fn from( inner: std::io::Error ) -> PeerErr
-	{
-		PeerErr::Io{ context: inner.kind() }
 	}
 }
 

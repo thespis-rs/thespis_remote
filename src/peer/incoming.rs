@@ -9,7 +9,7 @@ use
 //
 pub(super) struct Incoming
 {
-	pub(crate) msg: Result<WireFormat, ThesRemoteErr>
+	pub(crate) msg: Result<WireFormat, WireErr>
 }
 
 impl Message for Incoming
@@ -40,10 +40,12 @@ impl Handler<Incoming> for Peer
 			Err( error ) =>
 			{
 				// Can be:
-				// - MessageSizeExceeded (Codec)
-				// - DeserializeWireFormat (WireFormat)
+				// - WireErr::MessageSizeExceeded (Codec)
+				// - WireErr::Deserialize (WireFormat)
 				//
-				self.handle( RequestError::from( error ) ).await;
+				let err = PeerErr::WireFormat{ source: error, ctx: self.ctx( None, None, "Incoming message" ) };
+
+				self.handle( RequestError::from( err ) ).await;
 
 				return
 			}
@@ -165,7 +167,7 @@ impl Peer
 			//
 			None =>
 			{
-				let err = ThesRemoteErr::UnknownService{ ctx };
+				let err = PeerErr::UnknownService{ ctx };
 
 				self.handle( RequestError::from( err ) ).await;
 
@@ -186,9 +188,9 @@ impl Peer
 
 				let err = match e
 				{
-					ThesRemoteErr::NoHandler  {..} => ThesRemoteErr::NoHandler  {ctx},
-					ThesRemoteErr::Downcast   {..} => ThesRemoteErr::Downcast   {ctx},
-					ThesRemoteErr::Deserialize{..} => ThesRemoteErr::Deserialize{ctx},
+					PeerErr::NoHandler  {..} => PeerErr::NoHandler  {ctx},
+					PeerErr::Downcast   {..} => PeerErr::Downcast   {ctx},
+					PeerErr::Deserialize{..} => PeerErr::Deserialize{ctx},
 					_                              => unreachable!(),
 				};
 
@@ -204,7 +206,7 @@ impl Peer
 		{
 			let ctx = self.ctx( sid.clone(), None, "sm.send_service" );
 
-			let err = ThesRemoteErr::Spawn { ctx };
+			let err = PeerErr::Spawn { ctx };
 
 			// If we are no longer around, just log the error.
 			//
@@ -244,7 +246,7 @@ impl Peer
 			//
 			None =>
 			{
-				let err = ThesRemoteErr::UnknownService{ ctx };
+				let err = PeerErr::UnknownService{ ctx };
 
 				return self.handle( RequestError::from( err ) ).await;
 			}
@@ -264,7 +266,7 @@ impl Peer
 		//
 		if self.nursery.nurse( fut ).is_err()
 		{
-			let err = ThesRemoteErr::Spawn{ ctx	};
+			let err = PeerErr::Spawn{ ctx	};
 
 			self.handle( RequestError::from( err ) ).await;
 		}

@@ -3,12 +3,14 @@
 mod unique_id  ;
 mod conn_id    ;
 mod service_id ;
+mod wire_err   ;
 mod wire_type  ;
 
 pub use
 {
 	service_id :: * ,
 	conn_id    :: * ,
+	wire_err   :: * ,
 };
 
 pub(crate) use wire_type::WireType;
@@ -17,7 +19,7 @@ pub(crate) use wire_type::WireType;
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub mod codec   ;
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub use codec::*;
 
-use crate::{ import::*, ThesRemoteErr, ErrorContext };
+use crate::{ import::*, PeerErr };
 
 const HEADER_LEN: usize = 32;
 
@@ -83,7 +85,7 @@ pub struct WireFormat
 
 impl Message for WireFormat
 {
-	type Return = Result<(), ThesRemoteErr>;
+	type Return = Result<(), PeerErr>;
 }
 
 
@@ -175,9 +177,9 @@ impl Into< Bytes > for WireFormat
 
 impl TryFrom< Bytes > for WireFormat
 {
-	type Error = ThesRemoteErr;
+	type Error = WireErr;
 
-	fn try_from( bytes: Bytes ) -> Result< Self, ThesRemoteErr >
+	fn try_from( bytes: Bytes ) -> Result< Self, WireErr >
 	{
 		// at least verify we have enough bytes
 		// We allow an empty message. In principle I suppose a zero sized type could be
@@ -185,15 +187,7 @@ impl TryFrom< Bytes > for WireFormat
 		//
 		if bytes.len() < HEADER_LEN
 		{
-			return Err( ThesRemoteErr::DeserializeWireFormat{ ctx: ErrorContext
-			{
-				context  : "WireFormat: not enough bytes even for the header.".to_string().into() ,
-				sid      : None                                                                   ,
-				cid      : None                                                                   ,
-				peer_id  : None                                                                   ,
-				peer_name: None                                                                   ,
-
-			}});
+			return Err( WireErr::Deserialize{ context: "WireFormat: not enough bytes even for the header.".to_string() } );
 		}
 
 		Ok( Self { bytes } )
@@ -232,8 +226,8 @@ mod tests
 
 			Err(e) => match e
 			{
-				ThesRemoteErr::DeserializeWireFormat{..} => {}
-				_                                        => panic!( "Wrong error type (should be DeserializeWireFormat): {:?}", e ),
+				WireErr::Deserialize{..} => {}
+				_                        => panic!( "Wrong error type (should be DeserializeWireFormat): {:?}", e ),
 			}
 		}
 	}

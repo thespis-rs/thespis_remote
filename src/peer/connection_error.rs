@@ -34,7 +34,7 @@ pub enum ConnectionError
 	// The connection timed out while waiting for a response to a Call.
 	// This will actually be used internally when an outgoing call times out, since we need to
 	// send that over the channel which takes this error type. RemoteAddress will translate this in
-	// a ThesRemoteErr. Client code should never observe this variant.
+	// a PeerErr. Client code should never observe this variant.
 	//
 	#[ doc( hidden ) ] #[ error( "Timed out waiting for a response to a call (sid: {0})." ) ]
 	//

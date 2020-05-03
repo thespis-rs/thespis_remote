@@ -21,7 +21,7 @@ pub fn peer_listen
 (
 	socket: TokioEndpoint                                ,
 	sm    : Arc<impl ServiceMap + Send + Sync + 'static> ,
-	exec  : impl Spawn + SpawnHandle< Result<Response, ThesRemoteErr> > + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static ,
 	name  : &'static str                                 ,
 )
 
@@ -50,7 +50,7 @@ pub fn peer_listen
 pub async fn peer_connect
 (
 	socket: TokioEndpoint,
-	exec: impl Spawn + SpawnHandle< Result<Response, ThesRemoteErr> > + Clone + Send + Sync + 'static,
+	exec: impl Spawn + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static,
 	name: &'static str
 )
 	-> (Addr<Peer>, Events<PeerEvent>)
@@ -142,7 +142,7 @@ fn remote()
 //
 pub struct Parallel
 {
-	pub sum: Box< dyn Address<Show, Error=ThesRemoteErr> >,
+	pub sum: Box< dyn Address<Show, Error=PeerErr> >,
 }
 
 
@@ -291,7 +291,7 @@ fn call_after_close_connection()
 			{
 				match e
 				{
-					ThesRemoteErr::ConnectionClosed{..} => {}
+					PeerErr::ConnectionClosed{..} => {}
 					_                                   => panic!( "wrong error: {:?}", e ) ,
 				}
 			}

@@ -66,7 +66,7 @@ fn no_handler()
 
 			Err
 			(
-				ThesRemoteErr::Remote
+				PeerErr::Remote
 				{
 					ctx: _,
 					err: ConnectionError::InternalServerError
@@ -87,7 +87,7 @@ fn no_handler()
 
 			Err
 			(
-				ThesRemoteErr::Remote
+				PeerErr::Remote
 				{
 					ctx: _,
 					err: ConnectionError::InternalServerError

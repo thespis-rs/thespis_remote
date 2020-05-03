@@ -106,7 +106,7 @@ fn timeout()
 
 		let resp = remote_addr.call( Add(1) ).await;
 
-		assert_matches!( resp, Err( ThesRemoteErr::Timeout{..} ) );
+		assert_matches!( resp, Err( PeerErr::Timeout{..} ) );
 		assert_eq!     ( COUNTER.load( Ordering::SeqCst ), 0 );
 
 		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );

@@ -1,7 +1,7 @@
 use crate::{ import::*, * };
 
 /// Errors that happen on  processing requests. This type is not in the public API.
-/// Since both Peer and ThesRemoteErr are public and we don't want users to be able
+/// Since both Peer and PeerErr are public and we don't want users to be able
 /// to send this type to peer, we wrap it.
 ///
 /// When requests come in over the network, we spawn a new task to handle each request.
@@ -11,7 +11,7 @@ use crate::{ import::*, * };
 /// So Peer implements Handler for these and they will send errors as actor messages to
 /// be processed here.
 ///
-/// In the public API there is ThesRemoteErr for the local process and ConnectionError which is
+/// In the public API there is PeerErr for the local process and ConnectionError which is
 /// a serializable error to be sent to remotes. ConnectionError also strips some information that
 /// should not be leaked to a remote by grouping a number of errors into InternalServerError.
 ///
@@ -44,7 +44,7 @@ use crate::{ import::*, * };
 //
 pub struct RequestError
 {
-	pub(crate) error: ThesRemoteErr
+	pub(crate) error: PeerErr
 }
 
 impl Message for RequestError
@@ -59,29 +59,19 @@ impl Handler<RequestError> for Peer
 {
 	fn handle( &mut self, msg: RequestError ) -> Return<'_, ()> { async move
 	{
-		// All errors get logged.
-		//
-		error!( "{}: {}", self.identify(), msg.error );
-
 		// All errors get reported through pharos.
 		// expect: pharos shouldn't be closed unless we close it and we don't.
 		//
 		self.pharos.send( PeerEvent::Error( msg.error.clone() ) ).await.expect( "pharos not closed" );
 
 
+		// Send errors back to the remote.
+		//
 		match msg.error
 		{
-			ThesRemoteErr::MessageSizeExceeded{..} =>
-			{
-				// Report to remote and close connection as the stream is no longer coherent.
-				//
-				let err = ConnectionError::DeserializeWireFormat{ context: msg.error.remote_err() };
-
-				self.send_err( ConnID::null(), &err, true ).await;
-			}
-
-
-			ThesRemoteErr::DeserializeWireFormat{ ref ctx } =>
+			// TODO: need to decide what to do.
+			//
+			PeerErr::WireFormat{ ref ctx, .. } =>
 			{
 				let cid = ctx.cid.as_ref().cloned().unwrap_or_else( ConnID::null );
 
@@ -96,7 +86,7 @@ impl Handler<RequestError> for Peer
 			}
 
 
-			ThesRemoteErr::Deserialize{ ctx } =>
+			PeerErr::Deserialize{ ctx } =>
 			{
 				// Report to remote and close connection as the stream is no longer coherent.
 				//
@@ -109,8 +99,8 @@ impl Handler<RequestError> for Peer
 			}
 
 
-			  ThesRemoteErr::Downcast{ ctx }
-			| ThesRemoteErr::Spawn   { ctx } =>
+			  PeerErr::Downcast{ ctx }
+			| PeerErr::Spawn   { ctx } =>
 			{
 				// Report to remote and close connection. When we can't spawn, we can't process
 				// any more incoming message, so it seems sensible to close the connection.
@@ -121,9 +111,9 @@ impl Handler<RequestError> for Peer
 			}
 
 
-			  ThesRemoteErr::RelayGone  { ctx, .. }
-			| ThesRemoteErr::NoHandler  { ctx     }
-			| ThesRemoteErr::HandlerDead{ ctx     } =>
+			  PeerErr::RelayGone  { ctx, .. }
+			| PeerErr::NoHandler  { ctx     }
+			| PeerErr::HandlerDead{ ctx     } =>
 			{
 				// Report to remote, we don't close the connection because we might expose other
 				// services that are still operational, or the actor might be in the process of
@@ -138,7 +128,7 @@ impl Handler<RequestError> for Peer
 			// This means we fail to serialize the response of a call. This is no error from the
 			// remote, but from the local process.
 			//
-			ThesRemoteErr::Serialize{ ctx } =>
+			PeerErr::Serialize{ ctx } =>
 			{
 				// Report to remote, we don't close the connection because this might work again later.
 				//
@@ -148,7 +138,7 @@ impl Handler<RequestError> for Peer
 			}
 
 
-			ThesRemoteErr::UnknownService{ ctx } =>
+			PeerErr::UnknownService{ ctx } =>
 			{
 				// This is not fatal, NOT closing the connection.
 				//
@@ -169,9 +159,9 @@ impl Handler<RequestError> for Peer
 
 
 
-impl From<ThesRemoteErr> for RequestError
+impl From<PeerErr> for RequestError
 {
-	fn from( error: ThesRemoteErr ) -> Self
+	fn from( error: PeerErr ) -> Self
 	{
 		Self { error }
 	}

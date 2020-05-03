@@ -24,7 +24,6 @@
 )]
 
 
-    mod error             ;
 pub mod peer              ;
     mod relay_map         ;
     mod service_map_macro ;
@@ -34,7 +33,6 @@ pub mod wire_format       ;
 
 pub use
 {
-	error             :: * ,
 	peer              :: * ,
 	relay_map         :: * ,
 	service_map       :: * ,

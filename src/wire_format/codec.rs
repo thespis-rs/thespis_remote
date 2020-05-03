@@ -1,6 +1,6 @@
 //! The codec to frame the connection with our wire format.
 //
-use crate::{ import::*, WireFormat, ThesRemoteErr };
+use crate::{ import::*, WireFormat, WireErr };
 use super::HEADER_LEN;
 
 /// The tokio/futures codec to frame AsyncRead/Write streams.
@@ -32,7 +32,7 @@ impl ThesCodec
 	// In principle we would like to not have to serialize the inner message
 	// before having access to this buffer.
 	//
-	fn encode_impl( &mut self, item: WireFormat, buf: &mut BytesMut ) -> Result<(), ThesRemoteErr>
+	fn encode_impl( &mut self, item: WireFormat, buf: &mut BytesMut ) -> Result<(), WireErr>
 	{
 		let payload_len = item.len() - HEADER_LEN;
 
@@ -40,11 +40,11 @@ impl ThesCodec
 		//
 		if payload_len > self.max_size
 		{
-			return Err( ThesRemoteErr::MessageSizeExceeded
+			return Err( WireErr::MessageSizeExceeded
 			{
 				context : "WireFormat Codec encoder".to_string() ,
 				size    : payload_len                            ,
-				max_size: self.max_size                        ,
+				max_size: self.max_size                          ,
 			})
 		}
 
@@ -59,7 +59,7 @@ impl ThesCodec
 	}
 
 
-	fn decode_impl( &mut self, buf: &mut BytesMut ) -> Result< Option<WireFormat>, ThesRemoteErr >
+	fn decode_impl( &mut self, buf: &mut BytesMut ) -> Result< Option<WireFormat>, WireErr >
 	{
 		// trace!( "Decoding incoming message: {:?}", &buf );
 
@@ -70,15 +70,15 @@ impl ThesCodec
 
 		// parse the first 8 bytes to find out the total length of the message
 		//
-		let mut tmp     = Bytes::from( buf[..8].to_vec() );
-		let mut len     = tmp.get_u64_le() as usize;
-		let payload_len = len - HEADER_LEN - 8;
+		let mut tmp     = Bytes::from( buf[..8].to_vec() ) ;
+		let mut len     = tmp.get_u64_le() as usize        ;
+		let payload_len = len - HEADER_LEN - 8             ;
 
 		// respect the max_size
 		//
 		if payload_len > self.max_size
 		{
-			return Err( ThesRemoteErr::MessageSizeExceeded
+			return Err( WireErr::MessageSizeExceeded
 			{
 				context : "WireFormat Codec decoder".to_string() ,
 				size    : payload_len                            ,
@@ -109,8 +109,8 @@ impl ThesCodec
 //
 impl FutDecoder for ThesCodec
 {
-	type Item  = WireFormat    ;
-	type Error = ThesRemoteErr ;
+	type Item  = WireFormat ;
+	type Error = WireErr    ;
 
 	fn decode( &mut self, buf: &mut BytesMut ) -> Result< Option<Self::Item>, Self::Error >
 	{
@@ -123,8 +123,8 @@ impl FutDecoder for ThesCodec
 //
 impl FutEncoder for ThesCodec
 {
-	type Item  = WireFormat    ;
-	type Error = ThesRemoteErr ;
+	type Item  = WireFormat ;
+	type Error = WireErr    ;
 
 	fn encode( &mut self, item: Self::Item, buf: &mut BytesMut ) -> Result<(), Self::Error>
 	{
@@ -137,8 +137,8 @@ impl FutEncoder for ThesCodec
 //
 impl TokioDecoder for ThesCodec
 {
-	type Item  = WireFormat    ;
-	type Error = ThesRemoteErr ;
+	type Item  = WireFormat ;
+	type Error = WireErr    ;
 
 	fn decode( &mut self, buf: &mut BytesMut ) -> Result< Option<Self::Item>, Self::Error >
 	{
@@ -152,8 +152,8 @@ impl TokioDecoder for ThesCodec
 //
 impl TokioEncoder for ThesCodec
 {
-	type Item  = WireFormat    ;
-	type Error = ThesRemoteErr ;
+	type Item  = WireFormat ;
+	type Error = WireErr    ;
 
 	fn encode( &mut self, item: Self::Item, buf: &mut BytesMut ) -> Result<(), Self::Error>
 	{
@@ -292,7 +292,7 @@ macro_rules! test_codec
 			(
 				res.expect_err( "exceeding max size should give an error" ),
 
-				ThesRemoteErr::MessageSizeExceeded
+				WireErr::MessageSizeExceeded
 				{
 					context : "WireFormat Codec encoder".to_string() ,
 					size    : 5                                      ,

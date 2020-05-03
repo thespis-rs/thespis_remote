@@ -33,9 +33,9 @@ impl ServiceMap for RelayMap
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//
-	fn send_service( &self, msg: WireFormat, ctx: ErrorContext )
+	fn send_service( &self, msg: WireFormat, ctx: PeerErrCtx )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<Response, ThesRemoteErr> > + Send >>, ThesRemoteErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 	{
 		trace!( "RelayMap: Incoming Send for relayed actor." );
 
@@ -54,7 +54,7 @@ impl ServiceMap for RelayMap
 					match a.send( msg ).await
 					{
 						Ok (_) => Ok ( Response::Nothing                 ) ,
-						Err(_) => Err( ThesRemoteErr::HandlerDead{ ctx } ) ,
+						Err(_) => Err( PeerErr::HandlerDead{ ctx } ) ,
 					}
 				};
 
@@ -71,7 +71,7 @@ impl ServiceMap for RelayMap
 					match a.send( msg ).await
 					{
 						Ok (_) => Ok( Response::Nothing ),
-						Err(_) => Err( ThesRemoteErr::HandlerDead{ ctx } )
+						Err(_) => Err( PeerErr::HandlerDead{ ctx } )
 					}
 				};
 
@@ -84,9 +84,9 @@ impl ServiceMap for RelayMap
 	/// This should take care of deserialization. The return address is the address of the peer
 	/// to which the serialized answer shall be send.
 	//
-	fn call_service( &self, frame: WireFormat, ctx: ErrorContext )
+	fn call_service( &self, frame: WireFormat, ctx: PeerErrCtx )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<Response, ThesRemoteErr> > + Send >>, ThesRemoteErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 	{
 		trace!( "RelayMap: Incoming Call for relayed actor." );
 
@@ -110,9 +110,9 @@ impl ServiceMap for RelayMap
 
 #[ allow(clippy::needless_return) ]
 //
-async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, ctx: ErrorContext )
+async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, ctx: PeerErrCtx )
 
-	-> Result<Response, ThesRemoteErr >
+	-> Result<Response, PeerErr >
 
 	where T: Address<Call, Error=ThesErr> + ?Sized
 
@@ -122,7 +122,7 @@ async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, ctx: ErrorContext )
 	let peer_id    = ctx.peer_id;
 	let relay_id   = relay.id();
 	let relay_name = relay.name();
-	let relay_gone = ThesRemoteErr::RelayGone{ ctx, relay_id, relay_name };
+	let relay_gone = PeerErr::RelayGone{ ctx, relay_id, relay_name };
 
 	// Peer for relay still online.
 	// TODO: use map_err when rustc supports it... currently relay_gone would have to be cloned.

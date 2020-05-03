@@ -171,7 +171,7 @@ fn header_unknown_service_error()
 
 		match evts.next().await.unwrap()
 		{
-			PeerEvent::Error( ThesRemoteErr::UnknownService{ ctx } ) =>
+			PeerEvent::Error( PeerErr::UnknownService{ ctx } ) =>
 			{
 				assert_eq!( ctx.sid, sid );
 			}
@@ -248,12 +248,12 @@ async fn call_deserialize()
 
 		match evts.next().await.unwrap()
 		{
-			PeerEvent::Error( ThesRemoteErr::Deserialize{ ctx } ) =>
+			PeerEvent::Error( PeerErr::Deserialize{ ctx } ) =>
 			{
 				assert_eq!( ctx.context.unwrap(), "Services::call_service" );
 			}
 
-			_ => unreachable!( "Should be PeerEvent::Error( ThesRemoteErr::Deserialize" )
+			_ => unreachable!( "Should be PeerEvent::Error( PeerErr::Deserialize" )
 		}
 
 		handle.await;
@@ -342,12 +342,12 @@ fn sm_deserialize_error()
 
 		match evts.next().await.unwrap()
 		{
-			PeerEvent::Error( ThesRemoteErr::Deserialize{ ctx } ) =>
+			PeerEvent::Error( PeerErr::Deserialize{ ctx } ) =>
 			{
 				assert_eq!( ctx.context.unwrap(), "sm.send_service" );
 			}
 
-			_ => unreachable!( "Should be PeerEvent::Error( ThesRemoteErr::Deserialize" )
+			_ => unreachable!( "Should be PeerEvent::Error( PeerErr::Deserialize" )
 		}
 
 		handle.await;

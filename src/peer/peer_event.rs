@@ -1,4 +1,4 @@
-use crate::{ ThesRemoteErr, ConnectionError };
+use crate::{ PeerErr, ConnectionError };
 
 
 /// Events that can happen during the lifecycle of the peer. Use the [`observe`] method to subscribe to events.
@@ -28,7 +28,7 @@ pub enum PeerEvent
 	/// handling incoming messages, and thus are not triggered by a method call from
 	/// client code. They are returned here out of band.
 	//
-	Error( ThesRemoteErr ),
+	Error( PeerErr ),
 
 	/// The remote endpoint signals that they encountered an error while handling one of
 	/// our messages.

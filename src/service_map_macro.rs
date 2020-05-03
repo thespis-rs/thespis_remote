@@ -326,9 +326,9 @@ impl Services
 	(
 		    msg      :  WireFormat            ,
 		    receiver : &Box< dyn Any + Send > ,
-		mut ctx      :  ErrorContext          ,
+		mut ctx      :  PeerErrCtx          ,
 
-	) -> Result< Pin<Box< dyn Future< Output=Result<Response, ThesRemoteErr> > + Send >>, ThesRemoteErr >
+	) -> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -341,7 +341,7 @@ impl Services
 		let message: S = match des( &msg.mesg() )
 		{
 			Ok (x) => x,
-			Err(_) => return Err( ThesRemoteErr::Deserialize{ ctx } )
+			Err(_) => return Err( PeerErr::Deserialize{ ctx } )
 		};
 
 
@@ -350,7 +350,7 @@ impl Services
 		let backup: &Receiver<S> = match receiver.downcast_ref()
 		{
 			Some(x) => x,
-			None    => return Err( ThesRemoteErr::Downcast{ ctx } )
+			None    => return Err( PeerErr::Downcast{ ctx } )
 		};
 
 
@@ -371,7 +371,7 @@ impl Services
 					//
 					ctx.context.as_mut().map( |c| c.push_str( " - Process call for local Actor" ) );
 
-					return Err( ThesRemoteErr::HandlerDead{ ctx } );
+					return Err( PeerErr::HandlerDead{ ctx } );
 				}
 			};
 
@@ -390,7 +390,7 @@ impl Services
 					//
 					ctx.context.as_mut().map( |c| c.push_str( " - Response to remote call" ) );
 
-					return Err( ThesRemoteErr::Serialize{ ctx } );
+					return Err( PeerErr::Serialize{ ctx } );
 				}
 			};
 
@@ -430,13 +430,13 @@ impl ServiceMap for Services
 	/// Will match the type of the service id to deserialize the message and send it to the handling actor.
 	///
 	/// This can return the following errors:
-	/// - ThesRemoteErr::Downcast
-	/// - ThesRemoteErr::UnknownService
-	/// - ThesRemoteErr::Deserialize
+	/// - PeerErr::Downcast
+	/// - PeerErr::UnknownService
+	/// - PeerErr::Deserialize
 	//
-	fn send_service( &self, msg: WireFormat, ctx: ErrorContext )
+	fn send_service( &self, msg: WireFormat, ctx: PeerErrCtx )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<Response, ThesRemoteErr> > + Send >>, ThesRemoteErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 
 	{
 		let sid = msg.service();
@@ -446,7 +446,7 @@ impl ServiceMap for Services
 		//
 		let receiver = self.handlers.get( &sid )
 
-			.ok_or_else( || ThesRemoteErr::NoHandler{ ctx: ctx.clone() } )?
+			.ok_or_else( || PeerErr::NoHandler{ ctx: ctx.clone() } )?
 			.lock()
 		;
 
@@ -463,7 +463,7 @@ impl ServiceMap for Services
 					let rec: &Receiver<$services> = match receiver.downcast_ref()
 					{
 						Some(x) => x,
-						None    => return Err( ThesRemoteErr::Downcast{ ctx } ),
+						None    => return Err( PeerErr::Downcast{ ctx } ),
 					};
 
 					// Deserialize.
@@ -471,7 +471,7 @@ impl ServiceMap for Services
 					let message: $services = match des( &msg.mesg() )
 					{
 						Ok (x) => x,
-						Err(_) => return Err( ThesRemoteErr::Deserialize{ ctx } ),
+						Err(_) => return Err( PeerErr::Deserialize{ ctx } ),
 					};
 
 
@@ -484,7 +484,7 @@ impl ServiceMap for Services
 						match rec.send( message ).await
 						{
 							Ok (_) => Ok ( Response::Nothing                 ),
-							Err(_) => Err( ThesRemoteErr::HandlerDead{ ctx } ),
+							Err(_) => Err( PeerErr::HandlerDead{ ctx } ),
 						}
 
 					}.boxed() )
@@ -493,7 +493,7 @@ impl ServiceMap for Services
 
 			_ =>
 			{
-				Err( ThesRemoteErr::NoHandler{ ctx } )
+				Err( PeerErr::NoHandler{ ctx } )
 			}
 		}
 	}
@@ -504,18 +504,18 @@ impl ServiceMap for Services
 	/// It returns a future that actually calls the handling actor. This futures is spawned by Peer.
 	///
 	/// This can return the following errors:
-	/// - ThesRemoteErr::Downcast
-	/// - ThesRemoteErr::UnknownService
-	/// - ThesRemoteErr::Deserialize
-	/// - ThesRemoteErr::ThesErr -> Spawn error
+	/// - PeerErr::Downcast
+	/// - PeerErr::UnknownService
+	/// - PeerErr::Deserialize
+	/// - PeerErr::ThesErr -> Spawn error
 	//
 	fn call_service
 	(
 		&self                ,
 		msg   : WireFormat   ,
-		ctx   : ErrorContext ,
+		ctx   : PeerErrCtx ,
 
-	) -> Result< Pin<Box< dyn Future< Output=Result<Response, ThesRemoteErr> > + Send >>, ThesRemoteErr >
+	) -> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 	{
 		let sid = msg.service();
 		let ctx = ctx.context( "Services::call_service".to_string() );
@@ -528,7 +528,7 @@ impl ServiceMap for Services
 
 			None =>
 			{
-				return Err( ThesRemoteErr::NoHandler{ ctx } )
+				return Err( PeerErr::NoHandler{ ctx } )
 			}
 		};
 
@@ -542,7 +542,7 @@ impl ServiceMap for Services
 			)+
 
 
-			_ => return Err( ThesRemoteErr::UnknownService{ ctx } )
+			_ => return Err( PeerErr::UnknownService{ ctx } )
 		}
 	}
 }
@@ -578,7 +578,7 @@ impl RemoteAddr
 
 	/// Take the raw message and turn it into a MultiService
 	//
-	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< WireFormat, ThesRemoteErr >
+	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< WireFormat, PeerErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -591,11 +591,11 @@ impl RemoteAddr
 
 			.map_err( |_|
 		{
-			let mut ctx = ErrorContext::default();
+			let mut ctx = PeerErrCtx::default();
 			ctx.context = "Outgoing request".to_string().into();
 			ctx.sid     = sid.into();
 
-			ThesRemoteErr::Serialize{ ctx }
+			PeerErr::Serialize{ ctx }
 
 		})?;
 
@@ -619,7 +619,7 @@ impl<S> Address<S> for RemoteAddr
 	/// 1. serialization of the outgoing message
 	/// 2.
 	//
-	fn call( &mut self, msg: S ) -> Return<Result< <S as Message>::Return, ThesRemoteErr >> { async move
+	fn call( &mut self, msg: S ) -> Return<Result< <S as Message>::Return, PeerErr >> { async move
 	{
 
 		let cid = ConnID::random();
@@ -636,7 +636,7 @@ impl<S> Address<S> for RemoteAddr
 			//
 			.map_err( |_|
 			{
-				let ctx = ErrorContext
+				let ctx = PeerErrCtx
 				{
 					context  : Some( "Call remote service".to_string() ) ,
 					peer_id  : self.peer.id().into()                     ,
@@ -645,7 +645,7 @@ impl<S> Address<S> for RemoteAddr
 					cid      : cid.clone().into()                        ,
 				};
 
-				ThesRemoteErr::ConnectionClosed{ ctx }
+				PeerErr::ConnectionClosed{ ctx }
 
 			})?;
 
@@ -656,7 +656,7 @@ impl<S> Address<S> for RemoteAddr
 
 			.map_err( |_|
 			{
-				let ctx = ErrorContext
+				let ctx = PeerErrCtx
 				{
 					context  : Some( "Peer stopped before receiving response from remote call".to_string() ) ,
 					peer_id  : self.peer.id().into()                                                         ,
@@ -665,7 +665,7 @@ impl<S> Address<S> for RemoteAddr
 					cid      : cid.clone().into()                                                            ,
 				};
 
-				ThesRemoteErr::ConnectionClosed{ ctx }
+				PeerErr::ConnectionClosed{ ctx }
 
 			})?;
 
@@ -682,7 +682,7 @@ impl<S> Address<S> for RemoteAddr
 
 					.map_err( |_|
 					{
-						let ctx = ErrorContext
+						let ctx = PeerErrCtx
 						{
 							context  : Some( "Response to call from remote actor".to_string() ) ,
 							peer_id  : self.peer.id().into()                                    ,
@@ -691,7 +691,7 @@ impl<S> Address<S> for RemoteAddr
 							cid      : cid.clone().into()                                       ,
 						};
 
-						ThesRemoteErr::Deserialize{ ctx }
+						PeerErr::Deserialize{ ctx }
 
 					})?
 				)
@@ -701,7 +701,7 @@ impl<S> Address<S> for RemoteAddr
 			//
 			Err( err ) =>
 			{
-				let mut ctx = ErrorContext
+				let mut ctx = PeerErrCtx
 				{
 					context  : Some( "Remote could not process our message".to_string() ) ,
 					peer_id  : self.peer.id().into()                                      ,
@@ -714,7 +714,7 @@ impl<S> Address<S> for RemoteAddr
 				{
 					// This is a special case, since it get's returned from the channel it needed to be a
 					// ConnectionError, but it doesn't actually come from the remote, so translate into
-					// it's own error variant rather than ThesRemoteErr::Remote.
+					// it's own error variant rather than PeerErr::Remote.
 					//
 					// It can however come from a relay. We don't allow the user here to distinguish whether
 					// this peer timed out or a relay.
@@ -726,12 +726,12 @@ impl<S> Address<S> for RemoteAddr
 					{
 						ctx.context = Some( "Time out waiting for response to outgoing call".to_string() );
 
-						Err( ThesRemoteErr::Timeout{ ctx } )
+						Err( PeerErr::Timeout{ ctx } )
 					}
 
 					_ =>
 					{
-						Err( ThesRemoteErr::Remote{ err, ctx } )
+						Err( PeerErr::Remote{ err, ctx } )
 					}
 				}
 			},
@@ -742,7 +742,7 @@ impl<S> Address<S> for RemoteAddr
 
 	/// Obtain a clone of this recipient as a trait object.
 	//
-	fn clone_box( &self ) -> BoxAddress<S, ThesRemoteErr>
+	fn clone_box( &self ) -> BoxAddress<S, PeerErr>
 	{
 		Box::new( Self { peer: self.peer.clone() } )
 	}
@@ -757,7 +757,7 @@ impl<S> Sink<S> for RemoteAddr
 	      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 {
-	type Error = ThesRemoteErr;
+	type Error = PeerErr;
 
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
@@ -774,7 +774,7 @@ impl<S> Sink<S> for RemoteAddr
 
 			.map_err( |_|
 			{
-				let ctx = ErrorContext
+				let ctx = PeerErrCtx
 				{
 					context  : Some( "Send to remote service".to_string() ) ,
 					peer_id  : self.peer.id().into()                        ,
@@ -783,7 +783,7 @@ impl<S> Sink<S> for RemoteAddr
 					cid      : None                                         ,
 				};
 
-				ThesRemoteErr::ConnectionClosed{ ctx }
+				PeerErr::ConnectionClosed{ ctx }
 			})
 	}
 

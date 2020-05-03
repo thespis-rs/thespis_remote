@@ -5,47 +5,49 @@ use crate :: { import::*, * };
 
 
     mod backpressure      ;
-    mod close_connection  ;
-    mod connection_error  ;
-    mod peer_event        ;
     mod call              ;
     mod call_response     ;
+    mod close_connection  ;
+    mod connection_error  ;
     mod incoming          ;
+    mod peer_err          ;
+    mod peer_event        ;
 pub mod request_error     ;
     mod response          ;
     mod timeout           ;
 
-pub use backpressure      :: BackPressure    ;
-pub use call              :: Call            ;
-pub use call_response     :: CallResponse    ;
-pub use close_connection  :: CloseConnection ;
-pub use connection_error  :: ConnectionError ;
-pub use peer_event        :: PeerEvent       ;
-    use incoming          :: Incoming        ;
-    use request_error     :: RequestError    ;
-pub use response          :: Response        ;
-    use timeout           :: Timeout         ;
+pub use backpressure      :: { BackPressure        } ;
+pub use call              :: { Call                } ;
+pub use call_response     :: { CallResponse        } ;
+pub use close_connection  :: { CloseConnection     } ;
+pub use connection_error  :: { ConnectionError     } ;
+    use incoming          :: { Incoming            } ;
+pub use peer_err          :: { PeerErr, PeerErrCtx } ;
+pub use peer_event        :: { PeerEvent           } ;
+    use request_error     :: { RequestError        } ;
+pub use response          :: { Response            } ;
+    use timeout           :: { Timeout             } ;
 
 
 // Reduce trait bound boilerplate, since we have to repeat them all over
 //
 /// Trait bounds for the stream of incoming messages
 //
-pub trait BoundsIn : 'static + Stream< Item = Result<WireFormat, ThesRemoteErr> > + Unpin + Send {}
+pub trait BoundsIn : 'static + Stream< Item = Result<WireFormat, WireErr> > + Unpin + Send {}
 
 /// Trait bounds for the Sink of outgoing messages.
 //
-pub trait BoundsOut: 'static + Sink<WireFormat, Error=ThesRemoteErr > + Unpin + Send {}
+pub trait BoundsOut: 'static + Sink<WireFormat, Error=WireErr > + Unpin + Send {}
 
 
 impl<T> BoundsIn for T
 
-	where T : 'static + Stream< Item = Result<WireFormat, ThesRemoteErr> > + Unpin + Send
+	where T : 'static + Stream< Item = Result<WireFormat, WireErr> > + Unpin + Send
 {}
 
 impl<T> BoundsOut for T
 
-	where T : 'static + Sink<WireFormat, Error=ThesRemoteErr > + Unpin + Send
+	where T : 'static + Sink<WireFormat, Error=WireErr > + Unpin + Send
 {}
 
 
@@ -182,11 +184,11 @@ pub struct Peer
 
 	// All spawned requests will be collected here.
 	//
-	nursery_stream: Option<JoinHandle<Result<Response, ThesRemoteErr>>>,
+	nursery_stream: Option<JoinHandle<Result<Response, PeerErr>>>,
 
 	// All spawned requests will be collected here.
 	//
-	nursery: Nursery<Arc< dyn SpawnHandle<Result<Response, ThesRemoteErr>> + Send + Sync + 'static >, Result<Response, ThesRemoteErr>>,
+	nursery: Nursery<Arc< dyn SpawnHandle<Result<Response, PeerErr>> + Send + Sync + 'static >, Result<Response, PeerErr>>,
 
 	// Set by close connection. We no longer want to process any messages after this.
 	//
@@ -205,23 +207,23 @@ impl Peer
 		addr     : Addr<Self>                                                                ,
 		incoming : impl BoundsIn                                                             ,
 		outgoing : impl BoundsOut                                                            ,
-		exec     : impl SpawnHandle<Result<Response, ThesRemoteErr>> + Send + Sync + 'static ,
+		exec     : impl SpawnHandle<Result<Response, PeerErr>> + Send + Sync + 'static ,
 		bp       : Option<Arc<BackPressure>>                                                 ,
 	)
 
-		-> Result< Self, ThesRemoteErr >
+		-> Result< Self, PeerErr >
 
 	{
 		trace!( "{}: Create peer", &addr );
 
 
-		let exec: Arc< dyn SpawnHandle<Result<Response, ThesRemoteErr>> + Send + Sync + 'static > = Arc::new(exec);
+		let exec: Arc< dyn SpawnHandle<Result<Response, PeerErr>> + Send + Sync + 'static > = Arc::new(exec);
 		let (nursery, nursery_stream) = Nursery::new( exec.clone() );
 
 
 		let nursery_handle = exec.spawn_handle( Self::listen_request_results( nursery_stream, addr.clone() ) )
 
-			.map_err( |e| -> ThesRemoteErr
+			.map_err( |e| -> PeerErr
 			{
 				ThesErr::Spawn{ actor: format!( "Request results stream for peer: {}", e ) }.into()
 
@@ -231,7 +233,7 @@ impl Peer
 
 		nursery.nurse( Self::listen_incoming( incoming, addr.clone(), bp.clone() ) )
 
-			.map_err( |e| -> ThesRemoteErr
+			.map_err( |e| -> PeerErr
 			{
 				ThesErr::Spawn{ actor: format!( "Incoming stream for peer: {}", e ) }.into()
 
@@ -273,14 +275,16 @@ impl Peer
 	//
 	async fn listen_request_results
 	(
-		mut stream: NurseryStream<Result<Response, ThesRemoteErr>> ,
+		mut stream: NurseryStream<Result<Response, PeerErr>> ,
 		mut addr  : Addr<Peer>                               ,
 	)
-		-> Result<Response, ThesRemoteErr>
+		-> Result<Response, PeerErr>
 
 	{
 		while let Some(result) = stream.next().await
 		{
+			// The result of addr.send
+			//
 			let res = match result
 			{
 				Ok(resp) => match resp
@@ -317,7 +321,7 @@ impl Peer
 		mut addr    : Addr<Peer>                ,
 		    bp      : Option<Arc<BackPressure>> ,
 	)
-		-> Result<Response, ThesRemoteErr>
+		-> Result<Response, PeerErr>
 
 	{
 		// This can fail if:
@@ -339,6 +343,9 @@ impl Peer
 			}
 
 			trace!( "{}: incoming message.", &addr );
+
+			// TODO: deal with expect... like above
+			//
 			addr.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" );
 		}
 
@@ -371,11 +378,11 @@ impl Peer
 		addr        : Addr<Self>                                                                ,
 		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static                ,
 		max_size    : usize                                                                     ,
-		exec        : impl SpawnHandle<Result<Response, ThesRemoteErr>> + Send + Sync + 'static ,
+		exec        : impl SpawnHandle<Result<Response, PeerErr>> + Send + Sync + 'static ,
 		bp          : Option<Arc<BackPressure>>                                           ,
 	)
 
-		-> Result< Self, ThesRemoteErr >
+		-> Result< Self, PeerErr >
 
 	{
 		let codec = ThesCodec::new(max_size);
@@ -402,14 +409,14 @@ impl Peer
 	//
 	pub fn from_tokio_async_read
 	(
-		addr        : Addr<Self>                                                                ,
-		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static                   ,
-		max_size    : usize                                                                     ,
-		exec        : impl SpawnHandle<Result<Response, ThesRemoteErr>> + Send + Sync + 'static ,
-		bp          : Option<Arc<BackPressure>>                                                 ,
+		addr        : Addr<Self>                                                          ,
+		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static             ,
+		max_size    : usize                                                               ,
+		exec        : impl SpawnHandle<Result<Response, PeerErr>> + Send + Sync + 'static ,
+		bp          : Option<Arc<BackPressure>>                                           ,
 	)
 
-		-> Result< Self, ThesRemoteErr >
+		-> Result< Self, PeerErr >
 
 	{
 		let codec = ThesCodec::new(max_size);
@@ -455,19 +462,31 @@ impl Peer
 
 	// actually send the message accross the wire
 	//
-	async fn send_msg( &mut self, msg: WireFormat ) -> Result<(), ThesRemoteErr>
+	async fn send_msg( &mut self, msg: WireFormat ) -> Result<(), PeerErr>
 	{
 		trace!( "{}: sending OUT WireFormat", self.identify() );
 
 		match &mut self.outgoing
 		{
-			Some( out ) => out.send( msg ).await,
+			Some( out ) =>
+			{
+				let sid = msg.service();
+				let cid = msg.conn_id();
+
+				out.send( msg ).await
+
+					.map_err( |source|
+					{
+						let ctx = self.ctx( sid, cid, "Sending out WireFormat" );
+						PeerErr::WireFormat{ ctx, source }
+					})
+			}
 
 			None =>
 			{
-				let ctx = ErrorContext::default().context( "register_relayed_services".to_string() );
+				let ctx = PeerErrCtx::default().context( "register_relayed_services".to_string() );
 
-				Err( ThesRemoteErr::ConnectionClosed{ ctx } )
+				Err( PeerErr::ConnectionClosed{ ctx } )
 			}
 		}
 	}
@@ -574,9 +593,9 @@ impl Peer
 		context: impl AsRef<str>              ,
 	)
 
-		-> ErrorContext
+		-> PeerErrCtx
 	{
-		ErrorContext
+		PeerErrCtx
 		{
 			peer_id  : self.id.into()                      ,
 			peer_name: self.name.clone()                   ,
@@ -603,9 +622,9 @@ impl Peer
 		context: impl Into<Option<String>>    ,
 	)
 
-		-> ErrorContext
+		-> PeerErrCtx
 	{
-		ErrorContext
+		PeerErrCtx
 		{
 			peer_id  : addr.id().into() ,
 			peer_name: addr.name()      ,
@@ -622,7 +641,7 @@ impl Peer
 //
 impl Handler<WireFormat> for Peer
 {
-	#[async_fn] fn handle( &mut self, msg: WireFormat ) -> Result<(), ThesRemoteErr>
+	#[async_fn] fn handle( &mut self, msg: WireFormat ) -> Result<(), PeerErr>
 	{
 		trace!( "{}: sending OUT wireformat", self.identify() );
 

@@ -2,6 +2,14 @@
 
 - currently errors are returned to the remote even for Send. Should the nursery_stream or Handler<RequestError>
   filter these out? Or should service maps not return them at all?
+  - we need to filter on ctx.cid. first step is to make sure all error types have that.
+  - think through our whole error handling story:
+    - decoder/encoder errors -> don't know what peer on creation
+    - errors meant for the local process -> all info
+    - errors for the remote -> strip info
+
+
+
 
 - remove logging from peer and return events through pharos. Clients can log if and how they want to.
 
