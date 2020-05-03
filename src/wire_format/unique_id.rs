@@ -48,7 +48,7 @@ impl UniqueID
 		h.write( high );
 		l.write( low  );
 
-		// TODO: keep an eye on xxh3 support.
+		// FIXME: keep an eye on xxh3 support.
 		//
 		let mut buf = BytesMut::with_capacity( 128 );
 

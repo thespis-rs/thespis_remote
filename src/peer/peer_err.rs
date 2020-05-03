@@ -23,7 +23,7 @@ pub enum PeerErr
 	/// Failed to deserialize an Actor message. The message data will be dropped and the remote will be notified of the error.
 	/// The connection shall remain functional.
 	//
-	#[ error( "Failed to deserialize an Actor message{ctx}" ) ]
+	#[ error( "Failed to deserialize an Actor message.{ctx}" ) ]
 	//
 	Deserialize
 	{
@@ -34,7 +34,7 @@ pub enum PeerErr
 
 	/// Failed to downcast. This indicates an error in thespis_remote, please report.
 	//
-	#[ error( "Failed to downcast: {ctx}. This indicates an error in thespis_remote, please report at https://github.com/thespis-rs/thespis_remote/issues with a reproducable example and/or a backtrace if possible." ) ]
+	#[ error( "Failed to downcast. This indicates an error in thespis_remote, please report at https://github.com/thespis-rs/thespis_remote/issues with a reproducable example and/or a backtrace if possible.{ctx}" ) ]
 	//
 	Downcast
 	{
@@ -59,7 +59,7 @@ pub enum PeerErr
 	/// use a closure with RelayMap and it returns `None`, because otherwise they don't
 	/// advertise services for which they haven't got a handler.
 	//
-	#[ error( "No handler has been set for this service{ctx}" ) ]
+	#[ error( "No handler has been set for this service.{ctx}" ) ]
 	//
 	NoHandler
 	{
@@ -70,7 +70,7 @@ pub enum PeerErr
 
 	/// When trying to send a message to the peer, it errored. This means either the peer has panicked or you dropped it's inbox.
 	//
-	#[ error( "The Peer actor has panicked{ctx}" ) ]
+	#[ error( "The Peer actor has panicked.{ctx}" ) ]
 	//
 	PeerGone
 	{
@@ -92,7 +92,7 @@ pub enum PeerErr
 
 	/// An error happened when a remote tried to process your message.
 	//
-	#[ error( "A remote could not process a message we sent it{err:?}{ctx}" ) ]
+	#[ error( "A remote could not process a message we sent it{err:?}.{ctx}" ) ]
 	//
 	Remote
 	{
@@ -102,7 +102,7 @@ pub enum PeerErr
 
 	/// Failed to deserialize.
 	//
-	#[ error( "Failed to serialize{ctx}" ) ]
+	#[ error( "Failed to serialize.{ctx}" ) ]
 	//
 	Serialize
 	{
@@ -124,12 +124,12 @@ pub enum PeerErr
 
 
 	/// TODO: clean up docs and error message.
-	/// This allows also returning all PeerErr kinds when returning a PeerErr. eg. Often
+	/// This allows also returning all ThesErr kinds when returning a PeerErr. eg. Often
 	/// operations from remote will use call and send which give mailbox errors, so it's good to
 	/// be able to return those as well as the more remote specific errors that might happen in
 	/// the same method.
 	//
-	#[ error( "ThesErr{ctx}" ) ]
+	#[ error( "ThesErr.{ctx}" ) ]
 
 	ThesErr
 	{
@@ -139,7 +139,7 @@ pub enum PeerErr
 
 	/// An operation timed out. Currently used for outgoing calls.
 	//
-	#[ error( "Operation Timed out{ctx}" ) ]
+	#[ error( "Operation Timed out.{ctx}" ) ]
 	//
 	Timeout
 	{
@@ -161,7 +161,7 @@ pub enum PeerErr
 
 	/// Error for encoding/decoding the bytestream or underlying IO errors.
 	//
-	#[ error( "An error happened on the underlying stream: {source}" ) ]
+	#[ error( "An error happened on the underlying stream: {source}.{ctx}" ) ]
 	//
 	WireFormat
 	{
@@ -196,18 +196,18 @@ impl PeerErr
 
 					WireErr::Deserialize{..} =>
 
-						format!( "Could not deserialize your message{}", &ctx ),
+						format!( "Could not deserialize your message.{}", &ctx ),
 
 					WireErr::Io{..} =>
 
-						format!( "An error happened on the underlying transport{}", &ctx ),
+						format!( "An error happened on the underlying transport.{}", &ctx ),
 				}
 
 			}
 
 			Self::Deserialize{ ctx } =>
 			{
-				format!( "Could not deserialize your message{}", &ctx )
+				format!( "Could not deserialize your message.{}", &ctx )
 			}
 
 			_ => { unreachable!() }

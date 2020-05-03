@@ -1,15 +1,14 @@
 # thespis_remote TODO
 
-- update to new tokio codec version
-
 - TODO's and FIXME's
 
 - expects and unwraps
 
+- update to new tokio codec version
 - remove logging from peer and return events through pharos. Clients can log if and how they want to.
+- move remaining logging to tracing?
 
 ## API
-
 
 - we removed the possibility to add/remove services. Think about user scenarios. Should it be possible
   to add/remove entire service maps? After login for example?
@@ -17,17 +16,18 @@
 
 - get rid of Send and Sync where possible
 
+
 ## Implementation
 
 - further clean up service maps:
   - can we move things out of macro?
 
+- benchmark
+- zero copy networking: https://github.com/tokio-rs/bytes/pull/371
 - do we really want to use Bytes as underlying storage and use codec?
 
-- should UniqueID and ServiceID be Copy?
 - Kompakt?
-- fairness and starvation
-- benchmark
+
 
 ## Testing
 

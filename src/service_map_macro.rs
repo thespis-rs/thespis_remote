@@ -320,7 +320,7 @@ impl Services
 
 
 	// Helper function for call_service below.
-	// The receiver passed in here has keeps a mutex locked. This method should never be async, nor await anything.
+	// The receiver passed in here keeps a mutex locked. This method should never be async, nor await anything.
 	//
 	fn call_service_gen<S>
 	(
@@ -458,7 +458,7 @@ impl ServiceMap for Services
 			$(
 				_ if sid == *<$services as Service>::sid() =>
 				{
-					// TODO: This should always succeed. Verify and change to debug_assert?
+					// This should always succeed.
 					//
 					let rec: &Receiver<$services> = match receiver.downcast_ref()
 					{
@@ -522,7 +522,8 @@ impl ServiceMap for Services
 
 		let receiver = match self.handlers.get( &sid )
 		{
-			// TODO: don't block the thread.
+			// FIXME: don't block the thread.
+			// Not easy to solve. It doesn't cross await points and it shouldn't lock for very long.
 			//
 			Some(x) => x.lock(),
 
@@ -555,7 +556,7 @@ impl ServiceMap for Services
 //
 pub struct RemoteAddr
 {
-	// TODO: do not rely on Addr, we should be generic over Address, but not
+	// FIXME: do not rely on Addr, we should be generic over Address, but not
 	//       choose an implementation. This is a complicated one. While this is in the public
 	//       API, so it would be good, having a trait object that is Address<WireFormat> + Address<Call>
 	//       and is still cloneable is complicated.

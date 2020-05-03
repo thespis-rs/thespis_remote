@@ -304,7 +304,7 @@ impl Peer
 			//
 			if res.is_err()
 			{
-				error!( "{} has panicked", Peer::identify_addr( &addr ) );
+				error!( "{} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
 			}
 
 		}
@@ -346,9 +346,10 @@ impl Peer
 
 			trace!( "{}: incoming message.", &addr );
 
-			// TODO: deal with expect... like above
-			//
-			addr.send( Incoming{ msg } ).await.expect( "peer: send incoming msg to self" );
+			if addr.send( Incoming{ msg } ).await.is_err()
+			{
+				error!( "{} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
+			}
 		}
 
 		trace!( "{}:  incoming stream end, closing out.", &addr );
@@ -609,10 +610,11 @@ impl Peer
 
 
 
-	// Doesn't take &self, because it needs to be called from spawned tasks
-	// which have to be 'static.
+	// Convenience function for generating the error context.
 	//
-	// TODO: no longer used in spawned tasks?
+	// Doesn't take &self, because it get's used by external code which only has an address.
+	//
+	// This is used in RemoteAddress.
 	//
 	#[ doc( hidden ) ]
 	//

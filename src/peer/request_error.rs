@@ -53,7 +53,7 @@ impl Message for RequestError
 }
 
 
-/// Handler for incoming messages
+/// Handler for errors that happened during request processing.
 //
 impl Handler<RequestError> for Peer
 {
@@ -66,7 +66,12 @@ impl Handler<RequestError> for Peer
 
 		// If it was a send, don't send errors to the remote. Only call buys into feedback.
 		//
-		if msg.error.ctx().cid.is_none() { return }
+		let cid = match &msg.error.ctx().cid
+		{
+			Some(c) => c.clone(),
+			None    => return,
+		};
+
 
 		// Send errors back to the remote.
 		//
@@ -74,10 +79,8 @@ impl Handler<RequestError> for Peer
 		{
 			// TODO: need to decide what to do.
 			//
-			PeerErr::WireFormat{ ref ctx, .. } =>
+			PeerErr::WireFormat{..} =>
 			{
-				let cid = ctx.cid.as_ref().cloned().unwrap_or_else( ConnID::null );
-
 				// Report to remote and close connection as the stream is no longer coherent.
 				//
 				let err = ConnectionError::DeserializeWireFormat{ context: msg.error.remote_err() };
@@ -93,12 +96,12 @@ impl Handler<RequestError> for Peer
 			{
 				// Report to remote and close connection as the stream is no longer coherent.
 				//
-				let err = ConnectionError::Deserialize{ sid: ctx.sid, cid: ctx.cid.clone() };
+				let err = ConnectionError::Deserialize{ sid: ctx.sid, cid: cid.clone().into() };
 
 				// If the error happened in the codec, there won't be a cid, but if it happens
 				// while deserializing the actor message, we will already have a cid.
 				//
-				self.send_err( ctx.cid.unwrap_or_else( ConnID::null ), &err, false ).await;
+				self.send_err( cid, &err, false ).await;
 			}
 
 
@@ -108,9 +111,9 @@ impl Handler<RequestError> for Peer
 				// Report to remote and close connection. When we can't spawn, we can't process
 				// any more incoming message, so it seems sensible to close the connection.
 				//
-				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: ctx.cid.clone() };
+				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: cid.clone().into() };
 
-				self.send_err( ctx.cid.unwrap_or_else( ConnID::null ), &err, true ).await;
+				self.send_err( cid, &err, true ).await;
 			}
 
 
@@ -122,9 +125,9 @@ impl Handler<RequestError> for Peer
 				// services that are still operational, or the actor might be in the process of
 				// being restarted.
 				//
-				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: ctx.cid.clone() };
+				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: cid.clone().into() };
 
-				self.send_err( ctx.cid.unwrap_or_else( ConnID::null ), &err, false ).await;
+				self.send_err( cid, &err, false ).await;
 			}
 
 
@@ -135,9 +138,9 @@ impl Handler<RequestError> for Peer
 			{
 				// Report to remote, we don't close the connection because this might work again later.
 				//
-				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: ctx.cid.clone() };
+				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: cid.clone().into() };
 
-				self.send_err( ctx.cid.unwrap_or_else( ConnID::null ), &err, false ).await;
+				self.send_err( cid, &err, false ).await;
 			}
 
 
@@ -145,9 +148,9 @@ impl Handler<RequestError> for Peer
 			{
 				// This is not fatal, NOT closing the connection.
 				//
-				let err = ConnectionError::UnknownService{ sid: ctx.sid, cid: ctx.cid.clone() };
+				let err = ConnectionError::UnknownService{ sid: ctx.sid, cid: cid.clone().into() };
 
-				self.send_err( ctx.cid.unwrap_or_else( ConnID::null ), &err, false ).await;
+				self.send_err( cid, &err, false ).await;
 			}
 
 			// We shouldn't accept any other errors unknowingly.

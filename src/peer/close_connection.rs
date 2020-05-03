@@ -49,12 +49,21 @@ impl Handler<CloseConnection> for Peer
 		//
 		if let Some(out) = &mut self.outgoing
 		{
-			// TODO: this expect is not necessarily desirable. It can be triggered remotely
-			// I think by not properly closing the connection.
-			//
-			// out.close().await.expect( "CloseConnection: close sink for peer" );
-			//
-			let _ = out.close().await;
+			match out.close().await
+			{
+				Ok(_) => {}
+
+				Err(source) =>
+				{
+					let ctx = self.ctx( None, None, "Closing the connection" );
+					let err = PeerErr::WireFormat{ ctx, source };
+
+					// We didn't close it, so the expect should be fine.
+					//
+					self.pharos.send( PeerEvent::Error(err) ).await.expect( "pharos not closed" );
+				}
+			};
+
 			self.outgoing = None;
 		};
 

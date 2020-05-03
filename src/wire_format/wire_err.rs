@@ -43,7 +43,8 @@ pub enum WireErr
 
 	/// An io::Error happenend in the underlying network connection.
 	///
-	/// TODO: stick to source convention? We would lose Clone...
+	/// We don't want to use source here because io::Error is not clone, but
+	/// for some people having backtraces might be important?
 	//
 	#[ error( "Io: {:?}", kind ) ]
 	//
