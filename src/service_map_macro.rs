@@ -630,20 +630,23 @@ impl<S> Address<S> for RemoteAddr
 
 		// Can fail if the peer is down already.
 		//
-		let rx = self.peer.call( call ).await?
+		let rx = self.peer.call( call ).await
+
+			// The peer panicked.
+			//
+			.map_err( |_|
+			{
+				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid().clone(), cid.clone(), "Call remote service".to_string() );
+
+				PeerErr::PeerGone{ ctx }
+
+			})?
 
 			// The actual sending out over the network can fail.
 			//
 			.map_err( |_|
 			{
-				let ctx = PeerErrCtx
-				{
-					context  : Some( "Call remote service".to_string() ) ,
-					peer_id  : self.peer.id().into()                     ,
-					peer_name: self.peer.name()                          ,
-					sid      : <S as Service>::sid().clone().into()      ,
-					cid      : cid.clone().into()                        ,
-				};
+				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid().clone(), cid.clone(), "Call remote service".to_string() );
 
 				PeerErr::ConnectionClosed{ ctx }
 
@@ -764,7 +767,12 @@ impl<S> Sink<S> for RemoteAddr
 	{
 		Sink::<WireFormat>::poll_ready( Pin::new( &mut self.peer ), cx )
 
-			.map_err( Into::into )
+			.map_err( |source|
+			{
+				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid().clone(), None, "Send on RemoteAddr".to_string() );
+
+				PeerErr::ThesErr{ ctx, source }
+			})
 	}
 
 
@@ -772,18 +780,11 @@ impl<S> Sink<S> for RemoteAddr
 	{
 		Sink::<WireFormat>::start_send( Pin::new( &mut self.peer ), Self::build_ms( msg, ConnID::null() )? )
 
-			.map_err( |_|
+			.map_err( |source|
 			{
-				let ctx = PeerErrCtx
-				{
-					context  : Some( "Send to remote service".to_string() ) ,
-					peer_id  : self.peer.id().into()                        ,
-					peer_name: self.peer.name()                             ,
-					sid      : <S as Service>::sid().clone().into()         ,
-					cid      : None                                         ,
-				};
+				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid().clone(), None, "Send on RemoteAddr".to_string() );
 
-				PeerErr::ConnectionClosed{ ctx }
+				PeerErr::ThesErr{ ctx, source }
 			})
 	}
 
@@ -792,7 +793,12 @@ impl<S> Sink<S> for RemoteAddr
 	{
 		Sink::<WireFormat>::poll_flush( Pin::new( &mut self.peer ), cx )
 
-			.map_err( Into::into )
+			.map_err( |source|
+			{
+				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid().clone(), None, "Send on RemoteAddr".to_string() );
+
+				PeerErr::ThesErr{ ctx, source }
+			})
 	}
 
 
@@ -800,7 +806,7 @@ impl<S> Sink<S> for RemoteAddr
 	//
 	fn poll_close( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		Poll::Pending
+		Poll::Ready(Ok(()))
 	}
 }
 

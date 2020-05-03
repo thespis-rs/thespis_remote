@@ -11,7 +11,7 @@ pub enum WireErr
 {
 	/// Maximum message size exceeded.
 	//
-	#[ error( "{}", self.clone().remote_err() ) ]
+	#[ error( "Maximum message size exceeded: context: {context}, actual: {size} bytes, allowed: {max_size} bytes." ) ]
 	//
 	MessageSizeExceeded
 	{
@@ -53,31 +53,6 @@ pub enum WireErr
 		//
 		kind: std::io::ErrorKind
 	},
-}
-
-
-impl WireErr
-{
-	/// Produce a display string suitable for sending errors to a connected client. This omit's
-	/// process specific information like actor id's.
-	//
-	pub fn remote_err( self ) -> String
-	{
-		match self
-		{
-			Self::MessageSizeExceeded{ context, size, max_size } =>
-			{
-				format!( "Maximum message size exceeded: context: {}, actual: {} bytes, allowed: {} bytes." , &context, &size, &max_size )
-			}
-
-			Self::Deserialize{ context } =>
-			{
-				format!( "Could not deserialize your message, context: {}", &context )
-			}
-
-			_ => { unreachable!() }
-		}
-	}
 }
 
 

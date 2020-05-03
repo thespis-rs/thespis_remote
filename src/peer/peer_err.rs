@@ -20,14 +20,16 @@ pub enum PeerErr
 		ctx: PeerErrCtx
 	},
 
-	/// An error happened when a remote tried to process your message.
+	/// Failed to deserialize an Actor message. The message data will be dropped and the remote will be notified of the error.
+	/// The connection shall remain functional.
 	//
-	#[ error( "A remote could not process a message we sent it{err:?}{ctx}" ) ]
+	#[ error( "Failed to deserialize an Actor message{ctx}" ) ]
 	//
-	Remote
+	Deserialize
 	{
-		ctx: PeerErrCtx    ,
-		err: ConnectionError ,
+		/// The contex in which the error happened.
+		//
+		ctx: PeerErrCtx
 	},
 
 	/// Failed to downcast. This indicates an error in thespis_remote, please report.
@@ -41,28 +43,61 @@ pub enum PeerErr
 		ctx: PeerErrCtx
 	},
 
-	/// Failed to deserialize an Actor message. The message data will be dropped and the remote will be notified of the error.
-	/// The connection shall remain functional.
+	/// Cannot deliver because the handling actor is no longer running.
 	//
-	#[ error( "Failed to deserialize an Actor message{ctx}" ) ]
+	#[ error( "Cannot deliver because the handling actor is no longer running.{ctx}" ) ]
 	//
-	Deserialize
+	HandlerDead
 	{
 		/// The contex in which the error happened.
 		//
 		ctx: PeerErrCtx
 	},
 
-	/// Error for encoding/decoding the bytestream or underlying IO errors.
+	/// No handler has been set for this service.
+	/// If you use the provided ServiceMap implementations, you should only see this if you
+	/// use a closure with RelayMap and it returns `None`, because otherwise they don't
+	/// advertise services for which they haven't got a handler.
 	//
-	#[ error( "An error happened on the underlying stream: {source}" ) ]
+	#[ error( "No handler has been set for this service{ctx}" ) ]
 	//
-	WireFormat
+	NoHandler
 	{
 		/// The contex in which the error happened.
 		//
-		ctx   : PeerErrCtx ,
-		source: WireErr    ,
+		ctx: PeerErrCtx
+	},
+
+	/// When trying to send a message to the peer, it errored. This means either the peer has panicked or you dropped it's inbox.
+	//
+	#[ error( "The Peer actor has panicked{ctx}" ) ]
+	//
+	PeerGone
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: PeerErrCtx
+	},
+
+	/// Failed to relay a request because the connection to the relay has been closed.
+	//
+	#[ error( "Failed to relay a request because the connection to the relay has been closed. context.{ctx} relay_id: {relay_id}, relay_name: {relay_name:?}" ) ]
+	//
+	RelayGone
+	{
+		ctx       : PeerErrCtx     ,
+		relay_id  : usize            ,
+		relay_name: Option<Arc<str>> ,
+	},
+
+	/// An error happened when a remote tried to process your message.
+	//
+	#[ error( "A remote could not process a message we sent it{err:?}{ctx}" ) ]
+	//
+	Remote
+	{
+		ctx: PeerErrCtx      ,
+		err: ConnectionError ,
 	},
 
 	/// Failed to deserialize.
@@ -74,6 +109,32 @@ pub enum PeerErr
 		/// The contex in which the error happened.
 		//
 		ctx: PeerErrCtx
+	},
+
+	/// Failed to spawn a task.
+	//
+	#[ error( "Spawning a task failed.{ctx}" ) ]
+	//
+	Spawn
+	{
+		/// The contex in which the error happened.
+		//
+		ctx: PeerErrCtx
+	},
+
+
+	/// TODO: clean up docs and error message.
+	/// This allows also returning all PeerErr kinds when returning a PeerErr. eg. Often
+	/// operations from remote will use call and send which give mailbox errors, so it's good to
+	/// be able to return those as well as the more remote specific errors that might happen in
+	/// the same method.
+	//
+	#[ error( "ThesErr{ctx}" ) ]
+
+	ThesErr
+	{
+		ctx   : PeerErrCtx ,
+		source: ThesErr    ,
 	},
 
 	/// An operation timed out. Currently used for outgoing calls.
@@ -98,67 +159,23 @@ pub enum PeerErr
 		ctx: PeerErrCtx
 	},
 
-	/// No handler has been set for this service.
-	/// If you use the provided ServiceMap implementations, you should only see this if you
-	/// use a closure with RelayMap and it returns `None`, because otherwise they don't
-	/// advertise services for which they haven't got a handler.
+	/// Error for encoding/decoding the bytestream or underlying IO errors.
 	//
-	#[ error( "No handler has been set for this service{ctx}" ) ]
+	#[ error( "An error happened on the underlying stream: {source}" ) ]
 	//
-	NoHandler
+	WireFormat
 	{
 		/// The contex in which the error happened.
 		//
-		ctx: PeerErrCtx
+		ctx   : PeerErrCtx ,
+		source: WireErr    ,
 	},
-
-	/// Cannot deliver because the handling actor is no longer running.
-	//
-	#[ error( "Cannot deliver because the handling actor is no longer running.{ctx}" ) ]
-	//
-	HandlerDead
-	{
-		/// The contex in which the error happened.
-		//
-		ctx: PeerErrCtx
-	},
-
-	/// Failed to spawn a task.
-	//
-	#[ error( "Spawning a task failed.{ctx}" ) ]
-	//
-	Spawn
-	{
-		/// The contex in which the error happened.
-		//
-		ctx: PeerErrCtx
-	},
-
-	/// Failed to relay a request because the connection to the relay has been closed.
-	//
-	#[ error( "Failed to relay a request because the connection to the relay has been closed. context.{ctx} relay_id: {relay_id}, relay_name: {relay_name:?}" ) ]
-	//
-	RelayGone
-	{
-		ctx       : PeerErrCtx     ,
-		relay_id  : usize            ,
-		relay_name: Option<Arc<str>> ,
-	},
-
-
-	/// This allows also returning all PeerErr kinds when returning a PeerErr. eg. Often
-	/// operations from remote will use call and send which give mailbox errors, so it's good to
-	/// be able to return those as well as the more remote specific errors that might happen in
-	/// the same method.
-	//
-	#[ error( "PeerErr in context: {}", _0 ) ]
-
-	ThesErr( ThesErr ),
 }
 
 
 impl PeerErr
 {
+	/// TODO: make sure we don't leak any info on other error variants, for WireErr, is there anything to hide?
 	/// Produce a display string suitable for sending errors to a connected client. This omit's
 	/// process specific information like actor id's.
 	//
@@ -196,15 +213,27 @@ impl PeerErr
 			_ => { unreachable!() }
 		}
 	}
-}
 
 
-
-impl From<ThesErr> for PeerErr
-{
-	fn from( cause: ThesErr ) -> PeerErr
+	pub fn ctx( &self ) -> &PeerErrCtx
 	{
-		PeerErr::ThesErr( cause )
+		match self
+		{
+			PeerErr::ConnectionClosed { ctx, .. } => ctx,
+			PeerErr::Deserialize      { ctx, .. } => ctx,
+			PeerErr::Downcast         { ctx, .. } => ctx,
+			PeerErr::HandlerDead      { ctx, .. } => ctx,
+			PeerErr::NoHandler        { ctx, .. } => ctx,
+			PeerErr::PeerGone         { ctx, .. } => ctx,
+			PeerErr::RelayGone        { ctx, .. } => ctx,
+			PeerErr::Remote           { ctx, .. } => ctx,
+			PeerErr::Serialize        { ctx, .. } => ctx,
+			PeerErr::Spawn            { ctx, .. } => ctx,
+			PeerErr::ThesErr          { ctx, .. } => ctx,
+			PeerErr::Timeout          { ctx, .. } => ctx,
+			PeerErr::UnknownService   { ctx, .. } => ctx,
+			PeerErr::WireFormat       { ctx, .. } => ctx,
+		}
 	}
 }
 

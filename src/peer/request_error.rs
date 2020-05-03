@@ -64,6 +64,9 @@ impl Handler<RequestError> for Peer
 		//
 		self.pharos.send( PeerEvent::Error( msg.error.clone() ) ).await.expect( "pharos not closed" );
 
+		// If it was a send, don't send errors to the remote. Only call buys into feedback.
+		//
+		if msg.error.ctx().cid.is_none() { return }
 
 		// Send errors back to the remote.
 		//

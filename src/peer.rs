@@ -223,20 +223,22 @@ impl Peer
 
 		let nursery_handle = exec.spawn_handle( Self::listen_request_results( nursery_stream, addr.clone() ) )
 
-			.map_err( |e| -> PeerErr
+			.map_err( |_| -> PeerErr
 			{
-				ThesErr::Spawn{ actor: format!( "Request results stream for peer: {}", e ) }.into()
-
+				let mut ctx = PeerErrCtx::default();
+				ctx.context = "Request results stream for peer".to_string().into();
+				PeerErr::Spawn{ ctx }
 			})?
 		;
 
 
 		nursery.nurse( Self::listen_incoming( incoming, addr.clone(), bp.clone() ) )
 
-			.map_err( |e| -> PeerErr
+			.map_err( |_| -> PeerErr
 			{
-				ThesErr::Spawn{ actor: format!( "Incoming stream for peer: {}", e ) }.into()
-
+				let mut ctx = PeerErrCtx::default();
+				ctx.context = "Incoming stream for peer".to_string().into();
+				PeerErr::Spawn{ ctx }
 			})?
 		;
 

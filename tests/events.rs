@@ -190,13 +190,14 @@ fn header_unknown_service_error()
 		// Create some random data that shouldn't deserialize
 		//
 		let sid = ServiceID::from( Bytes::from( vec![3;16] ) );
-		let ms  = WireFormat::create( sid.clone(), ConnID::null(), serde_cbor::to_vec( &Add(5) ).expect( "serialize Add(5)" ).into() );
+		let cid = ConnID::random();
+		let ms  = WireFormat::create( sid.clone(), cid.clone(), serde_cbor::to_vec( &Add(5) ).expect( "serialize Add(5)" ).into() );
 
-		peera.send( ms ).await.expect( "send ms to peera" );
+		peera.call( ms ).await.expect( "call peera" ).expect( "call peera" );
 
 		assert_eq!
 		(
-			PeerEvent::RemoteError( ConnectionError::UnknownService{ sid: Some( sid ), cid: None } ),
+			PeerEvent::RemoteError( ConnectionError::UnknownService{ sid: Some( sid ), cid: cid.into() } ),
 			peera_evts.next().await.unwrap()
 		);
 
@@ -344,7 +345,7 @@ fn sm_deserialize_error()
 		{
 			PeerEvent::Error( PeerErr::Deserialize{ ctx } ) =>
 			{
-				assert_eq!( ctx.context.unwrap(), "sm.send_service" );
+				assert_eq!( ctx.context.unwrap(), "Services::call_service" );
 			}
 
 			_ => unreachable!( "Should be PeerEvent::Error( PeerErr::Deserialize" )
@@ -361,16 +362,17 @@ fn sm_deserialize_error()
 		// Create some random data that shouldn't deserialize
 		//
 		let sid = <Add as remotes::Service>::sid().clone();
-		let ms  = WireFormat::create( sid, ConnID::null(), Bytes::from( vec![3,3]));
+		let cid = ConnID::random();
+		let ms  = WireFormat::create( sid, cid.clone(), Bytes::from( vec![3,3]));
 
-		peera.send( ms ).await.expect( "send ms to peera" );
+		peera.call( ms ).await.expect( "call peera" ).expect( "call peera" );
 
 		assert_eq!
 		(
 			PeerEvent::RemoteError(ConnectionError::Deserialize
 			{
 				sid: <Add as remotes::Service>::sid().clone().into() ,
-				cid: None                                            ,
+				cid: cid.into()                                      ,
 			}),
 
 			peera_evts.next().await.unwrap()
