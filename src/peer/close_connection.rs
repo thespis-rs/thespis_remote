@@ -41,6 +41,8 @@ impl Handler<CloseConnection> for Peer
 
 		self.closed = true;
 
+		// Since we don't close it, it shouldn't be closed.
+		//
 		if msg.remote { self.pharos.send( PeerEvent::ClosedByRemote ).await.expect( "pharos not closed" ) }
 		else          { self.pharos.send( PeerEvent::Closed         ).await.expect( "pharos not closed" ) }
 

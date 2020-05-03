@@ -85,8 +85,6 @@ impl ServiceID
 	{
 		let mut s = SERVICES.lock();
 
-		// unwrap: OnceCell already guarantees us unique access.
-		//
 		s.entry( sid ).or_insert( name );
 	}
 
@@ -97,8 +95,6 @@ impl ServiceID
 	{
 		let s = SERVICES.lock();
 
-		// unwrap: OnceCell already guarantees us unique access.
-		//
 		s.get( sid ).copied()
 	}
 }

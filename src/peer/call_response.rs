@@ -48,7 +48,7 @@ impl Handler<CallResponse> for Peer
 		{
 			trace!( "Liberate slot for backpressure." );
 
-			bp.add_slots( NonZeroUsize::new( 1 ).expect( "1 != 0" ) );
+			bp.add_slots( NonZeroUsize::new( 1 ).expect( "1 > 0" ) );
 		}
 
 		res

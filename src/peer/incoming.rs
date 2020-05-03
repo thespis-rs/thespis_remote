@@ -189,7 +189,6 @@ impl Peer
 				let err = match e
 				{
 					PeerErr::NoHandler  {..} => PeerErr::NoHandler  {ctx},
-					PeerErr::Downcast   {..} => PeerErr::Downcast   {ctx},
 					PeerErr::Deserialize{..} => PeerErr::Deserialize{ctx},
 					_                              => unreachable!(),
 				};

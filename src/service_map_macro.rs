@@ -261,7 +261,7 @@ impl Clone for Services
 				$(
 					_ if *k == <$services as Service>::sid() =>
 					{
-						// This should never fail, so the expect should be fine.
+						// This should never fail, we make this type in this file.
 						//
 						let v = v.lock();
 						let h: &Receiver<$services> = v.downcast_ref().expect( "downcast receiver in Clone" );
@@ -345,13 +345,11 @@ impl Services
 		};
 
 
-		// Downcast the receiver
+		// Downcast the receiver, should never fail as we make it in this file.
 		//
-		let backup: &Receiver<S> = match receiver.downcast_ref()
-		{
-			Some(x) => x,
-			None    => return Err( PeerErr::Downcast{ ctx } )
-		};
+		let backup: &Receiver<S> = receiver.downcast_ref()
+
+			.expect( "downcast receiver in call_service_gen" );
 
 
 		let mut rec = backup.clone_box() ;
@@ -430,7 +428,6 @@ impl ServiceMap for Services
 	/// Will match the type of the service id to deserialize the message and send it to the handling actor.
 	///
 	/// This can return the following errors:
-	/// - PeerErr::Downcast
 	/// - PeerErr::UnknownService
 	/// - PeerErr::Deserialize
 	//
@@ -458,13 +455,12 @@ impl ServiceMap for Services
 			$(
 				_ if sid == *<$services as Service>::sid() =>
 				{
-					// This should always succeed.
+					// This should always succeed, receiver is made in this very file.
 					//
-					let rec: &Receiver<$services> = match receiver.downcast_ref()
-					{
-						Some(x) => x,
-						None    => return Err( PeerErr::Downcast{ ctx } ),
-					};
+					let rec: &Receiver<$services> = receiver.downcast_ref()
+
+						.expect( "downcast receiver in send_service" );
+
 
 					// Deserialize.
 					//
@@ -504,7 +500,6 @@ impl ServiceMap for Services
 	/// It returns a future that actually calls the handling actor. This futures is spawned by Peer.
 	///
 	/// This can return the following errors:
-	/// - PeerErr::Downcast
 	/// - PeerErr::UnknownService
 	/// - PeerErr::Deserialize
 	/// - PeerErr::ThesErr -> Spawn error
@@ -551,6 +546,11 @@ impl ServiceMap for Services
 
 
 /// Concrete type for creating recipients for remote Services in this thespis::ServiceMap.
+/// Note that this holds the Peers address, so the peer mailbox will only get dropped when you
+/// drop this, even if the connection get's closed by the remote.
+///
+/// If you use this, be sure to check the result that is returned which will err if the connection
+/// is closed.
 //
 #[ derive( Clone, Debug ) ]
 //

@@ -62,6 +62,8 @@ impl Handler<Call> for Peer
 		};
 
 
+		// If self.closed is false, there should always be an address.
+		//
 		let mut self_addr = self.addr.as_ref().unwrap().clone();
 		let     conn_id   = call.mesg.conn_id();
 		let     sid       = call.mesg.service();

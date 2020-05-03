@@ -299,14 +299,12 @@ impl Peer
 				Err(err) => addr.send( RequestError::from( err.clone() ) ).await
 			};
 
-			// As we hold an address, the only way the mailbox can already be shut.
-			// Not much to do about it.
+			// As we hold an address, the only way the mailbox can already be shut
+			// is if the peer panics, or the mailbox get's dropped. Since the mailbox
+			// owns the Peer, if it's dropped, this task doesn't exist anymore.
+			// Should never happen.
 			//
-			if res.is_err()
-			{
-				error!( "{} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
-			}
-
+			debug_assert!( res.is_ok() );
 		}
 
 		Ok(Response::Nothing)
@@ -329,9 +327,7 @@ impl Peer
 		// This can fail if:
 		//
 		// - the receiver is dropped. The receiver is our mailbox, so it should never be dropped
-		//   as long as we have an address to it.
-		//
-		// So, I think we can unwrap for now.
+		//   as long as we have an address to it and this task would be dropped with it.
 		//
 		while let Some(msg) = incoming.next().await
 		{
@@ -354,9 +350,16 @@ impl Peer
 
 		trace!( "{}:  incoming stream end, closing out.", &addr );
 
-		// Same as above.
+		// The connection was closed by remote, tell peer to clean up.
 		//
-		addr.send( CloseConnection{ remote: true, reason: "Connection closed by remote.".to_string() } ).await.expect( "peer send to self");
+		let res = addr.send( CloseConnection{ remote: true, reason: "Connection closed by remote.".to_string() } ).await;
+
+		// As we hold an address, the only way the mailbox can already be shut
+		// is if the peer panics, or the mailbox get's dropped. Since the mailbox
+		// owns the Peer, if it's dropped, this task doesn't exist anymore.
+		// Should never happen.
+		//
+		debug_assert!( res.is_ok() );
 
 		Ok(Response::Nothing)
 	}
@@ -552,6 +555,9 @@ impl Peer
 	//
 	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> WireFormat
 	{
+		// There is no documentation on serde_cbor or serde_derive about why this would return an error.
+		// As far as I can tell it shouldn't ever fail.
+		//
 		let serialized = serde_cbor::to_vec( err ).expect( "serialize response" );
 
 		// sid null is the marker that this is an error message.

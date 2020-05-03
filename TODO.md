@@ -1,12 +1,11 @@
 # thespis_remote TODO
 
-- TODO's and FIXME's
 
 - expects and unwraps
 
-- update to new tokio codec version
 - remove logging from peer and return events through pharos. Clients can log if and how they want to.
 - move remaining logging to tracing?
+- TODO's and FIXME's
 
 ## API
 
@@ -24,9 +23,10 @@
 
 - benchmark
 - zero copy networking: https://github.com/tokio-rs/bytes/pull/371
+  would get rid of dependencies on tokio-codec and futures-codec.
+- zero cost serialization. Kompakt?
+  cheaper serialization: bincode as a feature flag?
 - do we really want to use Bytes as underlying storage and use codec?
-
-- Kompakt?
 
 
 ## Testing

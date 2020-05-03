@@ -105,8 +105,7 @@ impl Handler<RequestError> for Peer
 			}
 
 
-			  PeerErr::Downcast{ ctx }
-			| PeerErr::Spawn   { ctx } =>
+			PeerErr::Spawn { ctx } =>
 			{
 				// Report to remote and close connection. When we can't spawn, we can't process
 				// any more incoming message, so it seems sensible to close the connection.

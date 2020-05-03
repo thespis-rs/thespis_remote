@@ -32,17 +32,6 @@ pub enum PeerErr
 		ctx: PeerErrCtx
 	},
 
-	/// Failed to downcast. This indicates an error in thespis_remote, please report.
-	//
-	#[ error( "Failed to downcast. This indicates an error in thespis_remote, please report at https://github.com/thespis-rs/thespis_remote/issues with a reproducable example and/or a backtrace if possible.{ctx}" ) ]
-	//
-	Downcast
-	{
-		/// The contex in which the error happened.
-		//
-		ctx: PeerErrCtx
-	},
-
 	/// Cannot deliver because the handling actor is no longer running.
 	//
 	#[ error( "Cannot deliver because the handling actor is no longer running.{ctx}" ) ]
@@ -221,7 +210,6 @@ impl PeerErr
 		{
 			PeerErr::ConnectionClosed { ctx, .. } => ctx,
 			PeerErr::Deserialize      { ctx, .. } => ctx,
-			PeerErr::Downcast         { ctx, .. } => ctx,
 			PeerErr::HandlerDead      { ctx, .. } => ctx,
 			PeerErr::NoHandler        { ctx, .. } => ctx,
 			PeerErr::PeerGone         { ctx, .. } => ctx,
