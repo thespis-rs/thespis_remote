@@ -71,8 +71,7 @@ async fn relay_once()
 		let mut addr = remotes::RemoteAddr::new( to_relay.clone() );
 
 		assert_eq!( Ok(()), addr.call( Add(5) ).await );
-
-		addr.send( Add(5) ).await.expect( "Send failed" );
+		assert_eq!( Ok(()), addr.call( Add(5) ).await );
 
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 
@@ -116,22 +115,9 @@ async fn relay_multi()
 
 	let provider = async move
 	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
-
-
-		// register Sum with peer as handler for Add and Show
-		//
-		let mut sm = remotes::Services::new();
-
-		sm.register_handler::<Add >( addr_handler.clone_box() );
-		sm.register_handler::<Show>( addr_handler.clone_box() );
-
-
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( ab, Arc::new( sm ), AsyncStd, "provider" );
+		let (_, _, handle) = peer_listen( ab, Arc::new( add_show_sum() ), AsyncStd, "provider" );
 
 		handle.await;
 
@@ -147,11 +133,11 @@ async fn relay_multi()
 
 		// Call the service and receive the response
 		//
-		let mut addr  = remotes::RemoteAddr::new( relay.clone() );
+		let mut addr = remotes::RemoteAddr::new( relay.clone() );
+
+		addr.call( Add(5) ).await.expect( "Send failed" );
 
 		assert_eq!( Ok(()), addr.call( Add(5) ).await );
-
-		addr.send( Add(5) ).await.expect( "Send failed" );
 
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 10, resp );
@@ -185,21 +171,9 @@ async fn relay_unknown_service()
 
 	let provider = async move
 	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
-
-
-		// register Sum with peer as handler for Add and Show
-		//
-		let mut sm = remotes::Services::new();
-
-		sm.register_handler::<Add >( addr_handler.clone_box() );
-
-
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( ab, Arc::new( sm ), AsyncStd, "provider" );
+		let (_, _, handle) = peer_listen( ab, Arc::new( add_show_sum() ), AsyncStd, "provider" );
 
 		handle.await;
 

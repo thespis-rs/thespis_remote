@@ -25,22 +25,9 @@ async fn basic_remote()
 
 	let peera = async move
 	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
-
-		// Create a service map
-		//
-		let mut sm = remotes::Services::new();
-
-		// Register our handlers
-		//
-		sm.register_handler::<Add >( addr_handler.clone_box() );
-		sm.register_handler::<Show>( addr_handler.clone_box() );
-
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "peera" );
+		let (_, _, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "peera" );
 
 		handle.await;
 
@@ -95,8 +82,8 @@ impl Handler< Show > for Parallel
 
 service_map!
 (
-	namespace     : parallel ;
-	services      : Show     ;
+	namespace: parallel ;
+	services : Show     ;
 );
 
 

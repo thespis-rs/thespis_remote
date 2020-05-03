@@ -83,18 +83,9 @@ fn sid_same_for_same_ns()
 //
 async fn clone()
 {
-	// Create mailbox for our handler
-	//
-	let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
-
 	// Create a service map
 	//
-	let mut sm = remotes::Services::new();
-
-	// Register our handlers
-	//
-	sm.register_handler::<Add >( addr_handler.clone_box() );
-	sm.register_handler::<Show>( addr_handler.clone_box() );
+	let sm = add_show_sum();
 
 	let serial = format!( "{:?}", sm );
 

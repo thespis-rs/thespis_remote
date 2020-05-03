@@ -33,20 +33,9 @@ async fn close_connection()
 
 	let nodea = async move
 	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
-
-		// register Sum with peer as handler for Add and Show
-		//
-		let mut sm = remotes::Services::new();
-
-		sm.register_handler::<Add >( addr_handler.clone_box() );
-		sm.register_handler::<Show>( addr_handler.clone_box() );
-
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "nodea" );
+		let (_, _, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
 
 		handle.await;
 	};
@@ -85,20 +74,9 @@ async fn close_connection_call()
 
 	let nodea = async move
 	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
-
-		// register Sum with peer as handler for Add and Show
-		//
-		let mut sm = remotes::Services::new();
-
-		sm.register_handler::<Add >( addr_handler.clone_box() );
-		sm.register_handler::<Show>( addr_handler.clone_box() );
-
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "nodea" );
+		let (_, _, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
 
 		handle.await;
 	};
@@ -140,18 +118,9 @@ async fn header_unknown_service_error()
 
 	let nodea = async move
 	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
-
-		// register Sum with peer as handler for Add and Show
-		//
-		let mut sm = remotes::Services::new();
-		sm.register_handler::<Add >( addr_handler.clone_box() );
-
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
 
 		let sid = Some( ServiceID::from( Bytes::from( vec![3;16] ) ) );
 
@@ -215,18 +184,9 @@ async fn call_deserialize()
 
 	let nodea = async move
 	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
-
-		// register Sum with peer as handler for Add and Show
-		//
-		let mut sm = remotes::Services::new();
-		sm.register_handler::<Add >( addr_handler.clone_box() );
-
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
 
 
 		match evts.next().await.unwrap()
@@ -306,18 +266,9 @@ async fn sm_deserialize_error()
 
 	let nodea = async move
 	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
-
-		// register Sum with peer as handler for Add and Show
-		//
-		let mut sm = remotes::Services::new();
-		sm.register_handler::<Add >( addr_handler.clone_box() );
-
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
 
 		match evts.next().await.unwrap()
 		{

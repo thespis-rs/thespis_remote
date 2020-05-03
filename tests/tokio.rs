@@ -10,7 +10,7 @@ mod common;
 
 use
 {
-	common::{ remotes, Add, Sum, Show, import::{ *, assert_eq } } ,
+	common::{ remotes, Add, Sum, Show, import::{ *, assert_eq }, add_show_sum } ,
 	futures_ringbuf::TokioEndpoint ,
 	tokio_util::codec::{ Framed } ,
 	tokio::io::{ AsyncWriteExt } ,
@@ -91,21 +91,9 @@ fn remote()
 
 	let peera = async move
 	{
-		// Create mailbox for our handler
-		//
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
-
-		// Create a service map
-		//
-		let mut sm = remotes::Services::new();
-		// Register our handlers
-		//
-		sm.register_handler::<Add >( addr_handler.clone_box() );
-		sm.register_handler::<Show>( addr_handler.clone_box() );
-
 		// get a framed connection
 		//
-		let _ = peer_listen( server, Arc::new( sm ), ex1.clone(), "peera" );
+		let _ = peer_listen( server, Arc::new( add_show_sum() ), ex1.clone(), "peera" );
 
 		trace!( "end of peera" );
 	};
@@ -119,9 +107,9 @@ fn remote()
 		//
 		let mut addr  = remotes::RemoteAddr::new( peera.clone() );
 
-		assert_eq!( addr.call( Add(5) ).await, Ok(()) );
+		addr.call( Add(5) ).await.expect( "Send failed" );
 
-		addr.send( Add(5) ).await.expect( "Send failed" );
+		assert_eq!( addr.call( Add(5) ).await, Ok(()) );
 
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 		assert_eq!( 10, resp );

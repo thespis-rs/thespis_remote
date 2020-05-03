@@ -35,6 +35,7 @@
 - test all the error handling.
 	- verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
 
+- spawn a task that logs every event from pharos in common.
 - tests + benchmarks for flow control and back pressure. Shouldn't we be able to achieve backpressure solely by bounded channels instead of having to add a special backpressure type?
 
 - test system limits/memory consumption in relation to backpressure settings/max open connections...
@@ -48,6 +49,7 @@
 
 - fuzz
 - CI, look at the futures .travis.yml for better configuration
+- single threaded testing.
 
 
 ## Examples

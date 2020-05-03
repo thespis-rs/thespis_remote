@@ -47,6 +47,26 @@ pub mod import
 pub use actors::*;
 
 
+
+pub fn add_show_sum() -> remotes::Services
+{
+	// Create mailbox for our handler
+	//
+	let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
+
+	// Create a service map
+	//
+	let mut sm = remotes::Services::new();
+
+	// Register our handlers
+	//
+	sm.register_handler::<Add >( addr_handler.clone_box() );
+	sm.register_handler::<Show>( addr_handler.clone_box() );
+
+	sm
+}
+
+
 pub fn peer_listen
 (
 	socket: Endpoint                                                     ,
