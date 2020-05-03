@@ -20,27 +20,21 @@ use common::import::{ *, assert_eq };
 
 // Test relaying messages
 //
-#[test]
+#[async_std::test]
 //
-fn relay_once()
+async fn relay_once()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
 	let (ab, ba) = Endpoint::pair( 64, 64 );
 	let (bc, cb) = Endpoint::pair( 64, 64 );
 
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	// let exec = AsyncStd::default();
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
-
-
 	let provider = async move
 	{
 		// Create mailbox for our handler
 		//
 		debug!( "start mailbox for handler" );
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -54,7 +48,7 @@ fn relay_once()
 		// get a framed connection
 		//
 		debug!( "start mailbox for provider" );
-		let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
+		let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), AsyncStd, "provider" );
 
 		drop( peer_addr );
 
@@ -70,7 +64,7 @@ fn relay_once()
 	{
 		debug!( "start mailbox for consumer_to_relay" );
 
-		let (mut to_relay, _)  = peer_connect( cb, ex2.clone(), "consumer_to_relay" );
+		let (mut to_relay, _)  = peer_connect( cb, AsyncStd, "consumer_to_relay" );
 
 		// Call the service and receive the response
 		//
@@ -96,21 +90,21 @@ fn relay_once()
 
 	let relays = async move
 	{
-		relay( ba, bc, Box::pin( consumer ), true, exec ).await;
+		relay( ba, bc, Box::pin( consumer ), true, AsyncStd ).await;
 
 		warn!( "relays end" );
 	};
 
-	block_on( join( provider, relays ) );
+	join( provider, relays ).await;
 }
 
 
 
 // Test relaying several relays deep
 //
-#[test]
+#[async_std::test]
 //
-fn relay_multi()
+async fn relay_multi()
 {
 	// flexi_logger::Logger::with_str( "relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
@@ -120,16 +114,11 @@ fn relay_multi()
 	let (de, ed) = Endpoint::pair( 64, 64 );
 	let (ef, fe) = Endpoint::pair( 64, 64 );
 
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
-
-
 	let provider = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -142,7 +131,7 @@ fn relay_multi()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
+		let (_, _, handle) = peer_listen( ab, Arc::new( sm ), AsyncStd, "provider" );
 
 		handle.await;
 
@@ -154,7 +143,7 @@ fn relay_multi()
 
 	let consumer = async move
 	{
-		let (mut relay, _)  = peer_connect( fe, ex2.clone(), "consumer_to_relay" );
+		let (mut relay, _)  = peer_connect( fe, AsyncStd, "consumer_to_relay" );
 
 		// Call the service and receive the response
 		//
@@ -172,38 +161,33 @@ fn relay_multi()
 
 	let relays = async move
 	{
-		let  relay4 = relay( ed, ef, Box::pin( consumer ), true, exec.clone() )       ;
-		let  relay3 = relay( dc, de, Box::pin( relay4   ), true, exec.clone() )       ;
-		let  relay2 = relay( cb, cd, Box::pin( relay3   ), true, exec.clone() )       ;
-		              relay( ba, bc, Box::pin( relay2   ), true, exec         ).await ;
+		let  relay4 = relay( ed, ef, Box::pin( consumer ), true, AsyncStd )       ;
+		let  relay3 = relay( dc, de, Box::pin( relay4   ), true, AsyncStd )       ;
+		let  relay2 = relay( cb, cd, Box::pin( relay3   ), true, AsyncStd )       ;
+		              relay( ba, bc, Box::pin( relay2   ), true, AsyncStd ).await ;
 	};
 
-	block_on( join( provider, relays ) );
+	join( provider, relays ).await;
 }
 
 
 
 // Test unknown service error in a relay
 //
-#[test]
+#[async_std::test]
 //
-fn relay_unknown_service()
+async fn relay_unknown_service()
 {
 	// flexi_logger::Logger::with_str( "relay=trace, thespis_impl=info, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let (ab, ba) = Endpoint::pair( 64, 64 );
 	let (bc, cb) = Endpoint::pair( 64, 64 );
 
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
-	let ex3  = exec.clone();
-
 	let provider = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -215,7 +199,7 @@ fn relay_unknown_service()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( ab, Arc::new( sm ), ex1.clone(), "provider" );
+		let (_, _, handle) = peer_listen( ab, Arc::new( sm ), AsyncStd, "provider" );
 
 		handle.await;
 
@@ -227,7 +211,7 @@ fn relay_unknown_service()
 
 	let consumer = async move
 	{
-		let (mut relay, _relay_evts) = peer_connect( cb, ex2.clone(), "consumer_to_relay" );
+		let (mut relay, _relay_evts) = peer_connect( cb, AsyncStd, "consumer_to_relay" );
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -265,10 +249,10 @@ fn relay_unknown_service()
 	};
 
 
-	let relay = relay( ba, bc, Box::pin( consumer ), true, ex3 );
+	let relay = relay( ba, bc, Box::pin( consumer ), true, AsyncStd );
 
-	let provi_handle = exec.spawn_handle( provider ).expect( "Spawn provider"  );
-	let relay_handle = exec.spawn_handle( relay    ).expect( "Spawn relays"  );
+	let provi_handle = AsyncStd.spawn_handle( provider ).expect( "Spawn provider"  );
+	let relay_handle = AsyncStd.spawn_handle( relay    ).expect( "Spawn relays"  );
 
-	block_on( join( provi_handle, relay_handle ) );
+	join( provi_handle, relay_handle ).await;
 }

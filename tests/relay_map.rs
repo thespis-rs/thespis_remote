@@ -15,23 +15,16 @@ use common::import::{ *, assert_eq };
 
 // Test relaying messages
 //
-#[test]
+#[async_std::test]
 //
-fn relay_once_load_balance()
+async fn relay_once_load_balance()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
 	let (bc, cb) = Endpoint::pair( 64, 64 );
 
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	// let exec = AsyncStd::default();
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
-	let ex3  = exec.clone();
-
-
-	let (provider_cx , provider_handle ) = provider( Some( "provider1".into() ), ex1 );
-	let (provider_cx2, provider_handle2) = provider( Some( "provider1".into() ), ex2 );
+	let (provider_cx , provider_handle ) = provider( Some( "provider1".into() ), AsyncStd );
+	let (provider_cx2, provider_handle2) = provider( Some( "provider1".into() ), AsyncStd );
 
 
 	// --------------------------------------
@@ -40,7 +33,7 @@ fn relay_once_load_balance()
 	{
 		debug!( "start mailbox for consumer_to_relay" );
 
-		let (mut to_relay, _)  = peer_connect( cb, ex3.clone(), "consumer_to_relay" );
+		let (mut to_relay, _)  = peer_connect( cb, AsyncStd, "consumer_to_relay" );
 
 		// Call the service and receive the response
 		//
@@ -78,12 +71,12 @@ fn relay_once_load_balance()
 
 	let relays = async move
 	{
-		relay_closure( vec![ provider_cx, provider_cx2 ], bc, Box::pin( consumer ), true, exec ).await;
+		relay_closure( vec![ provider_cx, provider_cx2 ], bc, Box::pin( consumer ), true, AsyncStd ).await;
 
 		warn!( "relays end" );
 	};
 
-	block_on( join3( provider_handle, provider_handle2, relays ) );
+	join3( provider_handle, provider_handle2, relays ).await;
 }
 
 
@@ -94,11 +87,10 @@ fn relay_once_load_balance()
 // would be programs written in other languages, because those would manually implement the wire protocol.
 // Thus if this changes, you should bump a breaking change version.
 //
-#[test]
+#[async_std::test]
 //
-fn debug()
+async fn debug()
 {
-	let exec    = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 	let (_, cx) = Endpoint::pair( 64, 64 );
 
 	// Create mailbox for peer
@@ -106,8 +98,8 @@ fn debug()
 	let (peer_addr, mb) = Addr::builder().name( "relay_to_consumer".into() ).build();
 	let id              = peer_addr.id()                                            ;
 
-	let peer = Peer::from_async_read( peer_addr.clone(), cx, 1024, exec.clone(), None ).expect( "spawn peer" );
-	mb.spawn( peer, &exec ).expect( "spawn peer" );
+	let peer = Peer::from_async_read( peer_addr.clone(), cx, 1024, AsyncStd, None ).expect( "spawn peer" );
+	mb.spawn( peer, &AsyncStd ).expect( "spawn peer" );
 
 
 	let add  = <Add  as remotes::Service>::sid();

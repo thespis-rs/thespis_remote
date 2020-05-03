@@ -26,18 +26,18 @@
 
 pub mod peer              ;
     mod relay_map         ;
-    mod service_map_macro ;
-    mod service_map       ;
     mod service_handler   ;
+    mod service_map       ;
+    mod service_map_macro ;
 pub mod wire_format       ;
 
 pub use
 {
 	peer              :: * ,
 	relay_map         :: * ,
+	service_handler   :: * ,
 	service_map       :: * ,
 	service_map_macro :: * ,
-	service_handler   :: * ,
 	wire_format       :: * ,
 };
 

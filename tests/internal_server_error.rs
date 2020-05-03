@@ -15,17 +15,13 @@ use common::import::{ * };
 
 // Test basic remote funcionality. Test intertwined sends and calls.
 //
-#[test]
+#[async_std::test]
 //
-fn no_handler()
+async fn no_handler()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
 	let (server, client) = Endpoint::pair( 64, 64 );
-
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
-
 
 	let peera = async move
 	{
@@ -44,7 +40,7 @@ fn no_handler()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "peera" );
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "peera" );
 
 		handle.await;
 
@@ -54,7 +50,7 @@ fn no_handler()
 
 	let peerb = async move
 	{
-		let (mut peera, _)  = peer_connect( client, exec, "peer_b_to_peera" );
+		let (mut peera, _)  = peer_connect( client, AsyncStd, "peer_b_to_peera" );
 
 		// Call the service and receive the response
 		//
@@ -108,7 +104,7 @@ fn no_handler()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	block_on( join( peera, peerb ) );
+	join( peera, peerb ).await;
 }
 
 

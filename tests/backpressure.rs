@@ -83,27 +83,21 @@ service_map!
 //
 // When changing the backpressure to 3 below, the test should fail.
 //
-#[test]
+#[async_std::test]
 //
-fn backpressure_basic()
+async fn backpressure_basic()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
-	let ex3  = exec.clone();
-
-
 	let peera = async move
 	{
 		// Create mailbox for our handler
 		//
-		let slow  = Addr::builder().start( Slow , &ex1 ).expect( "spawn actor mailbox" );
-		let slow2 = Addr::builder().start( Slow , &ex1 ).expect( "spawn actor mailbox" );
-		let after = Addr::builder().start( After, &ex1 ).expect( "spawn actor mailbox" );
+		let slow  = Addr::builder().start( Slow , &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow2 = Addr::builder().start( Slow , &AsyncStd ).expect( "spawn actor mailbox" );
+		let after = Addr::builder().start( After, &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -121,7 +115,7 @@ fn backpressure_basic()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr, server, 1024, exec.clone(), Some( Arc::new( BackPressure::new(2) ) ) ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peer_addr, server, 1024, AsyncStd, Some( Arc::new( BackPressure::new(2) ) ) ).expect( "spawn peer" );
 
 
 		// register service map with peer
@@ -130,7 +124,7 @@ fn backpressure_basic()
 
 		let (fut, handle) = peer_mb.start(peer).remote_handle();
 
-		exec.spawn( fut ).expect( "start mailbox of Peer" );
+		AsyncStd.spawn( fut ).expect( "start mailbox of Peer" );
 		handle.await;
 
 		trace!( "end of peera" );
@@ -139,7 +133,7 @@ fn backpressure_basic()
 
 	let peerb = async move
 	{
-		let (mut peera, _)  = peer_connect( client, ex2, "peer_b_to_peera" );
+		let (mut peera, _)  = peer_connect( client, AsyncStd, "peer_b_to_peera" );
 
 		// Call the service and receive the response
 		//
@@ -155,11 +149,11 @@ fn backpressure_basic()
 		let (add2_fut, add2_handle) = add2.remote_handle();
 		let (show_fut, show_handle) = show.remote_handle();
 
-		ex3.spawn( add1_fut ).expect( "spawn add1"  );
-		ex3.spawn( add2_fut ).expect( "spawn add2"  );
+		AsyncStd.spawn( add1_fut ).expect( "spawn add1"  );
+		AsyncStd.spawn( add2_fut ).expect( "spawn add2"  );
 
 		Delay::new( Duration::from_millis(10) ).await;
-		ex3.spawn( show_fut ).expect( "spawn check" );
+		AsyncStd.spawn( show_fut ).expect( "spawn check" );
 
 		add1_handle.await;
 		add2_handle.await;
@@ -176,5 +170,5 @@ fn backpressure_basic()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	block_on( join( peera, peerb ) );
+	join( peera, peerb ).await;
 }

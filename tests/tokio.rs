@@ -1,3 +1,9 @@
+// Tests:
+//
+// - ✔ basic remote funcionality: intertwined sends and calls.
+// - ✔ correct async behavior: verify that a peer can continue to send/receive while waiting for the response to a call.
+// - ✔ call a remote service after the connection has closed: verify peer event and error kind.
+//
 #![ cfg( feature = "tokio_codec" ) ]
 
 mod common;
@@ -11,12 +17,7 @@ use
 };
 
 
-// Tests:
-//
-// - ✔ basic remote funcionality: intertwined sends and calls.
-// - ✔ correct async behavior: verify that a peer can continue to send/receive while waiting for the response to a call.
-// - ✔ call a remote service after the connection has closed: verify peer event and error kind.
-//
+
 pub fn peer_listen
 (
 	socket: TokioEndpoint                                ,

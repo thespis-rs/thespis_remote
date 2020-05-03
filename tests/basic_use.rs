@@ -14,23 +14,20 @@ use common::import::{ *, assert_eq };
 
 // Test basic remote funcionality. Test intertwined sends and calls.
 //
-#[test]
+#[async_std::test]
 //
-fn basic_remote()
+async fn basic_remote()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
 	let (server, client) = Endpoint::pair( 64, 64 );
-
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
 
 
 	let peera = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -43,7 +40,7 @@ fn basic_remote()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "peera" );
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "peera" );
 
 		handle.await;
 
@@ -53,7 +50,7 @@ fn basic_remote()
 
 	let peerb = async move
 	{
-		let (mut peera, _)  = peer_connect( client, exec, "peer_b_to_peera" );
+		let (mut peera, _)  = peer_connect( client, AsyncStd, "peer_b_to_peera" );
 
 		// Call the service and receive the response
 		//
@@ -73,7 +70,7 @@ fn basic_remote()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	block_on( join( peera, peerb ) );
+	join( peera, peerb ).await;
 }
 
 
@@ -111,14 +108,11 @@ service_map!
 // TODO: the spawning is now in service map and relaymap, so we actually
 // should also test that they process requests concurrently.
 //
-#[test]
+#[async_std::test]
 //
-fn parallel()
+async fn parallel()
 {
 	let (server, client) = Endpoint::pair( 64, 64 );
-
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
 
 	let peera = async move
 	{
@@ -128,7 +122,7 @@ fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr.clone(), server, 1024, ex1.clone(), None ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peer_addr.clone(), server, 1024, AsyncStd, None ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -136,7 +130,7 @@ fn parallel()
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Parallel{ sum: Box::new( addr ) }, &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Parallel{ sum: Box::new( addr ) }, &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -145,7 +139,7 @@ fn parallel()
 
 		peer.register_services( Arc::new( sm ) );
 
-		peer_mb.spawn( peer, &ex1 ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.spawn( peer, &AsyncStd ).expect( "Failed to start mailbox of Peer" );
 	};
 
 
@@ -157,11 +151,11 @@ fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr.clone(), client, 1024, exec.clone(), None ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peer_addr.clone(), client, 1024, AsyncStd, None ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(19), &exec ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(19), &AsyncStd ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show
@@ -171,7 +165,7 @@ fn parallel()
 
 		peer.register_services( Arc::new( sm ) );
 
-		peer_mb.spawn( peer, &exec ).expect( "Failed to start mailbox of Peer" );
+		peer_mb.spawn( peer, &AsyncStd ).expect( "Failed to start mailbox of Peer" );
 
 
 		// Create recipients
@@ -186,7 +180,7 @@ fn parallel()
 		peer_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 	};
 
-	block_on( join( peera, peerb ) );
+	join( peera, peerb ).await;
 }
 
 
@@ -194,15 +188,14 @@ fn parallel()
 
 // Test calling a remote service after the connection has closed.
 //
-#[test]
+#[async_std::test]
 //
-fn call_after_close_connection()
+async fn call_after_close_connection()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
 	let (mut server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
 
 	let nodea = async move
 	{
@@ -212,7 +205,7 @@ fn call_after_close_connection()
 
 	let nodeb = async move
 	{
-		let (peera, mut peera_evts) = peer_connect( client, exec, "nodeb_to_node_a" );
+		let (peera, mut peera_evts) = peer_connect( client, AsyncStd, "nodeb_to_node_a" );
 
 		// Call the service and receive the response
 		//
@@ -239,6 +232,6 @@ fn call_after_close_connection()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	block_on( join( nodea, nodeb ) );
+	join( nodea, nodeb ).await;
 }
 

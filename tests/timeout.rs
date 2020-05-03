@@ -41,23 +41,19 @@ service_map!
 
 // Test error returned by timeout.
 //
-#[test]
+#[async_std::test]
 //
-fn timeout()
+async fn timeout()
 {
 	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
-
-
 	let peera = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Slow, &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Slow, &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -69,7 +65,7 @@ fn timeout()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "peera" );
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "peera" );
 
 		handle.await;
 
@@ -87,7 +83,7 @@ fn timeout()
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::from_async_read( peera.clone(), client, 1024, exec.clone(), None ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peera.clone(), client, 1024, AsyncStd, None ).expect( "spawn peer" );
 
 
 		// This is the relevant line for this test!
@@ -97,7 +93,7 @@ fn timeout()
 
 		debug!( "start mailbox for [{}] in peerb", name );
 
-		peer_mb.spawn( peer, &exec ).expect( "start mailbox of Peer" );
+		peer_mb.spawn( peer, &AsyncStd ).expect( "start mailbox of Peer" );
 
 
 		// Call the service and receive the response
@@ -116,6 +112,6 @@ fn timeout()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	block_on( join( peera, peerb ) );
+	join( peera, peerb ).await;
 }
 

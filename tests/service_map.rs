@@ -49,7 +49,7 @@ mod b
 
 // Verify that the same service, in a different namespace has different service id.
 //
-#[ test ]
+#[test]
 //
 fn sid_diff_for_diff_ns()
 {
@@ -59,7 +59,7 @@ fn sid_diff_for_diff_ns()
 
 // Verify that a different service, in the same namespace has different service id.
 //
-#[ test ]
+#[test]
 //
 fn sid_diff_for_diff_service()
 {
@@ -69,7 +69,7 @@ fn sid_diff_for_diff_service()
 
 // Verify that the same service in different servicemaps with the same namespace has identical sid
 //
-#[ test ]
+#[test]
 //
 fn sid_same_for_same_ns()
 {
@@ -79,15 +79,13 @@ fn sid_same_for_same_ns()
 
 // Test clone.
 //
-#[test]
+#[async_std::test]
 //
-fn clone()
+async fn clone()
 {
-	let exec = ThreadPool::new().expect( "create threadpool" );
-
 	// Create mailbox for our handler
 	//
-	let addr_handler = Addr::builder().start( Sum(0), &exec ).expect( "spawn actor mailbox" );
+	let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 	// Create a service map
 	//
@@ -111,9 +109,9 @@ fn clone()
 // would be programs written in other languages, because those would manually implement the wire protocol.
 // Thus if this changes, you should bump a breaking change version.
 //
-#[test]
+#[async_std::test]
 //
-fn debug()
+async fn debug()
 {
 	// Create mailbox for peer
 	//
@@ -147,9 +145,9 @@ fn debug()
 
 // Test debug implementation of ServiceID
 //
-#[test]
+#[async_std::test]
 //
-fn debug_service_id()
+async fn debug_service_id()
 {
 	// Unfortunately we can only register the service in Services::new. TODO: document this.
 	//

@@ -25,22 +25,17 @@ use common::import::{ *, assert_eq };
 
 // Test calling a remote service after the connection has closed.
 //
-#[test]
+#[async_std::test]
 //
-fn close_connection()
+async fn close_connection()
 {
 	let (server, client) = Endpoint::pair( 64, 64 );
-
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
-
 
 	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -51,7 +46,7 @@ fn close_connection()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "nodea" );
 
 		handle.await;
 	};
@@ -59,7 +54,7 @@ fn close_connection()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" );
 
 		// Close the connection and check the event
 		//
@@ -72,32 +67,27 @@ fn close_connection()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
-	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
+	let a_handle = AsyncStd.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = AsyncStd.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	block_on( join( a_handle, b_handle ) );
+	join( a_handle, b_handle ).await;
 }
 
 
 
 // Test calling a remote service after the connection has closed.
 //
-#[test]
+#[async_std::test]
 //
-fn close_connection_call()
+async fn close_connection_call()
 {
 	let (server, client) = Endpoint::pair( 64, 64 );
-
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
-
 
 	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -108,7 +98,7 @@ fn close_connection_call()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "nodea" );
 
 		handle.await;
 	};
@@ -116,7 +106,7 @@ fn close_connection_call()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" );
 
 		// Close the connection and check the event
 		//
@@ -129,34 +119,30 @@ fn close_connection_call()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
-	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
+	let a_handle = AsyncStd.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = AsyncStd.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	block_on( join( a_handle, b_handle ) );
+	join( a_handle, b_handle ).await;
 }
 
 
 
 // Test Header Unknown Service (Remote)Error.
 //
-#[test]
+#[async_std::test]
 //
-fn header_unknown_service_error()
+async fn header_unknown_service_error()
 {
 	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=trace, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let (server, client) = Endpoint::pair( 64, 64 );
-
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
 
 
 	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -165,7 +151,7 @@ fn header_unknown_service_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "nodea" );
 
 		let sid = Some( ServiceID::from( Bytes::from( vec![3;16] ) ) );
 
@@ -185,7 +171,7 @@ fn header_unknown_service_error()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" );
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -208,10 +194,10 @@ fn header_unknown_service_error()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
-	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
+	let a_handle = AsyncStd.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = AsyncStd.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	block_on( join( a_handle, b_handle ) );
+	join( a_handle, b_handle ).await;
 }
 
 
@@ -227,15 +213,11 @@ async fn call_deserialize()
 	//
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
-
 	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -244,7 +226,7 @@ async fn call_deserialize()
 
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "nodea" );
 
 
 		match evts.next().await.unwrap()
@@ -263,7 +245,7 @@ async fn call_deserialize()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" );
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -304,8 +286,8 @@ async fn call_deserialize()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
-	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
+	let a_handle = AsyncStd.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = AsyncStd.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
 	join( a_handle, b_handle ).await;
 }
@@ -314,23 +296,19 @@ async fn call_deserialize()
 
 // Test Service map Deserialization (Remote)Error.
 //
-#[test]
+#[async_std::test]
 //
-fn sm_deserialize_error()
+async fn sm_deserialize_error()
 {
 	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=trace, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
-	let exec = Arc::new( ThreadPool::new().expect( "create threadpool" ) );
-	let ex1  = exec.clone();
-	let ex2  = exec.clone();
-
 	let nodea = async move
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(0), &ex1 ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -339,7 +317,7 @@ fn sm_deserialize_error()
 
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), ex1.clone(), "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "nodea" );
 
 		match evts.next().await.unwrap()
 		{
@@ -357,7 +335,7 @@ fn sm_deserialize_error()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts) = peer_connect( client, ex2.clone(), "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts) = peer_connect( client, AsyncStd, "nodeb_to_nodea" );
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -385,8 +363,8 @@ fn sm_deserialize_error()
 	// As far as I can tell, execution order is not defined, so hmm, there is no
 	// guarantee that a is listening before b tries to connect, but it seems to work for now.
 	//
-	let a_handle = exec.spawn_handle( nodea ).expect( "Spawn peera"  );
-	let b_handle = exec.spawn_handle( nodeb ).expect( "Spawn peerb"  );
+	let a_handle = AsyncStd.spawn_handle( nodea ).expect( "Spawn peera"  );
+	let b_handle = AsyncStd.spawn_handle( nodeb ).expect( "Spawn peerb"  );
 
-	block_on( join( a_handle, b_handle ) );
+	join( a_handle, b_handle ).await;
 }
