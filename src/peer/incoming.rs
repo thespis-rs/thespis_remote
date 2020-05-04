@@ -122,12 +122,12 @@ impl Peer
 				return
 			}
 
-
-			error!( "{}: Remote error: {:?}", self.identify(), &err );
-
 			// Notify observers
 			//
 			let shine = PeerEvent::RemoteError( err );
+
+			// If pharos is closed, we already panicked... so except is fine.
+			//
 			self.pharos.send( shine ).await.expect( "pharos not closed" );
 
 		}
@@ -136,9 +136,13 @@ impl Peer
 		//
 		else
 		{
-			error!( "{}: We received an error message from a remote peer, \
-				      but couldn't deserialize it", self.identify() )
-			;
+			let ctx = self.ctx( None, cid, "We received an error message from a remote peer, but couldn't deserialize it" );
+			let err = PeerErr::Deserialize{ ctx };
+			let shine = PeerEvent::Error(err);
+
+			// If pharos is closed, we already panicked... so except is fine.
+			//
+			self.pharos.send( shine ).await.expect( "pharos not closed" );
 		}
 	}
 

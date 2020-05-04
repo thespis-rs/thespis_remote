@@ -326,8 +326,8 @@ impl Peer
 	{
 		// This can fail if:
 		//
-		// - the receiver is dropped. The receiver is our mailbox, so it should never be dropped
-		//   as long as we have an address to it and this task would be dropped with it.
+		// the receiver is dropped. The receiver is our mailbox, so it should never be dropped
+		// as long as we have an address to it and this task would be dropped with it.
 		//
 		while let Some(msg) = incoming.next().await
 		{
