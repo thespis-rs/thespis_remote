@@ -3,7 +3,11 @@
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub mod codec   ;
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub use codec::*;
 
-use crate::{ import::*, PeerErr, wire_format::* };
+use
+{
+	crate     :: { import::*, PeerErr, wire_format::*  } ,
+	byteorder :: { ReadBytesExt, LittleEndian          } ,
+};
 
 const HEADER_LEN: usize = 16;
 
@@ -74,26 +78,12 @@ impl Message for BytesFormat
 
 
 
-impl From< (ServiceID, ConnID, Bytes) > for BytesFormat
-{
-	fn from( parts: (ServiceID, ConnID, Bytes) ) -> Self
-	{
-		let mut bytes = BytesMut::with_capacity( HEADER_LEN + parts.2.len() );
-
-		bytes.put_u64_le( parts.0.into() );
-		bytes.put_u64_le( parts.1.into() );
-		bytes.put       ( parts.2        );
-
-		Self { bytes: bytes.freeze() }
-	}
-}
-
-
 // All the methods here can panic. We should make sure that bytes is always big enough,
 // because bytes.slice panics if it's to small. Same for bytes.put.
 //
 impl WireFormat for BytesFormat
 {
+
 	/// The service id of this message. When coming in over the wire, this identifies
 	/// which service you are calling. A ServiceID should be unique for a given service.
 	/// The reference implementation combines a unique type id with a namespace so that
@@ -103,7 +93,7 @@ impl WireFormat for BytesFormat
 	{
 		// TODO: is this the most efficient way?
 		//
-		self.bytes.slice( 0..8 ).get_u64_le().into()
+		(&self.bytes.as_ref()[ 0..8 ]).read_u64::<LittleEndian>().unwrap().into()
 	}
 
 
@@ -111,7 +101,7 @@ impl WireFormat for BytesFormat
 	//
 	fn conn_id( &self ) -> ConnID
 	{
-		self.bytes.slice( 8..16 ).get_u64_le().into()
+		(&self.bytes.as_ref()[ 8..16 ]).read_u64::<LittleEndian>().unwrap().into()
 	}
 
 
@@ -137,6 +127,22 @@ impl Into< Bytes > for BytesFormat
 	fn into( self ) -> Bytes
 	{
 		self.bytes
+	}
+}
+
+
+
+impl From< (ServiceID, ConnID, Bytes) > for BytesFormat
+{
+	fn from( parts: (ServiceID, ConnID, Bytes) ) -> Self
+	{
+		let mut bytes = BytesMut::with_capacity( HEADER_LEN + parts.2.len() );
+
+		bytes.put_u64_le( parts.0.into() );
+		bytes.put_u64_le( parts.1.into() );
+		bytes.put       ( parts.2        );
+
+		Self { bytes: bytes.freeze() }
 	}
 }
 

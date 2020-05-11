@@ -98,7 +98,7 @@ dependencies:
   #
   pharos              : { version: ^0.4    }
   thespis             : { path: ../thespis }
-
+  byteorder           : ^1
 
   # tokio stuff, AsyncRead/Write and Codecs are in the public API
   #
