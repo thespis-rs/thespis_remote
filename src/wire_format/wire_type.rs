@@ -2,7 +2,7 @@
 //
 #[ derive(Debug) ]
 //
-pub(crate) enum WireType
+pub enum WireType
 {
 	ConnectionError,
 	IncomingSend,

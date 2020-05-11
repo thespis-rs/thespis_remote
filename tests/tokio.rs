@@ -147,8 +147,9 @@ impl Handler< Show > for Parallel
 
 service_map!
 (
-	namespace     : parallel ;
-	services      : Show     ;
+	namespace   : parallel    ;
+	wire_format : BytesFormat ;
+	services    : Show        ;
 );
 
 

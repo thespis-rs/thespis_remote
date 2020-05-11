@@ -81,17 +81,24 @@ impl Message for BytesFormat
 //
 impl BytesFormat
 {
-	pub fn create( service: ServiceID, conn_id: ConnID, mesg: Bytes ) -> Self
-	{
-		let mut bytes = BytesMut::with_capacity( HEADER_LEN + mesg.len() );
 
-		bytes.put( Into::<Bytes>::into( service ) );
-		bytes.put( Into::<Bytes>::into( conn_id ) );
-		bytes.put( mesg                           );
+}
+
+
+impl From< (ServiceID, ConnID, Bytes) > for BytesFormat
+{
+	fn from( parts: (ServiceID, ConnID, Bytes) ) -> Self
+	{
+		let mut bytes = BytesMut::with_capacity( HEADER_LEN + parts.2.len() );
+
+		bytes.put( Into::<Bytes>::into( parts.0 ) );
+		bytes.put( Into::<Bytes>::into( parts.1 ) );
+		bytes.put( parts.2                        );
 
 		Self { bytes: bytes.freeze() }
 	}
 }
+
 
 impl WireFormat for BytesFormat
 {

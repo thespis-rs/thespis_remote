@@ -7,12 +7,12 @@ use
 
 /// Type representing Messages coming in over the wire, for internal use only.
 //
-pub(super) struct Incoming
+pub(super) struct Incoming<Wf>
 {
-	pub(crate) msg: Result<BytesFormat, WireErr>
+	pub(crate) msg: Result<Wf, WireErr>
 }
 
-impl Message for Incoming
+impl<Wf: Send + 'static> Message for Incoming<Wf>
 {
 	type Return = ();
 }
@@ -26,9 +26,9 @@ impl Message for Incoming
 ///
 /// TODO: is this desired? If so support it officially and document it.
 //
-impl Handler<Incoming> for Peer
+impl<Wf: WireFormat + Send + 'static> Handler<Incoming<Wf>> for Peer<Wf>
 {
-	#[async_fn] fn handle( &mut self, incoming: Incoming )
+	#[async_fn] fn handle( &mut self, incoming: Incoming<Wf> )
 	{
 		// We're shut down. we can't really do anything useful.
 		//
@@ -52,16 +52,17 @@ impl Handler<Incoming> for Peer
 		};
 
 
-		let sid = frame.service();
-		let cid = frame.conn_id();
-		let kind = wire_kind( &frame );
+		let sid  = frame.service();
+		let cid  = frame.conn_id();
+		let kind = frame.kind();
+		let msg  = frame.mesg();
 
 		// TODO: when we have benchmarks, verify if it's better to return boxed submethods here
 		// rather than awaiting. Implies the rest of this method can run sync.
 		//
 		match kind
 		{
-			WireType::ConnectionError => self.remote_conn_err( frame.mesg(), cid ).await,
+			WireType::ConnectionError => self.remote_conn_err( msg, cid ).await,
 			WireType::IncomingSend    => self.incoming_send  ( sid, frame        ).await,
 			WireType::IncomingCall    => self.incoming_call  ( cid, sid, frame   ).await,
 
@@ -96,7 +97,7 @@ impl Handler<Incoming> for Peer
 }
 
 
-impl Peer
+impl<Wf: WireFormat> Peer<Wf>
 {
 	// It's a connection error from the remote peer
 	//
@@ -152,9 +153,9 @@ impl Peer
 	//
 	async fn incoming_send
 	(
-		&mut self            ,
-		sid     : ServiceID  ,
-		frame   : BytesFormat ,
+		&mut self           ,
+		sid     : ServiceID ,
+		frame   : Wf        ,
 	)
 	{
 		let identity = self.identify();
@@ -221,10 +222,10 @@ impl Peer
 
 	async fn incoming_call
 	(
-		&mut self            ,
-		cid     : ConnID     ,
-		sid     : ServiceID  ,
-		frame   : BytesFormat ,
+		&mut self           ,
+		cid     : ConnID    ,
+		sid     : ServiceID ,
+		frame   : Wf        ,
 	)
 	{
 		if self.closed { return }

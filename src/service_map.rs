@@ -9,13 +9,13 @@ use crate::{ *, import::*, peer::Response } ;
 /// The crux is that a service map returns a future that processes the requests and returns
 /// whatever is relevant to the remote client.
 //
-pub trait ServiceMap: fmt::Debug + Send + Sync
+pub trait ServiceMap<Wf = BytesFormat>: fmt::Debug + Send + Sync
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//
-	fn send_service( &self, msg: BytesFormat, ctx: PeerErrCtx )
+	fn send_service( &self, msg: Wf, ctx: PeerErrCtx )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response<Wf>, PeerErr> > + Send >>, PeerErr >
 	;
 
 
@@ -23,9 +23,9 @@ pub trait ServiceMap: fmt::Debug + Send + Sync
 	/// This should take care of deserialization. The return address is the address of the peer
 	/// to which the serialized answer shall be send.
 	//
-	fn call_service( &self, msg: BytesFormat, ctx: PeerErrCtx )
+	fn call_service( &self, msg: Wf, ctx: PeerErrCtx )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response<Wf>, PeerErr> > + Send >>, PeerErr >
 	;
 
 

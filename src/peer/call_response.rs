@@ -6,13 +6,13 @@ use crate::{ import::*, * };
 //
 #[ derive( Debug ) ]
 //
-pub struct CallResponse
+pub struct CallResponse<Wf>
 {
-	msg: BytesFormat,
+	msg: Wf,
 }
 
 
-impl Message for CallResponse
+impl<Wf: Send + 'static> Message for CallResponse<Wf>
 {
 	/// We do not await the receiver in the async handle method below, since we don't want
 	/// to hang the peer whilst waiting for the response. That's why we return a channel.
@@ -21,11 +21,11 @@ impl Message for CallResponse
 }
 
 
-impl CallResponse
+impl<Wf> CallResponse<Wf>
 {
 	/// Create a new CallResponse to send an outgoing message over the peer.
 	//
-	pub fn new( msg: BytesFormat ) -> Self
+	pub fn new( msg: Wf ) -> Self
 	{
 		Self{ msg }
 	}
@@ -36,9 +36,9 @@ impl CallResponse
 /// Handler for outgoing CallResponse. Compared to simply sending out, this will notify the
 /// backpressure that we are done to free a slot for new requests.
 //
-impl Handler<CallResponse> for Peer
+impl<Wf: WireFormat + Send + 'static> Handler<CallResponse<Wf>> for Peer<Wf>
 {
-	#[async_fn] fn handle( &mut self, wrap: CallResponse ) -> <CallResponse as Message>::Return
+	#[async_fn] fn handle( &mut self, wrap: CallResponse<Wf> ) -> <CallResponse<Wf> as Message>::Return
 	{
 		trace!( "{}: sending OUT CallResponse", self.identify() );
 

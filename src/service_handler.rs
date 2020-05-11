@@ -4,12 +4,12 @@ use crate :: { import::*, * };
 
 /// Convenience trait specifying that some address can deliver both BytesFormat and peer::Call messages.
 //
-pub trait Relay: Address<BytesFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Identify + Send {}
+pub trait Relay<Wf: Send + 'static + Message = BytesFormat>: Address<Wf, Error=ThesErr> + Address<Call<Wf>, Error=ThesErr> + Identify + Send {}
 
-impl<T> Relay for T where T: Address<BytesFormat, Error=ThesErr> + Address<Call, Error=ThesErr> + Identify + Send {}
+impl<T, Wf: Send + 'static + Message> Relay<Wf> for T where T: Address<Wf, Error=ThesErr> + Address<Call<Wf>, Error=ThesErr> + Identify + Send {}
 
 
-pub type RelayClosure = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay> + Send>;
+pub type RelayClosure<Wf = BytesFormat> = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay<Wf>> + Send>;
 
 
 /// A wrapper type to be able to pass both an BoxAddress or a closure to RelayMap.
@@ -27,22 +27,22 @@ pub type RelayClosure = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay> + Send>;
 ///       an elegant solution. I don't consider it a priority because for local actors it's possible to
 ///       implement load balancing by having a proxy actor be the handler and letting that dispatch.
 //
-pub enum ServiceHandler
+pub enum ServiceHandler<Wf = BytesFormat>
 {
 	/// A Box<dyn Address<Relay>>
 	//
-	Address( Box<dyn Relay> ),
+	Address( Box<dyn Relay<Wf>> ),
 
 	/// A closure that yields an Address.
 	//
-	Closure( RelayClosure ),
+	Closure( RelayClosure<Wf> ),
 }
 
 
 
-impl From< Box<dyn Relay> > for ServiceHandler
+impl<Wf> From< Box<dyn Relay<Wf>> > for ServiceHandler<Wf>
 {
-	fn from( addr: Box<dyn Relay> ) -> Self
+	fn from( addr: Box<dyn Relay<Wf>> ) -> Self
 	{
 		ServiceHandler::Address( addr )
 	}
@@ -50,9 +50,9 @@ impl From< Box<dyn Relay> > for ServiceHandler
 
 
 
-impl From< RelayClosure > for ServiceHandler
+impl<Wf> From< RelayClosure<Wf> > for ServiceHandler<Wf>
 {
-	fn from( cl: RelayClosure ) -> Self
+	fn from( cl: RelayClosure<Wf> ) -> Self
 	{
 		ServiceHandler::Closure( cl )
 	}
@@ -62,7 +62,7 @@ impl From< RelayClosure > for ServiceHandler
 
 // Would have been nice to have file and line number for the closure here, but it's rather hard to do.
 //
-impl fmt::Debug for ServiceHandler
+impl<Wf> fmt::Debug for ServiceHandler<Wf>
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
@@ -87,7 +87,7 @@ impl fmt::Debug for ServiceHandler
 }
 
 
-impl fmt::Display for ServiceHandler
+impl<Wf> fmt::Display for ServiceHandler<Wf>
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{

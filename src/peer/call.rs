@@ -9,24 +9,24 @@ use crate::{ import::*, * };
 //
 #[ derive( Debug ) ]
 //
-pub struct Call
+pub struct Call<Wf>
 {
-	mesg: BytesFormat,
+	mesg: Wf,
 }
 
-impl Message for Call
+impl<Wf: Send + 'static> Message for Call<Wf>
 {
 	/// We do not await the receiver in the async handle method below, since we don't want
 	/// to hang the peer whilst waiting for the response. That's why we return a channel.
 	//
-	type Return = Result< oneshot::Receiver<Result<BytesFormat, ConnectionError>>, PeerErr >;
+	type Return = Result< oneshot::Receiver<Result<Wf, ConnectionError>>, PeerErr >;
 }
 
-impl Call
+impl<Wf> Call<Wf>
 {
 	/// Create a new Call to send an outgoing message over the peer.
 	//
-	pub fn new( mesg: BytesFormat ) -> Self
+	pub fn new( mesg: Wf ) -> Self
 	{
 		Self{ mesg }
 	}
@@ -42,9 +42,9 @@ impl Call
 /// If the connection gets dropped before the answer comes, the oneshot::Receiver will err with Canceled.
 /// If the remote fails to process the message, you will get a ConnectionError out of the channel.
 //
-impl Handler<Call> for Peer
+impl<Wf: WireFormat + Send + 'static> Handler<Call<Wf>> for Peer<Wf>
 {
-	#[async_fn] fn handle( &mut self, call: Call ) -> <Call as Message>::Return
+	#[async_fn] fn handle( &mut self, call: Call<Wf> ) -> <Call<Wf> as Message>::Return
 	{
 		let identity = self.identify();
 
@@ -76,7 +76,7 @@ impl Handler<Call> for Peer
 
 		// If the above succeeded, store the other end of the channel
 		//
-		let (sender, receiver) = oneshot::channel::< Result<BytesFormat, ConnectionError> >() ;
+		let (sender, receiver) = oneshot::channel::< Result<Wf, ConnectionError> >() ;
 
 
 		// send a timeout message to ourselves.

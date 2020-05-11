@@ -6,22 +6,22 @@ use crate :: { import::*, *, peer::Response };
 /// used for local handlers is that handlers here don't have to implement `Handler<M>` for the actual message type.
 /// They only have to implement `Handler<BytesFormat>` (for sends) and `Handler<peer::Call>` for calls.
 //
-pub struct RelayMap
+pub struct RelayMap<Wf>
 {
 	// I decided not to take a static reference to ServiceID, because it seems kind or limiting how people
 	// can store them. In this case, the process does not need to compile in the actual handlers.
 	// ServiceID is just 16 bytes of data.
 	//
-	handler : Mutex<ServiceHandler> ,
-	services: Vec<ServiceID>        ,
+	handler : Mutex<ServiceHandler<Wf>> ,
+	services: Vec<ServiceID>            ,
 }
 
 
-impl RelayMap
+impl<Wf> RelayMap<Wf>
 {
 	/// Create a RelayMap.
 	//
-	pub fn new( handler: ServiceHandler, services: Vec<ServiceID> ) -> Self
+	pub fn new( handler: ServiceHandler<Wf>, services: Vec<ServiceID> ) -> Self
 	{
 		Self { handler: Mutex::new( handler ), services }
 	}
@@ -29,13 +29,13 @@ impl RelayMap
 
 
 
-impl ServiceMap for RelayMap
+impl<Wf: WireFormat> ServiceMap<Wf> for RelayMap<Wf>
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//
-	fn send_service( &self, msg: BytesFormat, ctx: PeerErrCtx )
+	fn send_service( &self, msg: Wf, ctx: PeerErrCtx )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response<Wf>, PeerErr> > + Send >>, PeerErr >
 	{
 		trace!( "RelayMap: Incoming Send for relayed actor." );
 
@@ -84,9 +84,9 @@ impl ServiceMap for RelayMap
 	/// This should take care of deserialization. The return address is the address of the peer
 	/// to which the serialized answer shall be send.
 	//
-	fn call_service( &self, frame: BytesFormat, ctx: PeerErrCtx )
+	fn call_service( &self, frame: Wf, ctx: PeerErrCtx )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response<Wf>, PeerErr> > + Send >>, PeerErr >
 	{
 		trace!( "RelayMap: Incoming Call for relayed actor." );
 
@@ -110,11 +110,11 @@ impl ServiceMap for RelayMap
 
 #[ allow(clippy::needless_return) ]
 //
-async fn make_call<T>( mut relay: Box<T>, frame: BytesFormat, ctx: PeerErrCtx )
+async fn make_call<T, Wf: WireFormat + Send + 'static>( mut relay: Box<T>, frame: Wf, ctx: PeerErrCtx )
 
-	-> Result<Response, PeerErr >
+	-> Result<Response<Wf>, PeerErr >
 
-	where T: Address<Call, Error=ThesErr> + ?Sized
+	where T: Address<Call<Wf>, Error=ThesErr> + ?Sized
 
 {
 	let cid        = frame.conn_id();
@@ -200,7 +200,7 @@ async fn make_call<T>( mut relay: Box<T>, frame: BytesFormat, ctx: PeerErrCtx )
 /// }"
 /// ```
 //
-impl fmt::Debug for RelayMap
+impl<Wf> fmt::Debug for RelayMap<Wf>
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{

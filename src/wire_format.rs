@@ -17,7 +17,7 @@ pub(crate) use wire_type::WireType;
 
 /// Trait holding the required functionality to function as a WireFormat for thespis_remote.
 //
-pub trait WireFormat : Message< Return = Result<(), PeerErr> >
+pub trait WireFormat : Message< Return = Result<(), PeerErr> > + From< (ServiceID, ConnID, Bytes) >
 {
 	/// The service id of this message. When coming in over the wire, this identifies
 	/// which service you are calling. A ServiceID should be unique for a given service.
@@ -37,27 +37,28 @@ pub trait WireFormat : Message< Return = Result<(), PeerErr> >
 	/// The total length of the WireFormat in bytes (header+payload).
 	//
 	fn len( &self ) -> usize;
-}
 
 
-
-
-/// Find out what kind of message this is.
-//
-pub(crate) fn wire_kind( wf: &dyn WireFormat ) -> WireType
-{
-	match wf.service()
+	fn kind( &self ) -> WireType
 	{
-		x if x.is_null() => WireType::ConnectionError ,
-		x if x.is_full() => WireType::CallResponse    ,
-
-		_ =>
+		match self.service()
 		{
-			match wf.conn_id()
+			x if x.is_null() => WireType::ConnectionError ,
+			x if x.is_full() => WireType::CallResponse    ,
+
+			_ =>
 			{
-				x if x.is_null() => WireType::IncomingSend ,
-				_                => WireType::IncomingCall ,
+				match self.conn_id()
+				{
+					x if x.is_null() => WireType::IncomingSend ,
+					_                => WireType::IncomingCall ,
+				}
 			}
 		}
 	}
 }
+
+
+
+
+

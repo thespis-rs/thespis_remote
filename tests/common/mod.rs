@@ -329,7 +329,8 @@ pub async fn relay_closure
 
 service_map!
 (
-	namespace: remotes        ;
-	services : Add, Sub, Show ;
+	namespace  : remotes        ;
+	wire_format: BytesFormat    ;
+	services   : Add, Sub, Show ;
 );
 

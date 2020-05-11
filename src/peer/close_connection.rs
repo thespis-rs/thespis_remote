@@ -33,7 +33,7 @@ impl Message for CloseConnection { type Return = (); }
 
 
 
-impl Handler<CloseConnection> for Peer
+impl<Wf: WireFormat> Handler<CloseConnection> for Peer<Wf>
 {
 	#[async_fn] fn handle( &mut self, msg: CloseConnection )
 	{

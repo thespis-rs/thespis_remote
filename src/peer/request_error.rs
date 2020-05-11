@@ -55,7 +55,7 @@ impl Message for RequestError
 
 /// Handler for errors that happened during request processing.
 //
-impl Handler<RequestError> for Peer
+impl<Wf: WireFormat> Handler<RequestError> for Peer<Wf>
 {
 	fn handle( &mut self, msg: RequestError ) -> Return<'_, ()> { async move
 	{

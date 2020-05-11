@@ -22,7 +22,7 @@ impl Message for Timeout
 
 /// Handler for timeout on outgoing calls.
 //
-impl Handler<Timeout> for Peer
+impl<Wf: Send> Handler<Timeout> for Peer<Wf>
 {
 	fn handle( &mut self, msg: Timeout ) -> Return< '_, <Timeout as Message>::Return >
 	{

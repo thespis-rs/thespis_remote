@@ -71,8 +71,9 @@ impl Handler<Show> for After
 
 service_map!
 (
-	namespace: bpsm            ;
-	services : Add, Add2, Show ;
+	namespace  : bpsm            ;
+	wire_format: BytesFormat     ;
+	services   : Add, Add2, Show ;
 );
 
 

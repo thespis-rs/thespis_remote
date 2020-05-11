@@ -23,15 +23,17 @@ mod a
 
 	service_map!
 	(
-		namespace:     remotes   ;
-		services     : Add, Show ;
+		namespace  : remotes     ;
+		wire_format: BytesFormat ;
+		services   : Add, Show   ;
 	);
 
 
 	service_map!
 	(
-		namespace:     others  ;
-		services     : Add     ;
+		namespace  : others      ;
+		wire_format: BytesFormat ;
+		services   : Add         ;
 	);
 }
 
@@ -41,8 +43,9 @@ mod b
 
 	service_map!
 	(
-		namespace:     remotes ;
-		services     : Add     ;
+		namespace  : remotes     ;
+		wire_format: BytesFormat ;
+		services   : Add         ;
 	);
 }
 

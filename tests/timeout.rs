@@ -33,8 +33,9 @@ impl Handler<Add> for Slow
 
 service_map!
 (
-	namespace: timeouts ;
-	services : Add      ;
+	namespace  : timeouts    ;
+	wire_format: BytesFormat ;
+	services   : Add         ;
 );
 
 

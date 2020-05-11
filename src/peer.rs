@@ -33,21 +33,23 @@ pub use response          :: { Response            } ;
 //
 /// Trait bounds for the stream of incoming messages
 //
-pub trait BoundsIn : 'static + Stream< Item = Result<BytesFormat, WireErr> > + Unpin + Send {}
+pub trait BoundsIn<Wf: WireFormat> : 'static + Stream< Item = Result<Wf, WireErr> > + Unpin + Send {}
 
 /// Trait bounds for the Sink of outgoing messages.
 //
-pub trait BoundsOut: 'static + Sink<BytesFormat, Error=WireErr > + Unpin + Send {}
+pub trait BoundsOut<Wf: WireFormat>: 'static + Sink<Wf, Error=WireErr > + Unpin + Send {}
 
 
-impl<T> BoundsIn for T
+impl<T, Wf> BoundsIn<Wf> for T
 
-	where T : 'static + Stream< Item = Result<BytesFormat, WireErr> > + Unpin + Send
+	where T : 'static + Stream< Item = Result<Wf, WireErr> > + Unpin + Send ,
+	      Wf: WireFormat                                                    ,
 {}
 
-impl<T> BoundsOut for T
+impl<T, Wf> BoundsOut<Wf> for T
 
-	where T : 'static + Sink<BytesFormat, Error=WireErr > + Unpin + Send
+	where T : 'static + Sink<Wf, Error=WireErr > + Unpin + Send ,
+	      Wf: WireFormat                                        ,
 {}
 
 
@@ -139,11 +141,11 @@ impl<T> BoundsOut for T
 //
 #[ derive( Actor ) ]
 //
-pub struct Peer
+pub struct Peer<Wf: 'static = BytesFormat>
 {
 	/// The sink
 	//
-	outgoing: Option< Box<dyn BoundsOut> >,
+	outgoing: Option< Box<dyn BoundsOut<Wf>> >,
 
 	/// This is needed so that the loop listening to the incoming stream can send messages to this actor.
 	/// The loop runs in parallel of the rest of the actor, yet processing incoming messages need mutable
@@ -164,11 +166,11 @@ pub struct Peer
 	/// Information required to process incoming messages. The first element is a boxed Receiver, and the second is
 	/// the service map that takes care of this service type.
 	//
-	services: HashMap< ServiceID, Arc<dyn ServiceMap> >,
+	services: HashMap< ServiceID, Arc<dyn ServiceMap<Wf>> >,
 
 	/// We use oneshot channels to give clients a future that will resolve to their response.
 	//
-	responses: HashMap< ConnID, oneshot::Sender<Result<BytesFormat, ConnectionError>> >,
+	responses: HashMap< ConnID, oneshot::Sender<Result<Wf, ConnectionError>> >,
 
 	/// The pharos allows us to have observers.
 	//
@@ -184,11 +186,11 @@ pub struct Peer
 
 	// All spawned requests will be collected here.
 	//
-	nursery_stream: Option<JoinHandle<Result<Response, PeerErr>>>,
+	nursery_stream: Option<JoinHandle<Result<Response<Wf>, PeerErr>>>,
 
 	// All spawned requests will be collected here.
 	//
-	nursery: Nursery<Arc< dyn SpawnHandle<Result<Response, PeerErr>> + Send + Sync + 'static >, Result<Response, PeerErr>>,
+	nursery: Nursery<Arc< dyn SpawnHandle<Result<Response<Wf>, PeerErr>> + Send + Sync + 'static >, Result<Response<Wf>, PeerErr>>,
 
 	// Set by close connection. We no longer want to process any messages after this.
 	//
@@ -196,381 +198,8 @@ pub struct Peer
 }
 
 
-
-impl Peer
+impl<Wf> Peer<Wf>
 {
-	/// Create a new peer to represent a connection to some remote.
-	/// `addr` is the actor address for this actor.
-	//
-	pub fn new
-	(
-		addr     : Addr<Self>                                                                ,
-		incoming : impl BoundsIn                                                             ,
-		outgoing : impl BoundsOut                                                            ,
-		exec     : impl SpawnHandle<Result<Response, PeerErr>> + Send + Sync + 'static ,
-		bp       : Option<Arc<BackPressure>>                                                 ,
-	)
-
-		-> Result< Self, PeerErr >
-
-	{
-		trace!( "{}: Create peer", &addr );
-
-
-		let exec: Arc< dyn SpawnHandle<Result<Response, PeerErr>> + Send + Sync + 'static > = Arc::new(exec);
-		let (nursery, nursery_stream) = Nursery::new( exec.clone() );
-
-
-		let nursery_handle = exec.spawn_handle( Self::listen_request_results( nursery_stream, addr.clone() ) )
-
-			.map_err( |_| -> PeerErr
-			{
-				let mut ctx = PeerErrCtx::default();
-				ctx.context = "Request results stream for peer".to_string().into();
-				PeerErr::Spawn{ ctx }
-			})?
-		;
-
-
-		nursery.nurse( Self::listen_incoming( incoming, addr.clone(), bp.clone() ) )
-
-			.map_err( |_| -> PeerErr
-			{
-				let mut ctx = PeerErrCtx::default();
-				ctx.context = "Incoming stream for peer".to_string().into();
-				PeerErr::Spawn{ ctx }
-			})?
-		;
-
-
-		Ok( Self
-		{
-			id             : addr.id()                  ,
-			name           : addr.name()                ,
-			outgoing       : Some( Box::new(outgoing) ) ,
-			addr           : Some( addr )               ,
-			responses      : HashMap::new()             ,
-			services       : HashMap::new()             ,
-			pharos         : Pharos::default()          ,
-			timeout        : Duration::from_secs(60)    ,
-			backpressure   : bp                         ,
-			closed         : false                      ,
-			nursery_stream : Some( nursery_handle )     ,
-			nursery                                     ,
-		})
-	}
-
-
-
-	/// The task that will listen to results returned by the spawned tasks that process requests
-	/// as well as some other tasks that need to be confined to the lifetime of the Peer. These
-	/// include tasks spawned for timeouts, the task listening to incoming requests, ...
-	///
-	/// For request processing this either forwards responses to the peer for sending out, or errors
-	/// that need to be reported to the remote. In general it is considered that the errors returned directly
-	/// by the methods on ServiceMap contain relevant information for the Remote, but errors coming from
-	/// within the spawned tasks are just internal server errors. In any case RequestError will do
-	/// the right thing based on the error type, so this just forwards it to the handler for
-	/// RequestError.
-	///
-	/// It just returns a result so that it can be spawned on the same executor. It's infallible.
-	//
-	async fn listen_request_results
-	(
-		mut stream: NurseryStream<Result<Response, PeerErr>> ,
-		mut addr  : Addr<Peer>                               ,
-	)
-		-> Result<Response, PeerErr>
-
-	{
-		while let Some(result) = stream.next().await
-		{
-			// The result of addr.send
-			//
-			let res = match result
-			{
-				Ok(resp) => match resp
-				{
-					Response::Nothing         => Ok(())               ,
-					Response::WireFormat  (x) => addr.send( x ).await ,
-					Response::CallResponse(x) => addr.send( x ).await ,
-				}
-
-				Err(err) => addr.send( RequestError::from( err.clone() ) ).await
-			};
-
-			// As we hold an address, the only way the mailbox can already be shut
-			// is if the peer panics, or the mailbox get's dropped. Since the mailbox
-			// owns the Peer, if it's dropped, this task doesn't exist anymore.
-			// Should never happen.
-			//
-			debug_assert!( res.is_ok() );
-		}
-
-		Ok(Response::Nothing)
-	}
-
-
-
-	/// The task that will listen to incoming messages on the network connection and send them to our
-	/// the peer's address.
-	//
-	async fn listen_incoming
-	(
-		mut incoming: impl BoundsIn             ,
-		mut addr    : Addr<Peer>                ,
-		    bp      : Option<Arc<BackPressure>> ,
-	)
-		-> Result<Response, PeerErr>
-
-	{
-		// This can fail if:
-		//
-		// the receiver is dropped. The receiver is our mailbox, so it should never be dropped
-		// as long as we have an address to it and this task would be dropped with it.
-		//
-		while let Some(msg) = incoming.next().await
-		{
-			if let Some( ref bp ) = bp
-			{
-				trace!( "check for backpressure" );
-
-				bp.wait().await;
-
-				trace!( "backpressure allows progress now." );
-			}
-
-			trace!( "{}: incoming message.", &addr );
-
-			if addr.send( Incoming{ msg } ).await.is_err()
-			{
-				error!( "{} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
-			}
-		}
-
-		trace!( "{}:  incoming stream end, closing out.", &addr );
-
-		// The connection was closed by remote, tell peer to clean up.
-		//
-		let res = addr.send( CloseConnection{ remote: true, reason: "Connection closed by remote.".to_string() } ).await;
-
-		// As we hold an address, the only way the mailbox can already be shut
-		// is if the peer panics, or the mailbox get's dropped. Since the mailbox
-		// owns the Peer, if it's dropped, this task doesn't exist anymore.
-		// Should never happen.
-		//
-		debug_assert!( res.is_ok() );
-
-		Ok(Response::Nothing)
-	}
-
-
-
-	#[ cfg( feature = "futures_codec" ) ]
-	//
-	/// Create a Peer directly from an asynchronous stream. This is a convenience wrapper around Peer::new so
-	/// you don't have to bother with framing the connection.
-	///
-	/// *addr*: This peers own adress.
-	///
-	/// *socket*: The async stream to frame.
-	///
-	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
-	/// stream if it exceeds this size. Also used for encoding outgoing messages.
-	/// **Set the same max_size in the remote!**.
-	//
-	pub fn from_async_read
-	(
-		addr        : Addr<Self>                                                                ,
-		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static                ,
-		max_size    : usize                                                                     ,
-		exec        : impl SpawnHandle<Result<Response, PeerErr>> + Send + Sync + 'static ,
-		bp          : Option<Arc<BackPressure>>                                           ,
-	)
-
-		-> Result< Self, PeerErr >
-
-	{
-		let codec = ThesCodec::new(max_size);
-
-		let (sink, stream) = FutFramed::new( socket, codec ).split();
-
-		Peer::new( addr, stream, sink, Arc::new(exec), bp )
-	}
-
-
-
-	#[ cfg( feature = "tokio_codec" ) ]
-	//
-	/// Create a Peer directly from a tokio asynchronous stream. This is a convenience wrapper around Peer::new so
-	/// you don't have to bother with framing the connection.
-	///
-	/// *addr*: This peers own adress.
-	///
-	/// *socket*: The async stream to frame.
-	///
-	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
-	/// stream if it exceeds this size. Also used for encoding outgoing messages.
-	/// **Set the same max_size in the remote!**.
-	//
-	pub fn from_tokio_async_read
-	(
-		addr        : Addr<Self>                                                          ,
-		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static             ,
-		max_size    : usize                                                               ,
-		exec        : impl SpawnHandle<Result<Response, PeerErr>> + Send + Sync + 'static ,
-		bp          : Option<Arc<BackPressure>>                                           ,
-	)
-
-		-> Result< Self, PeerErr >
-
-	{
-		let codec = ThesCodec::new(max_size);
-
-		let (sink, stream) = TokioFramed::new( socket, codec ).split();
-
-		Peer::new( addr, stream, sink, exec, bp )
-	}
-
-
-	/// Set the timeout for outgoing calls. This defaults to 60 seconds if not set by this method.
-	/// Having a timeout allows your code to detect if a remote is not reactive and prevents a memory
-	/// leak in Peer where information regarding the request would be kept indefinitely otherwise.
-	//
-	pub fn set_timeout( &mut self, delay: Duration )
-	{
-		self.timeout = delay;
-	}
-
-
-	/// Register a service map as the handler for service ids that come in over the network. Normally you should
-	/// not call this directly, but use [´thespis_remote::ServiceMap::register_with_peer´].
-	///
-	/// Each service map and each service should be registered only once, including relayed services. Trying to
-	/// register them twice will panic in debug mode.
-	//
-	pub fn register_services( &mut self, sm: Arc< dyn ServiceMap> )
-	{
-		for sid in sm.services().into_iter()
-		{
-			trace!( "{}: Register Service: {:?}", self.identify(), &sid );
-
-			debug_assert!
-			(
-				!self.services.contains_key( &sid ),
-				"{}: Register Service: Can't register same service twice. sid: {}", self.identify(), &sid ,
-			);
-
-			self.services.insert( sid, sm.clone() );
-		}
-	}
-
-
-	// actually send the message accross the wire
-	//
-	async fn send_msg( &mut self, msg: BytesFormat ) -> Result<(), PeerErr>
-	{
-		trace!( "{}: sending OUT BytesFormat", self.identify() );
-
-		match &mut self.outgoing
-		{
-			Some( out ) =>
-			{
-				let sid = msg.service();
-				let cid = msg.conn_id();
-
-				out.send( msg ).await
-
-					.map_err( |source|
-					{
-						let ctx = self.ctx( sid, cid, "Sending out BytesFormat" );
-						PeerErr::WireFormat{ ctx, source }
-					})
-			}
-
-			None =>
-			{
-				let ctx = PeerErrCtx::default().context( "register_relayed_services".to_string() );
-
-				Err( PeerErr::ConnectionClosed{ ctx } )
-			}
-		}
-	}
-
-
-
-	// Actually send the error accross the wire. This is for when errors happen on receiving
-	// messages (eg. Deserialization errors).
-	//
-	// sid null is important so the remote knows that this is an error.
-	//
-	// This is currently only called from RequestError.
-	//
-	async fn send_err
-	(
-		&mut self               ,
-
-		cid  : ConnID           ,
-		err  : &ConnectionError ,
-		close: bool             , // whether the connection should be closed (eg stream corrupted)
-	)
-	{
-		trace!( "{}: sending OUT ConnectionError", self.identify() );
-
-		// If self.outgoing is None, we have already closed.
-		//
-		let out = match self.outgoing
-		{
-			Some( ref mut out ) => out,
-			None                => return,
-		};
-
-		// There is no documentation on serde_cbor or serde_derive about why this would return an error.
-		// As far as I can tell it shouldn't ever fail.
-		//
-		let serialized = serde_cbor::to_vec( err ).expect( "serialize ConnectionError" );
-
-		// sid null is the marker that this is an error message.
-		//
-		let msg = BytesFormat::create( ServiceID::null(), cid, serialized.into() );
-
-		// We are already trying to report an error. If we can't send, just give up.
-		//
-		let _ = out.send( msg ).await;
-
-		if close
-		{
-			let close_conn = CloseConnection{ remote: false, reason: format!( "{:?}", err ) };
-
-			Handler::<CloseConnection>::handle( self, close_conn ).await
-		}
-	}
-
-
-
-	// serialize a ConnectionError to be sent across the wire. Public because used in
-	// sevice_map macro.
-	//
-	#[ doc( hidden ) ]
-	//
-	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> BytesFormat
-	{
-		// There is no documentation on serde_cbor or serde_derive about why this would return an error.
-		// As far as I can tell it shouldn't ever fail.
-		//
-		let serialized = serde_cbor::to_vec( err ).expect( "serialize response" );
-
-		// sid null is the marker that this is an error message.
-		//
-		BytesFormat::create
-		(
-			ServiceID::null() ,
-			cid               ,
-			serialized.into() ,
-		)
-	}
-
-
 	pub fn identify( &self ) -> String
 	{
 		match self.name
@@ -581,7 +210,7 @@ impl Peer
 	}
 
 
-	pub fn identify_addr( addr: &Addr<Peer> ) -> String
+	pub fn identify_addr( addr: &Addr<Peer<Wf>> ) -> String
 	{
 		match addr.name()
 		{
@@ -643,17 +272,396 @@ impl Peer
 			cid      : cid.into()       ,
 		}
 	}
+
+
+
+	/// Set the timeout for outgoing calls. This defaults to 60 seconds if not set by this method.
+	/// Having a timeout allows your code to detect if a remote is not reactive and prevents a memory
+	/// leak in Peer where information regarding the request would be kept indefinitely otherwise.
+	//
+	pub fn set_timeout( &mut self, delay: Duration )
+	{
+		self.timeout = delay;
+	}
+}
+
+
+impl Peer<BytesFormat>
+{
+	#[ cfg( feature = "futures_codec" ) ]
+	//
+	/// Create a Peer directly from an asynchronous stream. This is a convenience wrapper around Peer::new so
+	/// you don't have to bother with framing the connection.
+	///
+	/// *addr*: This peers own adress.
+	///
+	/// *socket*: The async stream to frame.
+	///
+	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
+	/// stream if it exceeds this size. Also used for encoding outgoing messages.
+	/// **Set the same max_size in the remote!**.
+	//
+	pub fn from_async_read
+	(
+		addr        : Addr<Self>                                                              ,
+		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static              ,
+		max_size    : usize                                                                   ,
+		exec        : impl SpawnHandle<Result<Response<BytesFormat>, PeerErr>> + Send + Sync + 'static ,
+		bp          : Option<Arc<BackPressure>>                                               ,
+	)
+
+		-> Result< Self, PeerErr >
+
+	{
+		let codec = ThesCodec::new(max_size);
+
+		let (sink, stream) = FutFramed::new( socket, codec ).split();
+
+		Peer::new( addr, stream, sink, Arc::new(exec), bp )
+	}
+
+
+
+	#[ cfg( feature = "tokio_codec" ) ]
+	//
+	/// Create a Peer directly from a tokio asynchronous stream. This is a convenience wrapper around Peer::new so
+	/// you don't have to bother with framing the connection.
+	///
+	/// *addr*: This peers own adress.
+	///
+	/// *socket*: The async stream to frame.
+	///
+	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
+	/// stream if it exceeds this size. Also used for encoding outgoing messages.
+	/// **Set the same max_size in the remote!**.
+	//
+	pub fn from_tokio_async_read
+	(
+		addr        : Addr<Self>                                                              ,
+		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static                 ,
+		max_size    : usize                                                                   ,
+		exec        : impl SpawnHandle<Result<Response<BytesFormat>, PeerErr>> + Send + Sync + 'static ,
+		bp          : Option<Arc<BackPressure>>                                               ,
+	)
+
+		-> Result< Self, PeerErr >
+
+	{
+		let codec = ThesCodec::new(max_size);
+
+		let (sink, stream) = TokioFramed::new( socket, codec ).split();
+
+		Peer::new( addr, stream, sink, exec, bp )
+	}
+}
+
+
+
+impl<Wf: WireFormat> Peer<Wf>
+{
+	/// Create a new peer to represent a connection to some remote.
+	/// `addr` is the actor address for this actor.
+	//
+	pub fn new
+	(
+		addr     : Addr<Self>                                                                ,
+		incoming : impl BoundsIn<Wf>                                                         ,
+		outgoing : impl BoundsOut<Wf>                                                        ,
+		exec     : impl SpawnHandle<Result<Response<Wf>, PeerErr>> + Send + Sync + 'static   ,
+		bp       : Option<Arc<BackPressure>>                                                 ,
+	)
+
+		-> Result< Self, PeerErr >
+
+	{
+		trace!( "{}: Create peer", &addr );
+
+
+		let exec: Arc< dyn SpawnHandle<Result<Response<Wf>, PeerErr>> + Send + Sync + 'static > = Arc::new(exec);
+		let (nursery, nursery_stream) = Nursery::new( exec.clone() );
+
+
+		let nursery_handle = exec.spawn_handle( Self::listen_request_results( nursery_stream, addr.clone() ) )
+
+			.map_err( |_| -> PeerErr
+			{
+				let mut ctx = PeerErrCtx::default();
+				ctx.context = "Request results stream for peer".to_string().into();
+				PeerErr::Spawn{ ctx }
+			})?
+		;
+
+
+		nursery.nurse( Self::listen_incoming( incoming, addr.clone(), bp.clone() ) )
+
+			.map_err( |_| -> PeerErr
+			{
+				let mut ctx = PeerErrCtx::default();
+				ctx.context = "Incoming stream for peer".to_string().into();
+				PeerErr::Spawn{ ctx }
+			})?
+		;
+
+
+		Ok( Self
+		{
+			id             : addr.id()                  ,
+			name           : addr.name()                ,
+			outgoing       : Some( Box::new(outgoing) ) ,
+			addr           : Some( addr )               ,
+			responses      : HashMap::new()             ,
+			services       : HashMap::new()             ,
+			pharos         : Pharos::default()          ,
+			timeout        : Duration::from_secs(60)    ,
+			backpressure   : bp                         ,
+			closed         : false                      ,
+			nursery_stream : Some( nursery_handle )     ,
+			nursery                                     ,
+		})
+	}
+
+
+
+	/// The task that will listen to results returned by the spawned tasks that process requests
+	/// as well as some other tasks that need to be confined to the lifetime of the Peer. These
+	/// include tasks spawned for timeouts, the task listening to incoming requests, ...
+	///
+	/// For request processing this either forwards responses to the peer for sending out, or errors
+	/// that need to be reported to the remote. In general it is considered that the errors returned directly
+	/// by the methods on ServiceMap contain relevant information for the Remote, but errors coming from
+	/// within the spawned tasks are just internal server errors. In any case RequestError will do
+	/// the right thing based on the error type, so this just forwards it to the handler for
+	/// RequestError.
+	///
+	/// It just returns a result so that it can be spawned on the same executor. It's infallible.
+	//
+	async fn listen_request_results
+	(
+		mut stream: NurseryStream<Result<Response<Wf>, PeerErr>> ,
+		mut addr  : Addr<Peer<Wf>>                               ,
+	)
+		-> Result<Response<Wf>, PeerErr>
+
+	{
+		while let Some(result) = stream.next().await
+		{
+			// The result of addr.send
+			//
+			let res = match result
+			{
+				Ok(resp) => match resp
+				{
+					Response::Nothing         => Ok(())               ,
+					Response::WireFormat  (x) => addr.send( x ).await ,
+					Response::CallResponse(x) => addr.send( x ).await ,
+				}
+
+				Err(err) => addr.send( RequestError::from( err.clone() ) ).await
+			};
+
+			// As we hold an address, the only way the mailbox can already be shut
+			// is if the peer panics, or the mailbox get's dropped. Since the mailbox
+			// owns the Peer, if it's dropped, this task doesn't exist anymore.
+			// Should never happen.
+			//
+			debug_assert!( res.is_ok() );
+		}
+
+		Ok(Response::Nothing)
+	}
+
+
+
+	/// The task that will listen to incoming messages on the network connection and send them to our
+	/// the peer's address.
+	//
+	async fn listen_incoming
+	(
+		mut incoming: impl BoundsIn<Wf>         ,
+		mut addr    : Addr<Peer<Wf>>            ,
+		    bp      : Option<Arc<BackPressure>> ,
+	)
+		-> Result<Response<Wf>, PeerErr>
+
+	{
+		// This can fail if:
+		//
+		// the receiver is dropped. The receiver is our mailbox, so it should never be dropped
+		// as long as we have an address to it and this task would be dropped with it.
+		//
+		while let Some(msg) = incoming.next().await
+		{
+			if let Some( ref bp ) = bp
+			{
+				trace!( "check for backpressure" );
+
+				bp.wait().await;
+
+				trace!( "backpressure allows progress now." );
+			}
+
+			trace!( "{}: incoming message.", &addr );
+
+			if addr.send( Incoming{ msg } ).await.is_err()
+			{
+				error!( "{} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
+			}
+		}
+
+		trace!( "{}:  incoming stream end, closing out.", &addr );
+
+		// The connection was closed by remote, tell peer to clean up.
+		//
+		let res = addr.send( CloseConnection{ remote: true, reason: "Connection closed by remote.".to_string() } ).await;
+
+		// As we hold an address, the only way the mailbox can already be shut
+		// is if the peer panics, or the mailbox get's dropped. Since the mailbox
+		// owns the Peer, if it's dropped, this task doesn't exist anymore.
+		// Should never happen.
+		//
+		debug_assert!( res.is_ok() );
+
+		Ok(Response::Nothing)
+	}
+
+
+	/// Register a service map as the handler for service ids that come in over the network. Normally you should
+	/// not call this directly, but use [´thespis_remote::ServiceMap::register_with_peer´].
+	///
+	/// Each service map and each service should be registered only once, including relayed services. Trying to
+	/// register them twice will panic in debug mode.
+	//
+	pub fn register_services( &mut self, sm: Arc< dyn ServiceMap<Wf>> )
+	{
+		for sid in sm.services().into_iter()
+		{
+			trace!( "{}: Register Service: {:?}", self.identify(), &sid );
+
+			debug_assert!
+			(
+				!self.services.contains_key( &sid ),
+				"{}: Register Service: Can't register same service twice. sid: {}", self.identify(), &sid ,
+			);
+
+			self.services.insert( sid, sm.clone() );
+		}
+	}
+
+
+	// actually send the message accross the wire
+	//
+	async fn send_msg( &mut self, msg: Wf ) -> Result<(), PeerErr>
+	{
+		trace!( "{}: sending OUT WireFormat", self.identify() );
+
+		match &mut self.outgoing
+		{
+			Some( out ) =>
+			{
+				let sid = msg.service();
+				let cid = msg.conn_id();
+
+				out.send( msg ).await
+
+					.map_err( |source|
+					{
+						let ctx = self.ctx( sid, cid, "Sending out WireFormat" );
+						PeerErr::WireFormat{ ctx, source }
+					})
+			}
+
+			None =>
+			{
+				let ctx = PeerErrCtx::default().context( "register_relayed_services".to_string() );
+
+				Err( PeerErr::ConnectionClosed{ ctx } )
+			}
+		}
+	}
+
+
+
+	// Actually send the error accross the wire. This is for when errors happen on receiving
+	// messages (eg. Deserialization errors).
+	//
+	// sid null is important so the remote knows that this is an error.
+	//
+	// This is currently only called from RequestError.
+	//
+	async fn send_err
+	(
+		&mut self               ,
+
+		cid  : ConnID           ,
+		err  : &ConnectionError ,
+		close: bool             , // whether the connection should be closed (eg stream corrupted)
+	)
+	{
+		trace!( "{}: sending OUT ConnectionError", self.identify() );
+
+		// If self.outgoing is None, we have already closed.
+		//
+		let out = match self.outgoing
+		{
+			Some( ref mut out ) => out,
+			None                => return,
+		};
+
+		// There is no documentation on serde_cbor or serde_derive about why this would return an error.
+		// As far as I can tell it shouldn't ever fail.
+		//
+		let serialized = serde_cbor::to_vec( err ).expect( "serialize ConnectionError" );
+
+		// sid null is the marker that this is an error message.
+		//
+		let msg = Wf::from(( ServiceID::null(), cid, serialized.into() ));
+
+		// We are already trying to report an error. If we can't send, just give up.
+		//
+		let _ = out.send( msg ).await;
+
+		if close
+		{
+			let close_conn = CloseConnection{ remote: false, reason: format!( "{:?}", err ) };
+
+			Handler::<CloseConnection>::handle( self, close_conn ).await
+		}
+	}
+
+
+
+	// serialize a ConnectionError to be sent across the wire. Public because used in
+	// sevice_map macro.
+	//
+	#[ doc( hidden ) ]
+	//
+	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> Wf
+	{
+		// There is no documentation on serde_cbor or serde_derive about why this would return an error.
+		// As far as I can tell it shouldn't ever fail.
+		//
+		let serialized = serde_cbor::to_vec( err ).expect( "serialize response" );
+
+		// sid null is the marker that this is an error message.
+		//
+		Wf::from
+		((
+			ServiceID::null() ,
+			cid               ,
+			serialized.into() ,
+		))
+	}
 }
 
 
 
 // Put an outgoing multiservice message on the wire.
 //
-impl Handler<BytesFormat> for Peer
+impl<Wf: WireFormat> Handler<Wf> for Peer<Wf>
 {
-	#[async_fn] fn handle( &mut self, msg: BytesFormat ) -> Result<(), PeerErr>
+	#[async_fn] fn handle( &mut self, msg: Wf ) -> Result<(), PeerErr>
 	{
-		trace!( "{}: sending OUT BytesFormat", self.identify() );
+		trace!( "{}: sending OUT WireFormat", self.identify() );
 
 		self.send_msg( msg ).await
 	}
@@ -663,7 +671,7 @@ impl Handler<BytesFormat> for Peer
 
 // Pharos, shine!
 //
-impl Observable<PeerEvent> for Peer
+impl<Wf> Observable<PeerEvent> for Peer<Wf>
 {
 	type Error = pharos::Error;
 
@@ -685,7 +693,7 @@ impl Observable<PeerEvent> for Peer
 
 
 
-impl fmt::Debug for Peer
+impl<Wf> fmt::Debug for Peer<Wf>
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
@@ -694,7 +702,7 @@ impl fmt::Debug for Peer
 }
 
 
-impl Drop for Peer
+impl<Wf> Drop for Peer<Wf>
 {
 	fn drop( &mut self )
 	{

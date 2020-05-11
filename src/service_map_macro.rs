@@ -80,6 +80,10 @@ macro_rules! service_map
 	//
 	namespace: $ns: ident;
 
+	/// Which WireFormat to use.
+	//
+	wire_format: $wf: path;
+
 	/// Comma separated list of Services you want to include. They must be in scope.
 	//
 	services: $($services: path),+ $(,)? $(;)?
@@ -96,8 +100,8 @@ use
 	// we should not have a leading comma before the next item, but if the comma is after the closing
 	// parenthesis, it will not output a trailing comma, which will be needed to separate from the next item.
 	//
-	super :: { $( $services, )+ Peer                                                          } ,
-	$crate:: { *, peer::request_error::RequestError                                           } ,
+	super :: { $( $services, )+ Peer                                                                          } ,
+	$crate:: { *, peer::request_error::RequestError                                                           } ,
 	std   :: { pin::Pin, collections::HashMap, fmt, any::Any, sync::{ Arc, Once }, ops::Deref, future::Future } ,
 
 	$crate::external_deps::
@@ -324,11 +328,11 @@ impl Services
 	//
 	fn call_service_gen<S>
 	(
-		    msg      :  BytesFormat           ,
+		    msg      :  $wf                   ,
 		    receiver : &Box< dyn Any + Send > ,
 		mut ctx      :  PeerErrCtx            ,
 
-	) -> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
+	) -> Result< Pin<Box< dyn Future< Output=Result<Response<$wf>, PeerErr> > + Send >>, PeerErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -393,12 +397,12 @@ impl Services
 			};
 
 
-			// Create a BytesFormat response.
+			// Create a $wf response.
 			// The sid must be full to differentiate a response from a request. If the request
 			// has timed out, the remote peer will no longer have the cid in their list of open requests,
 			// so they would not know this was a response otherwise.
 			//
-			let resp = BytesFormat::create( ServiceID::full(), cid, serialized.into() ) ;
+			let resp = <$wf>::from(( ServiceID::full(), cid, serialized.into() ));
 
 			Ok( Response::CallResponse( CallResponse::new(resp) ))
 
@@ -407,7 +411,7 @@ impl Services
 }
 
 
-impl ServiceMap for Services
+impl ServiceMap<$wf> for Services
 {
 	// We need to make a Vec here because the hashmap.keys() doesn't have a static lifetime.
 	//
@@ -431,9 +435,9 @@ impl ServiceMap for Services
 	/// - PeerErr::UnknownService
 	/// - PeerErr::Deserialize
 	//
-	fn send_service( &self, msg: BytesFormat, ctx: PeerErrCtx )
+	fn send_service( &self, msg: $wf, ctx: PeerErrCtx )
 
-		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
+		-> Result< Pin<Box< dyn Future< Output=Result<Response<$wf>, PeerErr> > + Send >>, PeerErr >
 
 	{
 		let sid = msg.service();
@@ -506,11 +510,11 @@ impl ServiceMap for Services
 	//
 	fn call_service
 	(
-		&self                ,
-		msg   : BytesFormat   ,
+		&self              ,
+		msg   : $wf        ,
 		ctx   : PeerErrCtx ,
 
-	) -> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
+	) -> Result< Pin<Box< dyn Future< Output=Result<Response<$wf>, PeerErr> > + Send >>, PeerErr >
 	{
 		let sid = msg.service();
 		let ctx = ctx.context( "Services::call_service".to_string() );
@@ -558,20 +562,20 @@ pub struct RemoteAddr
 {
 	// FIXME: do not rely on Addr, we should be generic over Address, but not
 	//       choose an implementation. This is a complicated one. While this is in the public
-	//       API, so it would be good, having a trait object that is Address<BytesFormat> + Address<Call>
+	//       API, so it would be good, having a trait object that is Address<$wf> + Address<Call>
 	//       and is still cloneable is complicated.
 	//
 	//       It could be done by unifying both message types (eg. an enum), but then what is the return
 	//       type of this message. It would have to be an enum as well, and every caller would have to
 	//       match on it. For now we will keep our dependency on Peer and Addr.
 	//
-	peer: Addr<Peer>
+	peer: Addr<Peer<$wf>>
 }
 
 
 impl RemoteAddr
 {
-	pub fn new( peer: Addr<Peer> ) -> Self
+	pub fn new( peer: Addr<Peer<$wf>> ) -> Self
 	{
 		Self { peer }
 	}
@@ -579,7 +583,7 @@ impl RemoteAddr
 
 	/// Take the raw message and turn it into a MultiService
 	//
-	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< BytesFormat, PeerErr >
+	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< $wf, PeerErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -601,7 +605,7 @@ impl RemoteAddr
 		})?;
 
 
-		Ok( BytesFormat::create( sid2, cid, serialized.into() ) )
+		Ok( <$wf>::from(( sid2, cid, serialized.into() )) )
 	}
 }
 
@@ -766,7 +770,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		Sink::<BytesFormat>::poll_ready( Pin::new( &mut self.peer ), cx )
+		Sink::<$wf>::poll_ready( Pin::new( &mut self.peer ), cx )
 
 			.map_err( |source|
 			{
@@ -779,7 +783,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
-		Sink::<BytesFormat>::start_send( Pin::new( &mut self.peer ), Self::build_ms( msg, ConnID::null() )? )
+		Sink::<$wf>::start_send( Pin::new( &mut self.peer ), Self::build_ms( msg, ConnID::null() )? )
 
 			.map_err( |source|
 			{
@@ -792,7 +796,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		Sink::<BytesFormat>::poll_flush( Pin::new( &mut self.peer ), cx )
+		Sink::<$wf>::poll_flush( Pin::new( &mut self.peer ), cx )
 
 			.map_err( |source|
 			{

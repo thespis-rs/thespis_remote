@@ -187,7 +187,7 @@ macro_rules! test_codec
 			let mut buf = BytesMut::with_capacity( 1 );
 			buf.put( &[0u8;1][..] );
 
-			let m = BytesFormat::create( ServiceID::from_seed( b"codec_tests", b"Empty Message" ), ConnID::random(), buf.freeze() );
+			let m = BytesFormat::from(( ServiceID::from_seed( b"codec_tests", b"Empty Message" ), ConnID::random(), buf.freeze() ));
 
 			m
 		}
@@ -197,7 +197,7 @@ macro_rules! test_codec
 			let mut buf = BytesMut::with_capacity( 5 );
 			buf.put( "hello".as_bytes() );
 
-			BytesFormat::create( ServiceID::from_seed( b"codec_tests", b"Full Message" ), ConnID::random(), buf.freeze() )
+			BytesFormat::from(( ServiceID::from_seed( b"codec_tests", b"Full Message" ), ConnID::random(), buf.freeze() ))
 		}
 
 
