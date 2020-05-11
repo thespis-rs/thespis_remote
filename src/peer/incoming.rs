@@ -54,12 +54,12 @@ impl Handler<Incoming> for Peer
 
 		let sid = frame.service();
 		let cid = frame.conn_id();
-
+		let kind = wire_kind( &frame );
 
 		// TODO: when we have benchmarks, verify if it's better to return boxed submethods here
 		// rather than awaiting. Implies the rest of this method can run sync.
 		//
-		match frame.kind()
+		match kind
 		{
 			WireType::ConnectionError => self.remote_conn_err( frame.mesg(), cid ).await,
 			WireType::IncomingSend    => self.incoming_send  ( sid, frame        ).await,

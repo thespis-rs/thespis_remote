@@ -30,15 +30,17 @@ pub mod peer              ;
     mod service_map       ;
     mod service_map_macro ;
 pub mod bytes_format      ;
+pub mod wire_format       ;
 
 pub use
 {
+	bytes_format      :: * ,
 	peer              :: * ,
 	relay_map         :: * ,
 	service_handler   :: * ,
 	service_map       :: * ,
 	service_map_macro :: * ,
-	bytes_format      :: * ,
+	wire_format       :: * ,
 };
 
 

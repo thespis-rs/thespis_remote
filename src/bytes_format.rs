@@ -1,25 +1,9 @@
 //! Implementation of the MultiService wire format.
 //
-mod unique_id  ;
-mod conn_id    ;
-mod service_id ;
-mod wire_err   ;
-mod wire_type  ;
-
-pub use
-{
-	service_id :: * ,
-	conn_id    :: * ,
-	wire_err   :: * ,
-};
-
-pub(crate) use wire_type::WireType;
-
-
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub mod codec   ;
 #[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ] pub use codec::*;
 
-use crate::{ import::*, PeerErr };
+use crate::{ import::*, PeerErr, wire_format::* };
 
 const HEADER_LEN: usize = 32;
 
@@ -107,14 +91,16 @@ impl BytesFormat
 
 		Self { bytes: bytes.freeze() }
 	}
+}
 
-
+impl WireFormat for BytesFormat
+{
 	/// The service id of this message. When coming in over the wire, this identifies
 	/// which service you are calling. A ServiceID should be unique for a given service.
 	/// The reference implementation combines a unique type id with a namespace so that
 	/// several processes can accept the same type of service under a unique name each.
 	//
-	pub fn service ( &self ) -> ServiceID
+	fn service ( &self ) -> ServiceID
 	{
 		ServiceID::from( self.bytes.slice( 0..16 ) )
 	}
@@ -122,7 +108,7 @@ impl BytesFormat
 
 	/// The connection id. This is used to match responses to outgoing calls.
 	//
-	pub fn conn_id( &self ) -> ConnID
+	fn conn_id( &self ) -> ConnID
 	{
 		ConnID::from( self.bytes.slice( 16..32 ) )
 	}
@@ -130,36 +116,16 @@ impl BytesFormat
 
 	/// The serialized payload message.
 	//
-	pub fn mesg( &self ) -> Bytes
+	fn mesg( &self ) -> Bytes
 	{
 		self.bytes.slice( HEADER_LEN.. )
 	}
 
 	/// The total length of the Multiservice in Bytes (header+payload)
 	//
-	pub fn len( &self ) -> usize
+	fn len( &self ) -> usize
 	{
 		self.bytes.len()
-	}
-
-	/// Find out what kind of message this is.
-	//
-	pub(crate) fn kind( &self ) -> WireType
-	{
-		match self.service()
-		{
-			x if x.is_null() => WireType::ConnectionError ,
-			x if x.is_full() => WireType::CallResponse    ,
-
-			_ =>
-			{
-				match self.conn_id()
-				{
-					x if x.is_null() => WireType::IncomingSend ,
-					_                => WireType::IncomingCall ,
-				}
-			}
-		}
 	}
 }
 

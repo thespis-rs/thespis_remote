@@ -1,6 +1,6 @@
 //! The codec to frame the connection with our wire format.
 //
-use crate::{ import::*, BytesFormat, WireErr };
+use crate::{ import::*, BytesFormat, wire_format::* };
 use super::HEADER_LEN;
 
 /// The tokio/futures codec to frame AsyncRead/Write streams.
