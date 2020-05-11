@@ -187,7 +187,7 @@ macro_rules! test_codec
 			let mut buf = BytesMut::with_capacity( 1 );
 			buf.put( &[0u8;1][..] );
 
-			let m = BytesFormat::from(( ServiceID::from_seed( b"codec_tests", b"Empty Message" ), ConnID::random(), buf.freeze() ));
+			let m = BytesFormat::from(( ServiceID::from_seed( b"codec_tests::Empty Message" ), ConnID::random(), buf.freeze() ));
 
 			m
 		}
@@ -197,7 +197,7 @@ macro_rules! test_codec
 			let mut buf = BytesMut::with_capacity( 5 );
 			buf.put( "hello".as_bytes() );
 
-			BytesFormat::from(( ServiceID::from_seed( b"codec_tests", b"Full Message" ), ConnID::random(), buf.freeze() ))
+			BytesFormat::from(( ServiceID::from_seed( b"codec_tests::Full Message" ), ConnID::random(), buf.freeze() ))
 		}
 
 
@@ -263,16 +263,16 @@ macro_rules! test_codec
 			let     full2  = full .clone();
 			let     full3  = full .clone();
 
-			$Encoder::encode( &mut codec, empty, &mut buf ).expect( "Encoding empty" ); // 41 bytes
-			$Encoder::encode( &mut codec, full , &mut buf ).expect( "Encoding full"  ); // 45 bytes
-			$Encoder::encode( &mut codec, full2, &mut buf ).expect( "Encoding full"  ); // 45 bytes
+			$Encoder::encode( &mut codec, empty, &mut buf ).expect( "Encoding empty" ); // 25 bytes
+			$Encoder::encode( &mut codec, full , &mut buf ).expect( "Encoding full"  ); // 29 bytes
+			$Encoder::encode( &mut codec, full2, &mut buf ).expect( "Encoding full"  ); // 29 bytes
 
 			// total is 131
 			//
 			assert_eq!( empty2, $Decoder::decode( &mut codec, &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
 			assert_eq!(  full3, $Decoder::decode( &mut codec, &mut buf ).expect( "Decode empty" ).expect( "Not None" ) );
 
-			assert_eq!( 45, buf.len() ); // there should be exactly 48 bytes sitting there waiting for the last.
+			assert_eq!( 29, buf.len() ); // there should be exactly 48 bytes sitting there waiting for the last.
 		}
 
 

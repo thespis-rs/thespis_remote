@@ -9,6 +9,8 @@ use crate::{ PeerErr, ConnectionError };
 //
 #[ derive( Debug, Clone, PartialEq, Eq ) ]
 //
+#[ allow(variant_size_differences) ]
+//
 pub enum PeerEvent
 {
 	/// The connection is closed. It can no longer be used.

@@ -13,7 +13,7 @@ pub mod import
 		thespis_impl    :: { *                                 } ,
 		thespis_remote  :: { *, service_map, peer              } ,
 		log             :: { *                                 } ,
-		bytes           :: { Bytes, BytesMut                   } ,
+		bytes           :: { Bytes, BytesMut, BufMut           } ,
 		pharos          :: { Observable, ObserveConfig, Events } ,
 
 		std::
@@ -199,11 +199,11 @@ pub async fn relay
 
 		let handler: Box<dyn Relay> = Box::new( provider_addr2 );
 
-		let mut relayed = vec![ add.clone() ];
+		let mut relayed = vec![ add ];
 
 		if relay_show
 		{
-			relayed.push( show.clone() );
+			relayed.push( show );
 		}
 
 		let rm = Arc::new( RelayMap::new( handler.into(), relayed ) );
@@ -287,11 +287,11 @@ pub async fn relay_closure
 		});
 
 
-		let mut relayed = vec![ add.clone() ];
+		let mut relayed = vec![ add ];
 
 		if relay_show
 		{
-			relayed.push( show.clone() );
+			relayed.push( show );
 		}
 
 		let rm = Arc::new( RelayMap::new( ServiceHandler::Closure( handler ), relayed ) );

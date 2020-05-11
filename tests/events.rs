@@ -122,7 +122,7 @@ async fn header_unknown_service_error()
 		//
 		let (_, mut evts, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
 
-		let sid = Some( ServiceID::from( Bytes::from( vec![3;16] ) ) );
+		let sid = Some( ServiceID::from(1) );
 
 		match evts.next().await.unwrap()
 		{
@@ -144,9 +144,9 @@ async fn header_unknown_service_error()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid = ServiceID::from( Bytes::from( vec![3;16] ) );
+		let sid = ServiceID::from(1);
 		let cid = ConnID::random();
-		let ms  = BytesFormat::from(( sid.clone(), cid.clone(), serde_cbor::to_vec( &Add(5) ).expect( "serialize Add(5)" ).into() ));
+		let ms  = BytesFormat::from(( sid, cid, serde_cbor::to_vec( &Add(5) ).expect( "serialize Add(5)" ).into() ));
 
 		peera.call( ms ).await.expect( "call peera" ).expect( "call peera" );
 
@@ -209,8 +209,8 @@ async fn call_deserialize()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid: Bytes = <Add as remotes::Service>::sid().clone().into();
-		let cid: Bytes = ConnID::random().into();
+		let sid: u64   = <Add as remotes::Service>::sid().into();
+		let cid: u64   = ConnID::random().into();
 		let msg: Bytes = serde_cbor::to_vec( &Add(5) ).unwrap().into();
 
 		// This is the corrupt one that should trigger a deserialization error and close the connection
@@ -219,10 +219,10 @@ async fn call_deserialize()
 
 		let mut buf = BytesMut::new();
 
-		buf.extend( sid         );
-		buf.extend( cid.clone() );
-		buf.extend( cod         );
-		buf.extend( msg         );
+		buf.put_u64_le( sid );
+		buf.put_u64_le( cid );
+		buf.extend    ( cod );
+		buf.extend    ( msg );
 
 		let mesg  = BytesFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
@@ -290,9 +290,9 @@ async fn sm_deserialize_error()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid = <Add as remotes::Service>::sid().clone();
+		let sid = <Add as remotes::Service>::sid();
 		let cid = ConnID::random();
-		let ms  = BytesFormat::from(( sid, cid.clone(), Bytes::from(vec![3,3]) ));
+		let ms  = BytesFormat::from(( sid, cid, Bytes::from(vec![3,3]) ));
 
 		peera.call( ms ).await.expect( "call peera" ).expect( "call peera" );
 

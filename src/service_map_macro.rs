@@ -144,7 +144,7 @@ pub trait Service
 	/// compiled with different versions of rustc. Ideally the algorithm is also clearly described so
 	/// programs written in other languages can also communicate with your services.
 	//
-	fn sid() -> &'static ServiceID where Self: Sized;
+	fn sid() -> ServiceID where Self: Sized;
 }
 
 
@@ -155,14 +155,14 @@ $(
 
 	impl Service for $services
 	{
-		fn sid() -> &'static ServiceID
+		fn sid() -> ServiceID
 		{
 			static INSTANCE : Lazy< ServiceID > = Lazy::new( ||
 
-				ServiceID::from_seed( stringify!( $ns ).as_bytes(), stringify!( $services ).as_bytes() )
+				ServiceID::from_seed( stringify!( $ns::$services ).as_bytes() )
 			);
 
-			&INSTANCE
+			*INSTANCE
 		}
 	}
 
@@ -176,7 +176,7 @@ pub struct Services
 {
 	// The addresses to the actors that handle incoming messages.
 	//
-	handlers: HashMap< &'static ServiceID, Mutex<Box<dyn Any + Send>> >,
+	handlers: HashMap< ServiceID, Mutex<Box<dyn Any + Send>> >,
 }
 
 
@@ -219,7 +219,7 @@ impl fmt::Debug for Services
 				width = width
 			)?;
 
-			if let Some(h) = self.handlers.get( sid )
+			if let Some(h) = self.handlers.get( &sid )
 			{
 				let h = h.lock();
 
@@ -256,7 +256,7 @@ impl Clone for Services
 	{
 		#[ allow(clippy::mutable_key_type) ] // false positive.
 		//
-		let mut handlers: HashMap< &'static ServiceID, Mutex<Box<dyn Any + Send>> > = HashMap::new();
+		let mut handlers: HashMap< ServiceID, Mutex<Box<dyn Any + Send>> > = HashMap::new();
 
 		for (k, v) in &self.handlers
 		{
@@ -270,7 +270,7 @@ impl Clone for Services
 						let v = v.lock();
 						let h: &Receiver<$services> = v.downcast_ref().expect( "downcast receiver in Clone" );
 
-						handlers.insert( k, Mutex::new( Box::new( h.clone() ) ) );
+						handlers.insert( *k, Mutex::new( Box::new( h.clone() ) ) );
 					},
 				)+
 
@@ -338,7 +338,7 @@ impl Services
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
-		let sid = <S as Service>::sid().clone();
+		let sid = <S as Service>::sid();
 
 		// Deserialize the message.
 		//
@@ -457,7 +457,7 @@ impl ServiceMap<$wf> for Services
 		match sid
 		{
 			$(
-				_ if sid == *<$services as Service>::sid() =>
+				_ if sid == <$services as Service>::sid() =>
 				{
 					// This should always succeed, receiver is made in this very file.
 					//
@@ -535,7 +535,7 @@ impl ServiceMap<$wf> for Services
 		match sid
 		{
 			$(
-				_ if sid == *<$services as Service>::sid() =>
+				_ if sid == <$services as Service>::sid() =>
 				{
 					Self::call_service_gen::<$services>( msg, &*receiver, ctx )
 				}

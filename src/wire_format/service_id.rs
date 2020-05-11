@@ -5,7 +5,7 @@ use
 };
 
 
-static SERVICES: SyncLazy<Mutex< HashMap<&'static ServiceID, &'static str> >> = SyncLazy::new( ||
+static SERVICES: SyncLazy<Mutex< HashMap<ServiceID, &'static str> >> = SyncLazy::new( ||
 
 	Mutex::new( HashMap::new() )
 );
@@ -22,7 +22,7 @@ static SERVICES: SyncLazy<Mutex< HashMap<&'static ServiceID, &'static str> >> = 
 /// detect error conditions. If ever your namespace + typename would hash to one of these,
 /// please change them.
 //
-#[ derive( Clone, PartialEq, Eq, Hash, Serialize, Deserialize ) ]
+#[ derive( Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize ) ]
 //
 pub struct ServiceID
 {
@@ -35,9 +35,9 @@ impl ServiceID
 	/// Seed the ServiceID. It might be data that will be hashed to generate the id.
 	/// An identical input here should always give an identical ServiceID.
 	//
-	pub fn from_seed( namespace: &[u8], typename: &[u8] ) -> Self
+	pub fn from_seed( data: &[u8] ) -> Self
 	{
-		let inner = UniqueID::from_seed( namespace, typename );
+		let inner = UniqueID::from_seed( data );
 
 		debug_assert!( !inner.is_null(), "Hashing your namespace + typename generated a hash that is all zero's, which is a reserved value. Please slightly change either one." );
 
@@ -81,7 +81,7 @@ impl ServiceID
 	/// Register the typename a ServiceID refers to so it can be used later for log output.
 	/// the `service_map!` macro does this automatically for you.
 	//
-	pub fn register_service( sid: &'static ServiceID, name: &'static str )
+	pub fn register_service( sid: ServiceID, name: &'static str )
 	{
 		let mut s = SERVICES.lock();
 
@@ -91,21 +91,21 @@ impl ServiceID
 
 	/// Look up the typename for a ServiceID.
 	//
-	pub fn service_name( sid: &ServiceID ) -> Option<&'static str>
+	pub fn service_name( sid: ServiceID ) -> Option<&'static str>
 	{
 		let s = SERVICES.lock();
 
-		s.get( sid ).copied()
+		s.get( &sid ).copied()
 	}
 }
 
 
 
-/// Internally is also represented as Bytes, so you just get a copy.
+/// Internally is also represented as u64, so you just get a copy.
 //
-impl Into< Bytes > for ServiceID
+impl Into< u64 > for ServiceID
 {
-	fn into( self ) -> Bytes
+	fn into( self ) -> u64
 	{
 		self.inner.into()
 	}
@@ -114,9 +114,9 @@ impl Into< Bytes > for ServiceID
 
 /// The object will just keep the bytes as internal representation, no copies will be made
 //
-impl From< Bytes > for ServiceID
+impl From< u64 > for ServiceID
 {
-	fn from( bytes: Bytes ) -> Self
+	fn from( bytes: u64 ) -> Self
 	{
 		Self { inner: UniqueID::from( bytes ) }
 	}
@@ -127,7 +127,7 @@ impl fmt::Display for ServiceID
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
-		match Self::service_name( self )
+		match Self::service_name( *self )
 		{
 			Some(name) => write!( f, "{}", name ),
 			None       => self.inner.fmt( f ),
@@ -141,7 +141,7 @@ impl fmt::Debug for ServiceID
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
-		match Self::service_name( self )
+		match Self::service_name( *self )
 		{
 			Some(name) => write!( f, "ServiceID: {} ({:?})", name, self.inner ),
 			None       => self.inner.fmt( f ),

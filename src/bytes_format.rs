@@ -5,7 +5,7 @@
 
 use crate::{ import::*, PeerErr, wire_format::* };
 
-const HEADER_LEN: usize = 32;
+const HEADER_LEN: usize = 16;
 
 /// A multi service message.
 ///
@@ -20,10 +20,10 @@ const HEADER_LEN: usize = 32;
 /// message : the request message serialized with the specified codec
 ///
 /// ```text
-/// u64 length + payload --------------------------------------------|
-///              16 bytes sid | 16 bytes connID | serialized message |
-///              u128 LE      | u128 LE         | variable           |
-/// ------------------------------------------------------------------
+/// u64 length + payload ------------------------------------------|
+///              8 bytes sid | 8 bytes connID | serialized message |
+///              u64 LE      | u64 LE         | variable           |
+/// ----------------------------------------------------------------
 /// ```
 ///
 /// As soon as a codec determines from the length field that the entire message is read,
@@ -74,32 +74,24 @@ impl Message for BytesFormat
 
 
 
-// All the methods here can panic. We should make sure that bytes is always big enough,
-// because bytes.slice panics if it's to small. Same for bytes.put.
-//
-#[ allow(clippy::len_without_is_empty) ]
-//
-impl BytesFormat
-{
-
-}
-
-
 impl From< (ServiceID, ConnID, Bytes) > for BytesFormat
 {
 	fn from( parts: (ServiceID, ConnID, Bytes) ) -> Self
 	{
 		let mut bytes = BytesMut::with_capacity( HEADER_LEN + parts.2.len() );
 
-		bytes.put( Into::<Bytes>::into( parts.0 ) );
-		bytes.put( Into::<Bytes>::into( parts.1 ) );
-		bytes.put( parts.2                        );
+		bytes.put_u64_le( parts.0.into() );
+		bytes.put_u64_le( parts.1.into() );
+		bytes.put       ( parts.2        );
 
 		Self { bytes: bytes.freeze() }
 	}
 }
 
 
+// All the methods here can panic. We should make sure that bytes is always big enough,
+// because bytes.slice panics if it's to small. Same for bytes.put.
+//
 impl WireFormat for BytesFormat
 {
 	/// The service id of this message. When coming in over the wire, this identifies
@@ -109,7 +101,9 @@ impl WireFormat for BytesFormat
 	//
 	fn service ( &self ) -> ServiceID
 	{
-		ServiceID::from( self.bytes.slice( 0..16 ) )
+		// TODO: is this the most efficient way?
+		//
+		self.bytes.slice( 0..8 ).get_u64_le().into()
 	}
 
 
@@ -117,7 +111,7 @@ impl WireFormat for BytesFormat
 	//
 	fn conn_id( &self ) -> ConnID
 	{
-		ConnID::from( self.bytes.slice( 16..32 ) )
+		self.bytes.slice( 8..16 ).get_u64_le().into()
 	}
 
 

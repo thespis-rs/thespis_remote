@@ -11,7 +11,7 @@ use
 /// Ideally we want to use 128 bits here to have globally unique identifiers with little chance
 /// of collision, but we use xxhash which for the moment only supports 64 bit.
 //
-#[ derive( Clone, PartialEq, Eq, Hash, Serialize, Deserialize ) ]
+#[ derive( Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize ) ]
 //
 pub struct ConnID
 {
@@ -50,9 +50,9 @@ impl ConnID
 
 /// Internally is also represented as Bytes, so you just get a copy.
 //
-impl Into< Bytes > for ConnID
+impl Into< u64 > for ConnID
 {
-	fn into( self ) -> Bytes
+	fn into( self ) -> u64
 	{
 		self.inner.into()
 	}
@@ -61,11 +61,11 @@ impl Into< Bytes > for ConnID
 
 /// The object will just keep the bytes as internal representation, no copies will be made
 //
-impl From< Bytes > for ConnID
+impl From< u64 > for ConnID
 {
-	fn from( bytes: Bytes ) -> Self
+	fn from( id: u64 ) -> Self
 	{
-		Self { inner: UniqueID::from( bytes ) }
+		Self { inner: UniqueID::from( id ) }
 	}
 }
 

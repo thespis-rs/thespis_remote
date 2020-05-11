@@ -17,6 +17,8 @@ pub(crate) use wire_type::WireType;
 
 /// Trait holding the required functionality to function as a WireFormat for thespis_remote.
 //
+#[ allow(clippy::len_without_is_empty) ]
+//
 pub trait WireFormat : Message< Return = Result<(), PeerErr> > + From< (ServiceID, ConnID, Bytes) >
 {
 	/// The service id of this message. When coming in over the wire, this identifies

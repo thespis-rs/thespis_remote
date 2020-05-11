@@ -73,7 +73,7 @@ async fn no_handler()
 				}
 			)
 
-				if sid.as_ref() == Some(Add::sid())
+				if sid == Some(Add::sid())
 		));
 
 
@@ -94,7 +94,7 @@ async fn no_handler()
 				}
 			)
 
-				if sid.as_ref() == Some(Show::sid())
+				if sid == Some(Show::sid())
 		));
 
 		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );

@@ -66,9 +66,9 @@ impl<Wf: WireFormat> Handler<RequestError> for Peer<Wf>
 
 		// If it was a send, don't send errors to the remote. Only call buys into feedback.
 		//
-		let cid = match &msg.error.ctx().cid
+		let cid = match msg.error.ctx().cid
 		{
-			Some(c) => c.clone(),
+			Some(c) => c     ,
 			None    => return,
 		};
 
@@ -96,7 +96,7 @@ impl<Wf: WireFormat> Handler<RequestError> for Peer<Wf>
 			{
 				// Report to remote and close connection as the stream is no longer coherent.
 				//
-				let err = ConnectionError::Deserialize{ sid: ctx.sid, cid: cid.clone().into() };
+				let err = ConnectionError::Deserialize{ sid: ctx.sid, cid: cid.into() };
 
 				// If the error happened in the codec, there won't be a cid, but if it happens
 				// while deserializing the actor message, we will already have a cid.
@@ -110,7 +110,7 @@ impl<Wf: WireFormat> Handler<RequestError> for Peer<Wf>
 				// Report to remote and close connection. When we can't spawn, we can't process
 				// any more incoming message, so it seems sensible to close the connection.
 				//
-				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: cid.clone().into() };
+				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: cid.into() };
 
 				self.send_err( cid, &err, true ).await;
 			}
@@ -124,7 +124,7 @@ impl<Wf: WireFormat> Handler<RequestError> for Peer<Wf>
 				// services that are still operational, or the actor might be in the process of
 				// being restarted.
 				//
-				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: cid.clone().into() };
+				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: cid.into() };
 
 				self.send_err( cid, &err, false ).await;
 			}
@@ -137,7 +137,7 @@ impl<Wf: WireFormat> Handler<RequestError> for Peer<Wf>
 			{
 				// Report to remote, we don't close the connection because this might work again later.
 				//
-				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: cid.clone().into() };
+				let err = ConnectionError::InternalServerError{ sid: ctx.sid, cid: cid.into() };
 
 				self.send_err( cid, &err, false ).await;
 			}
@@ -147,7 +147,7 @@ impl<Wf: WireFormat> Handler<RequestError> for Peer<Wf>
 			{
 				// This is not fatal, NOT closing the connection.
 				//
-				let err = ConnectionError::UnknownService{ sid: ctx.sid, cid: cid.clone().into() };
+				let err = ConnectionError::UnknownService{ sid: ctx.sid, cid: cid.into() };
 
 				self.send_err( cid, &err, false ).await;
 			}

@@ -4,7 +4,8 @@
 
 ## API
 
-- simplify UniqueID, just a u64?
+- figure out why PeerError has grown
+  make ConnID a counter rather than random.
 
 - move remaining logging to tracing? And consider re-adding errors as logs. The point of logging is that
   we can get nice side by side logs of each component if we want, which is not so much the case if the

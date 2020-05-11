@@ -124,9 +124,9 @@ async fn debug()
 	let txt = format!
 ("remotes::Services
 {{
-	Add  - sid: 0xbcc09d3812378e171ad366d75f687757 - handler: id({}), name(for_debug)
-	Sub  - sid: 0xbcc09d3812378e179c6a3582c2729a7c - handler: none
-	Show - sid: 0xbcc09d3812378e17e1a1e89b512c025a - handler: id({}), name(for_debug)
+	Add  - sid: 0x6440cfd17c374646 - handler: id({}), name(for_debug)
+	Sub  - sid: 0xfb47ad8f2083c565 - handler: none
+	Show - sid: 0xcdd3781867767588 - handler: id({}), name(for_debug)
 }}",
 &id,
 &id,
@@ -149,7 +149,7 @@ async fn debug_service_id()
 
 	use remotes::Service;
 
-	assert_eq!( "ServiceID: remotes::Add (0xbcc09d3812378e171ad366d75f687757)", format!( "{:?}", Add::sid() ) );
+	assert_eq!( "ServiceID: remotes::Add (0x6440cfd17c374646)", format!( "{:?}", Add::sid() ) );
 }
 
 

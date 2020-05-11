@@ -189,9 +189,9 @@ async fn relay_unknown_service()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid  = ServiceID::from( Bytes::from( vec![ 5;16 ]) );
+		let sid  = ServiceID::from( 1 );
 		let msg  = serde_cbor::to_vec( &Add(5) ).unwrap().into();
-		let call = Call::new( sid.clone(), msg );
+		let call = Call::new( sid, msg );
 		let cid  = call.conn_id();
 
 		let rx = relay.call( call ).await

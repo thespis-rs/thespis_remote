@@ -62,9 +62,9 @@ impl<Wf: WireFormat + Send + 'static> Handler<Incoming<Wf>> for Peer<Wf>
 		//
 		match kind
 		{
-			WireType::ConnectionError => self.remote_conn_err( msg, cid ).await,
-			WireType::IncomingSend    => self.incoming_send  ( sid, frame        ).await,
-			WireType::IncomingCall    => self.incoming_call  ( cid, sid, frame   ).await,
+			WireType::ConnectionError => self.remote_conn_err( msg, cid        ).await,
+			WireType::IncomingSend    => self.incoming_send  ( sid, frame      ).await,
+			WireType::IncomingCall    => self.incoming_call  ( cid, sid, frame ).await,
 
 			WireType::CallResponse =>
 			{
@@ -162,7 +162,7 @@ impl<Wf: WireFormat> Peer<Wf>
 
 		trace!( "{}: Incoming Send, sid: {}", &identity, &sid );
 
-		let ctx = self.ctx( sid.clone(), None, "Peer: Handle incoming send" );
+		let ctx = self.ctx( sid, None, "Peer: Handle incoming send" );
 
 		let sm = match self.services.get( &sid )
 		{
@@ -189,7 +189,7 @@ impl<Wf: WireFormat> Peer<Wf>
 
 			Err(e) =>
 			{
-				let ctx = self.ctx( sid.clone(), None, "sm.send_service" );
+				let ctx = self.ctx( sid, None, "sm.send_service" );
 
 				let err = match e
 				{
@@ -208,7 +208,7 @@ impl<Wf: WireFormat> Peer<Wf>
 
 		if self.nursery.nurse( fut ).is_err()
 		{
-			let ctx = self.ctx( sid.clone(), None, "sm.send_service" );
+			let ctx = self.ctx( sid, None, "sm.send_service" );
 
 			let err = PeerErr::Spawn { ctx };
 
@@ -235,9 +235,9 @@ impl<Wf: WireFormat> Peer<Wf>
 			bp.remove_slots( NonZeroUsize::new(1).unwrap() );
 		}
 
-		trace!( "{}: Incoming Call, sid: {}, cid: {}", self.identify(), &sid, &cid );
+		trace!( "{}: Incoming Call, sid: {}, cid: {}", self.identify(), sid, cid );
 
-		let ctx = self.ctx( sid.clone(), cid.clone(), "Peer: Handle incoming call" );
+		let ctx = self.ctx( sid, cid, "Peer: Handle incoming call" );
 
 
 		// Find our handler.

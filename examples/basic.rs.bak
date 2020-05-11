@@ -125,7 +125,7 @@ async fn main() -> Result<(), DynError >
 	let resp = addr.call( Add(5) ).await.expect( "Call Add(5)" );
 	assert_eq!( (), resp );
 
-	provider_addr.call( RemoveServices{ services: vec![ Add::sid().clone() ] } ).await.expect( "Add service Sub" );
+	provider_addr.call( RemoveServices{ services: vec![ Add::sid() ] } ).await.expect( "Add service Sub" );
 
 	let resp = addr.call( Add(5) ).await;
 	assert_matches!( resp.unwrap_err(), ThesRemoteErr::Remote{ err: ConnectionError::UnknownService{..}, .. } );

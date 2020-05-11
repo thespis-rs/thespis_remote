@@ -105,7 +105,7 @@ async fn debug()
 	let add  = <Add  as remotes::Service>::sid();
 	let show = <Show as remotes::Service>::sid();
 
-	let rm = RelayMap::new( ServiceHandler::Address( Box::new(peer_addr) ), vec![ add.clone(), show.clone() ] );
+	let rm = RelayMap::new( ServiceHandler::Address( Box::new(peer_addr) ), vec![ add, show ] );
 
 	// All tests from the same file seem to run in the same process, so sometimes
 	// if the test for clone has run first, the ID will be 1.
@@ -115,8 +115,8 @@ async fn debug()
 	let txt = format!
 ("RelayMap, handler: ServiceHandler: Address: id: {}, name: \"relay_to_consumer\", services:
 {{
-	sid: 0xbcc09d3812378e171ad366d75f687757
-	sid: 0xbcc09d3812378e17e1a1e89b512c025a
+	sid: 0x6440cfd17c374646
+	sid: 0xcdd3781867767588
 }}",
 &id,
 );

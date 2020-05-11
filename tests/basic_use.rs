@@ -18,7 +18,7 @@ use common::import::{ *, assert_eq };
 //
 async fn basic_remote()
 {
-	// flexi_logger::Logger::with_str( "trace" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "info, thespis_remote=trace" ).start().unwrap();
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 

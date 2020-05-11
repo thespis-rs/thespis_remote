@@ -8,11 +8,11 @@ use crate::{ import::* };
 /// Ideally we want to use 128 bits here to have globally unique identifiers with little chance
 /// of collision, but we use xxhash which for the moment only supports 64 bit.
 //
-#[ derive( Clone, PartialEq, Eq, Hash ) ]
+#[ derive( Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize ) ]
 //
 pub(crate) struct UniqueID
 {
-	bytes: Bytes,
+	id: u64,
 }
 
 
@@ -22,15 +22,8 @@ impl UniqueID
 	//
 	pub(crate) fn random() -> Self
 	{
-		let mut buf = BytesMut::with_capacity( 16 );
 		let mut rng = rand::thread_rng();
-
-		// u128 doesn't work in wasm and serde is being a pain, so 2 u64
-		//
-		buf.put_u64_le( rng.gen::<u64>() );
-		buf.put_u64_le( rng.gen::<u64>() );
-
-		Self { bytes: buf.freeze() }
+		Self { id: rng.gen::<u64>() }
 	}
 
 
@@ -40,22 +33,13 @@ impl UniqueID
 	///
 	/// An identical input here should always give an identical UniqueID.
 	//
-	pub(crate) fn from_seed( high: &[u8], low: &[u8] ) -> Self
+	pub(crate) fn from_seed( data: &[u8] ) -> Self
 	{
 		let mut h = XxHash64::default();
-		let mut l = XxHash64::default();
 
-		h.write( high );
-		l.write( low  );
+		h.write( data );
 
-		// FIXME: keep an eye on xxh3 support.
-		//
-		let mut buf = BytesMut::with_capacity( 128 );
-
-		buf.put_u64_le( l.finish() );
-		buf.put_u64_le( h.finish() );
-
-		Self { bytes: buf.freeze() }
+		Self { id: h.finish() }
 	}
 
 
@@ -64,11 +48,7 @@ impl UniqueID
 	//
 	pub(crate) fn null() -> Self
 	{
-		let mut data = BytesMut::with_capacity( 16 );
-		data.put_u64_le( 0 );
-		data.put_u64_le( 0 );
-
-		Self { bytes: data.freeze() }
+		Self { id: 0 }
 	}
 
 
@@ -78,11 +58,7 @@ impl UniqueID
 	//
 	pub(crate) fn full() -> Self
 	{
-		let mut data = BytesMut::with_capacity( 16 );
-		data.put_u64_le( u64::max_value() );
-		data.put_u64_le( u64::max_value() );
-
-		Self { bytes: data.freeze() }
+		Self { id: u64::MAX }
 	}
 
 
@@ -90,7 +66,7 @@ impl UniqueID
 	//
 	pub(crate) fn is_null( &self ) -> bool
 	{
-		self.bytes.iter().all( |b| *b == 0 )
+		self.id == 0
 	}
 
 
@@ -98,7 +74,7 @@ impl UniqueID
 	//
 	pub(crate) fn is_full( &self ) -> bool
 	{
-		self.bytes.iter().all( |b| *b == 0xff )
+		self.id == u64::MAX
 	}
 }
 
@@ -106,24 +82,25 @@ impl UniqueID
 
 /// Internally is also represented as Bytes, so you just get a copy.
 //
-impl Into< Bytes > for UniqueID
+impl Into< u64 > for UniqueID
 {
-	fn into( self ) -> Bytes
+	fn into( self ) -> u64
 	{
-		self.bytes
+		self.id
 	}
 }
 
 
 /// The object will just keep the bytes as internal representation, no copies will be made
 //
-impl From< Bytes > for UniqueID
+impl From< u64 > for UniqueID
 {
-	fn from( bytes: Bytes ) -> Self
+	fn from( id: u64 ) -> Self
 	{
-		Self { bytes }
+		Self { id }
 	}
 }
+
 
 
 impl fmt::Display for UniqueID
@@ -140,9 +117,11 @@ impl fmt::Debug for UniqueID
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
-		write!( f, "0x" )?;
-
-		fmt::LowerHex::fmt( &self, f )
+		// Padding so that it's always showing the leading zero if the first byte is single digit.
+		// The 0x prefix is counted, hence 18 instead of 16.
+		//
+		write!( f, "{:#018x}", self )?;
+		Ok(())
 	}
 }
 
@@ -151,38 +130,7 @@ impl fmt::LowerHex for UniqueID
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
-		// Reverse because we are in little endian, and hexadecimal numbers are commonly written in big-endian.
-		//
-		for byte in self.bytes.iter().rev()
-		{
-			write!( f, "{:02x}", &byte )?
-		}
-
-		Ok(())
-	}
-}
-
-
-impl Serialize for UniqueID
-{
-	fn serialize<S: serde::Serializer>( &self, serializer: S ) -> Result<S::Ok, S::Error>
-	{
-		serde_bytes::serialize( &self.bytes[..], serializer )
-	}
-}
-
-
-impl<'de> Deserialize<'de> for UniqueID
-{
-	fn deserialize<D: serde::Deserializer<'de>>( deserializer: D ) -> Result<Self, D::Error>
-	{
-		// converting from a slice, bytes turns it into a vec anyways, so this
-		// avoids the lifetime mess for free.
-		//
-		serde_bytes::deserialize( deserializer ).map( |bytes: Vec<u8>|
-		{
-			Self { bytes: bytes.into() }
-		})
+		self.id.fmt( f )
 	}
 }
 
@@ -203,8 +151,8 @@ mod tests
 	//
 	fn identical()
 	{
-		let sid  = UniqueID::from_seed( b"namespace", b"Typename" );
-		let sid2 = UniqueID::from_seed( b"namespace", b"Typename" );
+		let sid  = UniqueID::from_seed( b"namespace::Typename" );
+		let sid2 = UniqueID::from_seed( b"namespace::Typename" );
 
 		assert_eq!( sid, sid2 );
 	}
@@ -234,10 +182,9 @@ mod tests
 	//
 	fn debug()
 	{
-		let bytes: Bytes = vec![ 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, ].into();
-		let sid = UniqueID::try_from( bytes ).unwrap();
+		let sid = UniqueID{ id: 0x0f0e0d0c0b0a0908 };
 
-		assert_eq!( "0x0f0e0d0c0b0a09080706050403020100", &format!( "{:?}", sid ) );
+		assert_eq!( "0x0f0e0d0c0b0a0908", &format!( "{:?}", sid ) );
 	}
 }
 

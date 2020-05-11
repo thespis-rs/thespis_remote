@@ -79,12 +79,12 @@ impl<Wf: WireFormat + Send + 'static> Handler<Call<Wf>> for Peer<Wf>
 		// If self.closed is false, there should always be an address.
 		//
 		let mut self_addr = self.addr.as_ref().unwrap().clone();
-		let     conn_id   = call.mesg.conn_id();
+		let     cid       = call.mesg.conn_id();
 		let     sid       = call.mesg.service();
 
 		// Otherwise the remote will consider it a send, and it's reserved anyway.
 		//
-		debug_assert!( conn_id != ConnID::null() );
+		debug_assert!( cid != ConnID::null() );
 
 		self.send_msg( call.mesg ).await?;
 
@@ -95,9 +95,8 @@ impl<Wf: WireFormat + Send + 'static> Handler<Call<Wf>> for Peer<Wf>
 
 		// send a timeout message to ourselves.
 		//
-		let delay = self.timeout    ;
-		let cid   = conn_id.clone() ;
-		let sid2  = sid.clone()     ;
+		let delay = self.timeout;
+
 
 		let task = async move
 		{
@@ -114,14 +113,14 @@ impl<Wf: WireFormat + Send + 'static> Handler<Call<Wf>> for Peer<Wf>
 
 		self.nursery.nurse( task ).map_err( |_|
 		{
-			let ctx = self.ctx( sid2, None, "timeout for outgoing Call" );
+			let ctx = self.ctx( sid, None, "timeout for outgoing Call" );
 
 			PeerErr::Spawn{ ctx }
 
 		})?;
 
 
-		self.responses.insert( conn_id, sender );
+		self.responses.insert( cid, sender );
 
 		Ok( receiver )
 	}
