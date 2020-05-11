@@ -1,14 +1,14 @@
 use crate::{ import::*, * };
 
 
-/// Type representing the response to a remote request. It is simply a wrapped Wireformat, but we
+/// Type representing the response to a remote request. It is simply a wrapped BytesFormat, but we
 /// need to mark it with a type to keep track of the backpressure.
 //
 #[ derive( Debug ) ]
 //
 pub struct CallResponse
 {
-	msg: WireFormat,
+	msg: BytesFormat,
 }
 
 
@@ -25,7 +25,7 @@ impl CallResponse
 {
 	/// Create a new CallResponse to send an outgoing message over the peer.
 	//
-	pub fn new( msg: WireFormat ) -> Self
+	pub fn new( msg: BytesFormat ) -> Self
 	{
 		Self{ msg }
 	}

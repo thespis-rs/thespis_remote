@@ -29,7 +29,7 @@ pub mod peer              ;
     mod service_handler   ;
     mod service_map       ;
     mod service_map_macro ;
-pub mod wire_format       ;
+pub mod bytes_format      ;
 
 pub use
 {
@@ -38,7 +38,7 @@ pub use
 	service_handler   :: * ,
 	service_map       :: * ,
 	service_map_macro :: * ,
-	wire_format       :: * ,
+	bytes_format      :: * ,
 };
 
 

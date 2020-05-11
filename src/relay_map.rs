@@ -4,7 +4,7 @@ use crate :: { import::*, *, peer::Response };
 
 /// Register services to be relayed to other backend providers. The difference with the `service_map` macro, which is
 /// used for local handlers is that handlers here don't have to implement `Handler<M>` for the actual message type.
-/// They only have to implement `Handler<WireFormat>` (for sends) and `Handler<peer::Call>` for calls.
+/// They only have to implement `Handler<BytesFormat>` (for sends) and `Handler<peer::Call>` for calls.
 //
 pub struct RelayMap
 {
@@ -33,7 +33,7 @@ impl ServiceMap for RelayMap
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//
-	fn send_service( &self, msg: WireFormat, ctx: PeerErrCtx )
+	fn send_service( &self, msg: BytesFormat, ctx: PeerErrCtx )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 	{
@@ -84,7 +84,7 @@ impl ServiceMap for RelayMap
 	/// This should take care of deserialization. The return address is the address of the peer
 	/// to which the serialized answer shall be send.
 	//
-	fn call_service( &self, frame: WireFormat, ctx: PeerErrCtx )
+	fn call_service( &self, frame: BytesFormat, ctx: PeerErrCtx )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 	{
@@ -110,7 +110,7 @@ impl ServiceMap for RelayMap
 
 #[ allow(clippy::needless_return) ]
 //
-async fn make_call<T>( mut relay: Box<T>, frame: WireFormat, ctx: PeerErrCtx )
+async fn make_call<T>( mut relay: Box<T>, frame: BytesFormat, ctx: PeerErrCtx )
 
 	-> Result<Response, PeerErr >
 

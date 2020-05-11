@@ -13,7 +13,7 @@ pub trait ServiceMap: fmt::Debug + Send + Sync
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//
-	fn send_service( &self, msg: WireFormat, ctx: PeerErrCtx )
+	fn send_service( &self, msg: BytesFormat, ctx: PeerErrCtx )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 	;
@@ -23,7 +23,7 @@ pub trait ServiceMap: fmt::Debug + Send + Sync
 	/// This should take care of deserialization. The return address is the address of the peer
 	/// to which the serialized answer shall be send.
 	//
-	fn call_service( &self, msg: WireFormat, ctx: PeerErrCtx )
+	fn call_service( &self, msg: BytesFormat, ctx: PeerErrCtx )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 	;

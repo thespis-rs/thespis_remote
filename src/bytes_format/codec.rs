@@ -1,6 +1,6 @@
 //! The codec to frame the connection with our wire format.
 //
-use crate::{ import::*, WireFormat, WireErr };
+use crate::{ import::*, BytesFormat, WireErr };
 use super::HEADER_LEN;
 
 /// The tokio/futures codec to frame AsyncRead/Write streams.
@@ -16,11 +16,11 @@ pub struct ThesCodec
 impl ThesCodec
 {
 	/// Create a new codec, with the max length of a single message in bytes. Note that this includes the
-	/// header of the wireformat. For [`thespis_remote_impl::WireFormat`] the header is 36 bytes.
+	/// header of the BytesFormat. For [`thespis_remote_impl::BytesFormat`] the header is 36 bytes.
 	///
 	/// Setting a value to high might lead to more memory usage and could enable OOM/DDOS attacks.
 	/// Note that the `max_size` is the max size of your client message, but actual data sent over the
-	/// wire will have 32 more bytes from the WireFormat header + 8 bytes for a length field from the codec.
+	/// wire will have 32 more bytes from the BytesFormat header + 8 bytes for a length field from the codec.
 	//
 	pub fn new( max_size: usize ) -> Self
 	{
@@ -32,7 +32,7 @@ impl ThesCodec
 	// In principle we would like to not have to serialize the inner message
 	// before having access to this buffer.
 	//
-	fn encode_impl( &mut self, item: WireFormat, buf: &mut BytesMut ) -> Result<(), WireErr>
+	fn encode_impl( &mut self, item: BytesFormat, buf: &mut BytesMut ) -> Result<(), WireErr>
 	{
 		let payload_len = item.len() - HEADER_LEN;
 
@@ -42,7 +42,7 @@ impl ThesCodec
 		{
 			return Err( WireErr::MessageSizeExceeded
 			{
-				context : "WireFormat Codec encoder".to_string() ,
+				context : "BytesFormat Codec encoder".to_string() ,
 				size    : payload_len                            ,
 				max_size: self.max_size                          ,
 			})
@@ -59,7 +59,7 @@ impl ThesCodec
 	}
 
 
-	fn decode_impl( &mut self, buf: &mut BytesMut ) -> Result< Option<WireFormat>, WireErr >
+	fn decode_impl( &mut self, buf: &mut BytesMut ) -> Result< Option<BytesFormat>, WireErr >
 	{
 		// trace!( "Decoding incoming message: {:?}", &buf );
 
@@ -80,7 +80,7 @@ impl ThesCodec
 		{
 			return Err( WireErr::MessageSizeExceeded
 			{
-				context : "WireFormat Codec decoder".to_string() ,
+				context : "BytesFormat Codec decoder".to_string() ,
 				size    : payload_len                            ,
 				max_size: self.max_size                          ,
 			})
@@ -99,7 +99,7 @@ impl ThesCodec
 
 		// Consume the message & Convert
 		//
-		Ok( Some( WireFormat::try_from( buf.split_to( len ).freeze() )? ) )
+		Ok( Some( BytesFormat::try_from( buf.split_to( len ).freeze() )? ) )
 	}
 }
 
@@ -109,7 +109,7 @@ impl ThesCodec
 //
 impl FutDecoder for ThesCodec
 {
-	type Item  = WireFormat ;
+	type Item  = BytesFormat ;
 	type Error = WireErr    ;
 
 	fn decode( &mut self, buf: &mut BytesMut ) -> Result< Option<Self::Item>, Self::Error >
@@ -123,7 +123,7 @@ impl FutDecoder for ThesCodec
 //
 impl FutEncoder for ThesCodec
 {
-	type Item  = WireFormat ;
+	type Item  = BytesFormat ;
 	type Error = WireErr    ;
 
 	fn encode( &mut self, item: Self::Item, buf: &mut BytesMut ) -> Result<(), Self::Error>
@@ -137,7 +137,7 @@ impl FutEncoder for ThesCodec
 //
 impl TokioDecoder for ThesCodec
 {
-	type Item  = WireFormat ;
+	type Item  = BytesFormat ;
 	type Error = WireErr    ;
 
 	fn decode( &mut self, buf: &mut BytesMut ) -> Result< Option<Self::Item>, Self::Error >
@@ -152,7 +152,7 @@ impl TokioDecoder for ThesCodec
 //
 impl TokioEncoder for ThesCodec
 {
-	type Item  = WireFormat ;
+	type Item  = BytesFormat ;
 	type Error = WireErr    ;
 
 	fn encode( &mut self, item: Self::Item, buf: &mut BytesMut ) -> Result<(), Self::Error>
@@ -175,29 +175,29 @@ macro_rules! test_codec
 	{
 		// Tests:
 		//
-		// 1. A valid WireFormat, encoded + decoded should be identical to original.
+		// 1. A valid BytesFormat, encoded + decoded should be identical to original.
 		// 2. Send like 2 and a half full objects, test that 2 correctly come out, and there is the
 		//    exact amount of bytes left in the buffer for the other half.
 		// 3. test max_size. Verify that a max_size exactly the size of the message passed (tested in test full),
 		//    and test the error (tested in test max_size)
 		// 4. calling decode on short or empty buffer should return Ok(None)
 		//
-		fn empty_data() -> WireFormat
+		fn empty_data() -> BytesFormat
 		{
 			let mut buf = BytesMut::with_capacity( 1 );
 			buf.put( &[0u8;1][..] );
 
-			let m = WireFormat::create( ServiceID::from_seed( b"codec_tests", b"Empty Message" ), ConnID::random(), buf.freeze() );
+			let m = BytesFormat::create( ServiceID::from_seed( b"codec_tests", b"Empty Message" ), ConnID::random(), buf.freeze() );
 
 			m
 		}
 
-		fn full_data() -> WireFormat
+		fn full_data() -> BytesFormat
 		{
 			let mut buf = BytesMut::with_capacity( 5 );
 			buf.put( "hello".as_bytes() );
 
-			WireFormat::create( ServiceID::from_seed( b"codec_tests", b"Full Message" ), ConnID::random(), buf.freeze() )
+			BytesFormat::create( ServiceID::from_seed( b"codec_tests", b"Full Message" ), ConnID::random(), buf.freeze() )
 		}
 
 
@@ -294,7 +294,7 @@ macro_rules! test_codec
 
 				WireErr::MessageSizeExceeded
 				{
-					context : "WireFormat Codec encoder".to_string() ,
+					context : "BytesFormat Codec encoder".to_string() ,
 					size    : 5                                      ,
 					max_size: 4                                      ,
 				}

@@ -146,7 +146,7 @@ async fn header_unknown_service_error()
 		//
 		let sid = ServiceID::from( Bytes::from( vec![3;16] ) );
 		let cid = ConnID::random();
-		let ms  = WireFormat::create( sid.clone(), cid.clone(), serde_cbor::to_vec( &Add(5) ).expect( "serialize Add(5)" ).into() );
+		let ms  = BytesFormat::create( sid.clone(), cid.clone(), serde_cbor::to_vec( &Add(5) ).expect( "serialize Add(5)" ).into() );
 
 		peera.call( ms ).await.expect( "call peera" ).expect( "call peera" );
 
@@ -224,7 +224,7 @@ async fn call_deserialize()
 		buf.extend( cod         );
 		buf.extend( msg         );
 
-		let mesg  = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
+		let mesg  = BytesFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
 		peera.call( mesg ).await.expect( "send ms to peera" ).expect( "no network error" );
 
@@ -292,7 +292,7 @@ async fn sm_deserialize_error()
 		//
 		let sid = <Add as remotes::Service>::sid().clone();
 		let cid = ConnID::random();
-		let ms  = WireFormat::create( sid, cid.clone(), Bytes::from( vec![3,3]));
+		let ms  = BytesFormat::create( sid, cid.clone(), Bytes::from( vec![3,3]));
 
 		peera.call( ms ).await.expect( "call peera" ).expect( "call peera" );
 

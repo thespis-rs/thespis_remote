@@ -11,7 +11,7 @@ use crate::{ import::*, * };
 //
 pub struct Call
 {
-	mesg: WireFormat,
+	mesg: BytesFormat,
 }
 
 impl Message for Call
@@ -19,14 +19,14 @@ impl Message for Call
 	/// We do not await the receiver in the async handle method below, since we don't want
 	/// to hang the peer whilst waiting for the response. That's why we return a channel.
 	//
-	type Return = Result< oneshot::Receiver<Result<WireFormat, ConnectionError>>, PeerErr >;
+	type Return = Result< oneshot::Receiver<Result<BytesFormat, ConnectionError>>, PeerErr >;
 }
 
 impl Call
 {
 	/// Create a new Call to send an outgoing message over the peer.
 	//
-	pub fn new( mesg: WireFormat ) -> Self
+	pub fn new( mesg: BytesFormat ) -> Self
 	{
 		Self{ mesg }
 	}
@@ -76,7 +76,7 @@ impl Handler<Call> for Peer
 
 		// If the above succeeded, store the other end of the channel
 		//
-		let (sender, receiver) = oneshot::channel::< Result<WireFormat, ConnectionError> >() ;
+		let (sender, receiver) = oneshot::channel::< Result<BytesFormat, ConnectionError> >() ;
 
 
 		// send a timeout message to ourselves.

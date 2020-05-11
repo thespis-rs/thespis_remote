@@ -9,7 +9,7 @@ use
 //
 pub(super) struct Incoming
 {
-	pub(crate) msg: Result<WireFormat, WireErr>
+	pub(crate) msg: Result<BytesFormat, WireErr>
 }
 
 impl Message for Incoming
@@ -41,7 +41,7 @@ impl Handler<Incoming> for Peer
 			{
 				// Can be:
 				// - WireErr::MessageSizeExceeded (Codec)
-				// - WireErr::Deserialize (WireFormat)
+				// - WireErr::Deserialize (BytesFormat)
 				//
 				let err = PeerErr::WireFormat{ source: error, ctx: self.ctx( None, None, "Incoming message" ) };
 
@@ -154,7 +154,7 @@ impl Peer
 	(
 		&mut self            ,
 		sid     : ServiceID  ,
-		frame   : WireFormat ,
+		frame   : BytesFormat ,
 	)
 	{
 		let identity = self.identify();
@@ -224,7 +224,7 @@ impl Peer
 		&mut self            ,
 		cid     : ConnID     ,
 		sid     : ServiceID  ,
-		frame   : WireFormat ,
+		frame   : BytesFormat ,
 	)
 	{
 		if self.closed { return }

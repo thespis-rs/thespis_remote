@@ -201,7 +201,7 @@ async fn relay_unknown_service()
 		buf.extend( cid.clone() );
 		buf.extend( msg         );
 
-		let corrupt = WireFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
+		let corrupt = BytesFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
 
 
 		let rx = relay.call( Call::new( corrupt ) ).await

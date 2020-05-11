@@ -324,9 +324,9 @@ impl Services
 	//
 	fn call_service_gen<S>
 	(
-		    msg      :  WireFormat            ,
+		    msg      :  BytesFormat           ,
 		    receiver : &Box< dyn Any + Send > ,
-		mut ctx      :  PeerErrCtx          ,
+		mut ctx      :  PeerErrCtx            ,
 
 	) -> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 
@@ -393,12 +393,12 @@ impl Services
 			};
 
 
-			// Create a WireFormat response.
+			// Create a BytesFormat response.
 			// The sid must be full to differentiate a response from a request. If the request
 			// has timed out, the remote peer will no longer have the cid in their list of open requests,
 			// so they would not know this was a response otherwise.
 			//
-			let resp = WireFormat::create( ServiceID::full(), cid, serialized.into() ) ;
+			let resp = BytesFormat::create( ServiceID::full(), cid, serialized.into() ) ;
 
 			Ok( Response::CallResponse( CallResponse::new(resp) ))
 
@@ -431,7 +431,7 @@ impl ServiceMap for Services
 	/// - PeerErr::UnknownService
 	/// - PeerErr::Deserialize
 	//
-	fn send_service( &self, msg: WireFormat, ctx: PeerErrCtx )
+	fn send_service( &self, msg: BytesFormat, ctx: PeerErrCtx )
 
 		-> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
 
@@ -507,7 +507,7 @@ impl ServiceMap for Services
 	fn call_service
 	(
 		&self                ,
-		msg   : WireFormat   ,
+		msg   : BytesFormat   ,
 		ctx   : PeerErrCtx ,
 
 	) -> Result< Pin<Box< dyn Future< Output=Result<Response, PeerErr> > + Send >>, PeerErr >
@@ -558,7 +558,7 @@ pub struct RemoteAddr
 {
 	// FIXME: do not rely on Addr, we should be generic over Address, but not
 	//       choose an implementation. This is a complicated one. While this is in the public
-	//       API, so it would be good, having a trait object that is Address<WireFormat> + Address<Call>
+	//       API, so it would be good, having a trait object that is Address<BytesFormat> + Address<Call>
 	//       and is still cloneable is complicated.
 	//
 	//       It could be done by unifying both message types (eg. an enum), but then what is the return
@@ -579,7 +579,7 @@ impl RemoteAddr
 
 	/// Take the raw message and turn it into a MultiService
 	//
-	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< WireFormat, PeerErr >
+	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< BytesFormat, PeerErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -601,7 +601,7 @@ impl RemoteAddr
 		})?;
 
 
-		Ok( WireFormat::create( sid2, cid, serialized.into() ) )
+		Ok( BytesFormat::create( sid2, cid, serialized.into() ) )
 	}
 }
 
@@ -766,7 +766,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_ready( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		Sink::<WireFormat>::poll_ready( Pin::new( &mut self.peer ), cx )
+		Sink::<BytesFormat>::poll_ready( Pin::new( &mut self.peer ), cx )
 
 			.map_err( |source|
 			{
@@ -779,7 +779,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
-		Sink::<WireFormat>::start_send( Pin::new( &mut self.peer ), Self::build_ms( msg, ConnID::null() )? )
+		Sink::<BytesFormat>::start_send( Pin::new( &mut self.peer ), Self::build_ms( msg, ConnID::null() )? )
 
 			.map_err( |source|
 			{
@@ -792,7 +792,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn poll_flush( mut self: Pin<&mut Self>, cx: &mut Context ) -> Poll<Result<(), Self::Error>>
 	{
-		Sink::<WireFormat>::poll_flush( Pin::new( &mut self.peer ), cx )
+		Sink::<BytesFormat>::poll_flush( Pin::new( &mut self.peer ), cx )
 
 			.map_err( |source|
 			{

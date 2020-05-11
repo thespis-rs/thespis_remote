@@ -33,21 +33,21 @@ pub use response          :: { Response            } ;
 //
 /// Trait bounds for the stream of incoming messages
 //
-pub trait BoundsIn : 'static + Stream< Item = Result<WireFormat, WireErr> > + Unpin + Send {}
+pub trait BoundsIn : 'static + Stream< Item = Result<BytesFormat, WireErr> > + Unpin + Send {}
 
 /// Trait bounds for the Sink of outgoing messages.
 //
-pub trait BoundsOut: 'static + Sink<WireFormat, Error=WireErr > + Unpin + Send {}
+pub trait BoundsOut: 'static + Sink<BytesFormat, Error=WireErr > + Unpin + Send {}
 
 
 impl<T> BoundsIn for T
 
-	where T : 'static + Stream< Item = Result<WireFormat, WireErr> > + Unpin + Send
+	where T : 'static + Stream< Item = Result<BytesFormat, WireErr> > + Unpin + Send
 {}
 
 impl<T> BoundsOut for T
 
-	where T : 'static + Sink<WireFormat, Error=WireErr > + Unpin + Send
+	where T : 'static + Sink<BytesFormat, Error=WireErr > + Unpin + Send
 {}
 
 
@@ -74,7 +74,7 @@ impl<T> BoundsOut for T
 /// In principle you setup the peer with at least one ServiceMap before starting it, that way it
 /// is fully operational before it receives the first incoming message. `service_map!` let's you
 /// set a `dyn Address<S>` as handler, whereas `RelayMap` can accept both an address that receives
-/// both `WireFormat` (for Sends) and `peer::Call` for calls, but also a closure that let's you
+/// both `BytesFormat` (for Sends) and `peer::Call` for calls, but also a closure that let's you
 /// provide such address on a per message basis, which allows you to implement load balancing
 /// to several backends providing the same service. Neither of these maps allow you to "unset"
 /// a handler, only replace it with a new one. The point is a difference in error messages. It
@@ -97,7 +97,7 @@ impl<T> BoundsOut for T
 /// ### Sending messages to remote processes.
 ///
 /// As far as the Peer type is concerned sending actor messages to a remote is relatively simple.
-/// Once you have serialized a message as `WireFormat`, sending that directly to `Peer` will be considered
+/// Once you have serialized a message as `BytesFormat`, sending that directly to `Peer` will be considered
 /// a Send to a remote actor and it will just be sent out. For a Call, there is the Call message type,
 /// which will resolve to a channel you can await in order to get your response from the remote process.
 /// The `service_map!` macro provides a `RemoteAddress` type which acts much the same as a local actor address
@@ -168,7 +168,7 @@ pub struct Peer
 
 	/// We use oneshot channels to give clients a future that will resolve to their response.
 	//
-	responses: HashMap< ConnID, oneshot::Sender<Result<WireFormat, ConnectionError>> >,
+	responses: HashMap< ConnID, oneshot::Sender<Result<BytesFormat, ConnectionError>> >,
 
 	/// The pharos allows us to have observers.
 	//
@@ -468,9 +468,9 @@ impl Peer
 
 	// actually send the message accross the wire
 	//
-	async fn send_msg( &mut self, msg: WireFormat ) -> Result<(), PeerErr>
+	async fn send_msg( &mut self, msg: BytesFormat ) -> Result<(), PeerErr>
 	{
-		trace!( "{}: sending OUT WireFormat", self.identify() );
+		trace!( "{}: sending OUT BytesFormat", self.identify() );
 
 		match &mut self.outgoing
 		{
@@ -483,7 +483,7 @@ impl Peer
 
 					.map_err( |source|
 					{
-						let ctx = self.ctx( sid, cid, "Sending out WireFormat" );
+						let ctx = self.ctx( sid, cid, "Sending out BytesFormat" );
 						PeerErr::WireFormat{ ctx, source }
 					})
 			}
@@ -532,7 +532,7 @@ impl Peer
 
 		// sid null is the marker that this is an error message.
 		//
-		let msg = WireFormat::create( ServiceID::null(), cid, serialized.into() );
+		let msg = BytesFormat::create( ServiceID::null(), cid, serialized.into() );
 
 		// We are already trying to report an error. If we can't send, just give up.
 		//
@@ -553,7 +553,7 @@ impl Peer
 	//
 	#[ doc( hidden ) ]
 	//
-	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> WireFormat
+	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> BytesFormat
 	{
 		// There is no documentation on serde_cbor or serde_derive about why this would return an error.
 		// As far as I can tell it shouldn't ever fail.
@@ -562,7 +562,7 @@ impl Peer
 
 		// sid null is the marker that this is an error message.
 		//
-		WireFormat::create
+		BytesFormat::create
 		(
 			ServiceID::null() ,
 			cid               ,
@@ -649,11 +649,11 @@ impl Peer
 
 // Put an outgoing multiservice message on the wire.
 //
-impl Handler<WireFormat> for Peer
+impl Handler<BytesFormat> for Peer
 {
-	#[async_fn] fn handle( &mut self, msg: WireFormat ) -> Result<(), PeerErr>
+	#[async_fn] fn handle( &mut self, msg: BytesFormat ) -> Result<(), PeerErr>
 	{
-		trace!( "{}: sending OUT wireformat", self.identify() );
+		trace!( "{}: sending OUT BytesFormat", self.identify() );
 
 		self.send_msg( msg ).await
 	}
