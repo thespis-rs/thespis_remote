@@ -88,18 +88,19 @@ mod import
 
 		std ::
 		{
-			collections  :: { HashMap, VecDeque    } ,
-			convert      :: { TryFrom              } ,
-			fmt                                      ,
-			future       :: { Future               } ,
-			hash         :: { Hasher               } ,
-			num          :: { NonZeroUsize         } ,
-			ops          :: { DerefMut             } ,
-			pin          :: { Pin                  } ,
-			sync         :: { Arc                  } ,
-			sync::atomic :: { AtomicI64, Ordering  } ,
-			task         :: { Poll, Context, Waker } ,
-			time         :: { Duration             } ,
+			collections  :: { HashMap, VecDeque                 } ,
+			convert      :: { TryFrom                           } ,
+			fmt                                                   ,
+			future       :: { Future                            } ,
+			hash         :: { Hasher                            } ,
+			marker       :: { PhantomData                       } ,
+			num          :: { NonZeroUsize                      } ,
+			ops          :: { DerefMut                          } ,
+			pin          :: { Pin                               } ,
+			sync         :: { Arc                               } ,
+			sync::atomic :: { AtomicI64, AtomicU64, Ordering::* } ,
+			task         :: { Poll, Context, Waker              } ,
+			time         :: { Duration                          } ,
 		},
 
 

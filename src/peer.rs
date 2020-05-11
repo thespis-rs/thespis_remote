@@ -195,6 +195,13 @@ pub struct Peer<Wf: 'static = BytesFormat>
 	// Set by close connection. We no longer want to process any messages after this.
 	//
 	closed: bool,
+
+	// The counter for conn_id. This will wrap. If there are still old connections
+	// open by the time this wraps, we have a problem. It's quite unlikely to happen though.
+	// It would mean this peer has an outstanding call that is still open by the time
+	// you have send u64::MAX calls. Normally timeout should prevent that.
+	//
+	conn_id_counter: AtomicU64,
 }
 
 
@@ -417,6 +424,10 @@ impl<Wf: WireFormat> Peer<Wf>
 			closed         : false                      ,
 			nursery_stream : Some( nursery_handle )     ,
 			nursery                                     ,
+
+			// must not start at 0. Zero has a special meaning.
+			//
+			conn_id_counter: AtomicU64::new(1),
 		})
 	}
 

@@ -421,7 +421,7 @@ impl ServiceMap<$wf> for Services
 
 		for sid in self.handlers.keys()
 		{
-			s.push( (*sid).clone() );
+			s.push( *sid );
 		}
 
 		s
@@ -589,8 +589,7 @@ impl RemoteAddr
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
-		let sid  = <S as Service>::sid().clone();
-		let sid2 = sid.clone();
+		let sid = <S as Service>::sid();
 
 		let serialized: Vec<u8> = serde_cbor::to_vec( &msg )
 
@@ -605,7 +604,7 @@ impl RemoteAddr
 		})?;
 
 
-		Ok( <$wf>::from(( sid2, cid, serialized.into() )) )
+		Ok( <$wf>::from(( sid, cid, serialized.into() )) )
 	}
 
 
@@ -617,8 +616,7 @@ impl RemoteAddr
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
 
 	{
-		let sid  = <S as Service>::sid().clone();
-		let sid2 = sid.clone();
+		let sid = <S as Service>::sid();
 
 		let serialized: Vec<u8> = serde_cbor::to_vec( &msg )
 
@@ -633,7 +631,7 @@ impl RemoteAddr
 		})?;
 
 
-		Ok( Call::new( sid2, serialized.into() ) )
+		Ok( Call::new( sid, serialized.into() ) )
 	}
 }
 
@@ -657,7 +655,6 @@ impl<S> Address<S> for RemoteAddr
 		// Serialization can fail
 		//
 		let call = Self::build_call( msg )?;
-		let cid  = call.conn_id();
 
 		// Can fail if the peer is down already.
 		//
@@ -667,7 +664,7 @@ impl<S> Address<S> for RemoteAddr
 			//
 			.map_err( |_|
 			{
-				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid().clone(), cid.clone(), "Call remote service".to_string() );
+				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid(), None, "Call remote service".to_string() );
 
 				PeerErr::PeerGone{ ctx }
 
@@ -677,7 +674,7 @@ impl<S> Address<S> for RemoteAddr
 			//
 			.map_err( |_|
 			{
-				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid().clone(), cid.clone(), "Call remote service".to_string() );
+				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid(), None, "Call remote service".to_string() );
 
 				PeerErr::ConnectionClosed{ ctx }
 
@@ -695,8 +692,8 @@ impl<S> Address<S> for RemoteAddr
 					context  : Some( "Peer stopped before receiving response from remote call".to_string() ) ,
 					peer_id  : self.peer.id().into()                                                         ,
 					peer_name: self.peer.name()                                                              ,
-					sid      : <S as Service>::sid().clone().into()                                          ,
-					cid      : cid.clone().into()                                                            ,
+					sid      : <S as Service>::sid().into()                                                  ,
+					cid      : None                                                                          ,
 				};
 
 				PeerErr::ConnectionClosed{ ctx }
@@ -721,8 +718,8 @@ impl<S> Address<S> for RemoteAddr
 							context  : Some( "Response to call from remote actor".to_string() ) ,
 							peer_id  : self.peer.id().into()                                    ,
 							peer_name: self.peer.name()                                         ,
-							sid      : <S as Service>::sid().clone().into()                     ,
-							cid      : cid.clone().into()                                       ,
+							sid      : <S as Service>::sid().into()                             ,
+							cid      : resp.conn_id().into()                                    ,
 						};
 
 						PeerErr::Deserialize{ ctx }
@@ -740,8 +737,8 @@ impl<S> Address<S> for RemoteAddr
 					context  : Some( "Remote could not process our message".to_string() ) ,
 					peer_id  : self.peer.id().into()                                      ,
 					peer_name: self.peer.name()                                           ,
-					sid      : <S as Service>::sid().clone().into()                       ,
-					cid      : cid.into()                                                 ,
+					sid      : <S as Service>::sid().into()                               ,
+					cid      : None                                                       ,
 				};
 
 				match err
@@ -800,7 +797,7 @@ impl<S> Sink<S> for RemoteAddr
 
 			.map_err( |source|
 			{
-				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid().clone(), None, "Send on RemoteAddr".to_string() );
+				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid(), None, "Send on RemoteAddr".to_string() );
 
 				PeerErr::ThesErr{ ctx, source }
 			})
@@ -813,7 +810,7 @@ impl<S> Sink<S> for RemoteAddr
 
 			.map_err( |source|
 			{
-				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid().clone(), None, "Send on RemoteAddr".to_string() );
+				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid(), None, "Send on RemoteAddr".to_string() );
 
 				PeerErr::ThesErr{ ctx, source }
 			})
@@ -826,7 +823,7 @@ impl<S> Sink<S> for RemoteAddr
 
 			.map_err( |source|
 			{
-				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid().clone(), None, "Send on RemoteAddr".to_string() );
+				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid(), None, "Send on RemoteAddr".to_string() );
 
 				PeerErr::ThesErr{ ctx, source }
 			})

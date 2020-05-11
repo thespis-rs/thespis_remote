@@ -43,7 +43,7 @@ impl BackPressure
 	{
 		let num = num.get() as i64;
 
-		let old = self.available.fetch_add( num, Ordering::SeqCst );
+		let old = self.available.fetch_add( num, SeqCst );
 
 		if old     <= 0
 		&& old+num >  0
@@ -60,13 +60,13 @@ impl BackPressure
 	{
 		let num = num.get() as i64;
 
-		self.available.fetch_sub( num, Ordering::SeqCst );
+		self.available.fetch_sub( num, SeqCst );
 	}
 
 
 	pub fn available( &self ) -> i64
 	{
-		self.available.load( Ordering::SeqCst )
+		self.available.load( SeqCst )
 	}
 
 
@@ -94,7 +94,7 @@ impl Future for BPInner
 
 	fn poll( self: Pin<&mut Self>, cx: &mut Context<'_> ) -> Poll<()>
 	{
-		let old = self.available.load( Ordering::SeqCst );
+		let old = self.available.load( SeqCst );
 
 		if old > 0
 		{

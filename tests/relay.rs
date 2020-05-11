@@ -192,7 +192,6 @@ async fn relay_unknown_service()
 		let sid  = ServiceID::from( 1 );
 		let msg  = serde_cbor::to_vec( &Add(5) ).unwrap().into();
 		let call = Call::new( sid, msg );
-		let cid  = call.conn_id();
 
 		let rx = relay.call( call ).await
 
@@ -200,13 +199,11 @@ async fn relay_unknown_service()
 			.expect( "send out ms" )
 		;
 
-		assert_eq!
+		assert!(matches!
 		(
-			// TODO, why is there no cid here?
-			//
-			ConnectionError::UnknownService{ sid: sid.into(), cid: cid.into() },
-			rx.await.expect( "return error, don't drop connection" ).unwrap_err()
-		);
+			rx.await.expect( "return error, don't drop connection" ).unwrap_err(),
+			ConnectionError::UnknownService{ sid, .. } if sid == sid.into()
+		));
 
 
 		relay.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to nodeb" );

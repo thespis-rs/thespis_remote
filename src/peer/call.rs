@@ -11,7 +11,9 @@ use crate::{ import::*, * };
 //
 pub struct Call<Wf>
 {
-	mesg: Wf,
+	 sid  : ServiceID       ,
+	 msg  : Bytes           ,
+	_ghost: PhantomData<Wf> ,
 }
 
 impl<Wf: Send + 'static> Message for Call<Wf>
@@ -26,23 +28,16 @@ impl<Wf: WireFormat> Call<Wf>
 {
 	/// Create a new Call to send an outgoing message over the peer.
 	//
-	pub fn new( sid: ServiceID, mesg: Bytes ) -> Self
+	pub fn new( sid: ServiceID, msg: Bytes ) -> Self
 	{
-		Self{ mesg: Wf::from(( sid, ConnID::random(), mesg )) }
+		Self{ sid, msg, _ghost: PhantomData }
 	}
 
 	/// Get the service id.
 	//
 	pub fn service( &self ) -> ServiceID
 	{
-		self.mesg.service()
-	}
-
-	/// Get the connection id.
-	//
-	pub fn conn_id( &self ) -> ConnID
-	{
-		self.mesg.conn_id()
+		self.sid
 	}
 }
 
@@ -79,14 +74,20 @@ impl<Wf: WireFormat + Send + 'static> Handler<Call<Wf>> for Peer<Wf>
 		// If self.closed is false, there should always be an address.
 		//
 		let mut self_addr = self.addr.as_ref().unwrap().clone();
-		let     cid       = call.mesg.conn_id();
-		let     sid       = call.mesg.service();
+		let mut cid       = ConnID::from( self.conn_id_counter.fetch_add(1, Relaxed ) );
+		let     sid       = call.sid;
 
-		// Otherwise the remote will consider it a send, and it's reserved anyway.
+		// We wrapped round.
+		// It must not be 0 otherwise the remote will consider it a send, and it's reserved.
 		//
-		debug_assert!( cid != ConnID::null() );
+		if cid.is_null()
+		{
+			cid = ConnID::from( self.conn_id_counter.fetch_add(1, Relaxed ) );
+		}
 
-		self.send_msg( call.mesg ).await?;
+		let mesg = Wf::from(( sid, cid, call.msg ));
+
+		self.send_msg( mesg ).await?;
 
 		// If the above succeeded, store the other end of the channel
 		//
