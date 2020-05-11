@@ -123,11 +123,12 @@ async fn make_call<T, Wf: WireFormat + Send + 'static>( mut relay: Box<T>, frame
 	let relay_id   = relay.id();
 	let relay_name = relay.name();
 	let relay_gone = PeerErr::RelayGone{ ctx, relay_id, relay_name };
+	let new_call   = Call::new( frame.service(), frame.mesg() );
 
 	// Peer for relay still online.
 	// FIXME: use map_err when rustc supports it... currently relay_gone would have to be cloned.
 	//
-	let called = match relay.call( Call::new( frame ) ).await
+	let called = match relay.call( new_call ).await
 	{
 		Ok(x) => x,
 
@@ -172,6 +173,10 @@ async fn make_call<T, Wf: WireFormat + Send + 'static>( mut relay: Box<T>, frame
 		Ok( resp ) =>
 		{
 			trace!( "Peer {:?}: Got response from relayed call, sending out.", &peer_id );
+
+			// Put the old cid back!
+			//
+			let resp = Wf::from(( resp.service(), cid, resp.mesg() ));
 
 			Ok( Response::CallResponse(CallResponse::new(resp)) )
 		},

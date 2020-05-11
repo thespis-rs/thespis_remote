@@ -22,13 +22,27 @@ impl<Wf: Send + 'static> Message for Call<Wf>
 	type Return = Result< oneshot::Receiver<Result<Wf, ConnectionError>>, PeerErr >;
 }
 
-impl<Wf> Call<Wf>
+impl<Wf: WireFormat> Call<Wf>
 {
 	/// Create a new Call to send an outgoing message over the peer.
 	//
-	pub fn new( mesg: Wf ) -> Self
+	pub fn new( sid: ServiceID, mesg: Bytes ) -> Self
 	{
-		Self{ mesg }
+		Self{ mesg: Wf::from(( sid, ConnID::random(), mesg )) }
+	}
+
+	/// Get the service id.
+	//
+	pub fn service( &self ) -> ServiceID
+	{
+		self.mesg.service()
+	}
+
+	/// Get the connection id.
+	//
+	pub fn conn_id( &self ) -> ConnID
+	{
+		self.mesg.conn_id()
 	}
 }
 

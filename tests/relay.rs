@@ -189,22 +189,12 @@ async fn relay_unknown_service()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid        = Bytes::from( vec![ 5;16 ]);
-		let cid: Bytes = ConnID::random().into();
-		let msg: Bytes = serde_cbor::to_vec( &Add(5) ).unwrap().into();
+		let sid  = ServiceID::from( Bytes::from( vec![ 5;16 ]) );
+		let msg  = serde_cbor::to_vec( &Add(5) ).unwrap().into();
+		let call = Call::new( sid.clone(), msg );
+		let cid  = call.conn_id();
 
-		// This is the corrupt one that should trigger a deserialization error and close the connection
-		//
-		let mut buf = BytesMut::new();
-
-		buf.extend( sid.clone() );
-		buf.extend( cid.clone() );
-		buf.extend( msg         );
-
-		let corrupt = BytesFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
-
-
-		let rx = relay.call( Call::new( corrupt ) ).await
+		let rx = relay.call( call ).await
 
 			.expect( "call peer" )
 			.expect( "send out ms" )
@@ -214,7 +204,7 @@ async fn relay_unknown_service()
 		(
 			// TODO, why is there no cid here?
 			//
-			ConnectionError::UnknownService{ sid: ServiceID::from( sid ).into(), cid: Some( cid.into() ) },
+			ConnectionError::UnknownService{ sid: sid.into(), cid: cid.into() },
 			rx.await.expect( "return error, don't drop connection" ).unwrap_err()
 		);
 

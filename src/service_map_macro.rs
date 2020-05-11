@@ -581,9 +581,9 @@ impl RemoteAddr
 	}
 
 
-	/// Take the raw message and turn it into a MultiService
+	/// Take the raw message and turn it into a WireFormat
 	//
-	fn build_ms<S>( msg: S, cid: ConnID ) -> Result< $wf, PeerErr >
+	fn build_wf<S>( msg: S, cid: ConnID ) -> Result< $wf, PeerErr >
 
 		where  S                    : Service + Send,
 		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
@@ -607,6 +607,34 @@ impl RemoteAddr
 
 		Ok( <$wf>::from(( sid2, cid, serialized.into() )) )
 	}
+
+
+	/// Take the raw message and turn it into a Call
+	//
+	fn build_call<S>( msg: S ) -> Result< Call<$wf>, PeerErr >
+
+		where  S                    : Service + Send,
+		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
+
+	{
+		let sid  = <S as Service>::sid().clone();
+		let sid2 = sid.clone();
+
+		let serialized: Vec<u8> = serde_cbor::to_vec( &msg )
+
+			.map_err( |_|
+		{
+			let mut ctx = PeerErrCtx::default();
+			ctx.context = "Outgoing request".to_string().into();
+			ctx.sid     = sid.into();
+
+			PeerErr::Serialize{ ctx }
+
+		})?;
+
+
+		Ok( Call::new( sid2, serialized.into() ) )
+	}
 }
 
 
@@ -626,12 +654,10 @@ impl<S> Address<S> for RemoteAddr
 	//
 	fn call( &mut self, msg: S ) -> Return<Result< <S as Message>::Return, PeerErr >> { async move
 	{
-
-		let cid = ConnID::random();
-
 		// Serialization can fail
 		//
-		let call = Call::new( Self::build_ms( msg, cid.clone() )? );
+		let call = Self::build_call( msg )?;
+		let cid  = call.conn_id();
 
 		// Can fail if the peer is down already.
 		//
@@ -783,7 +809,7 @@ impl<S> Sink<S> for RemoteAddr
 
 	fn start_send( mut self: Pin<&mut Self>, msg: S ) -> Result<(), Self::Error>
 	{
-		Sink::<$wf>::start_send( Pin::new( &mut self.peer ), Self::build_ms( msg, ConnID::null() )? )
+		Sink::<$wf>::start_send( Pin::new( &mut self.peer ), Self::build_wf( msg, ConnID::null() )? )
 
 			.map_err( |source|
 			{

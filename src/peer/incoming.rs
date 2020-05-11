@@ -262,7 +262,7 @@ impl<Wf: WireFormat> Peer<Wf>
 		let fut = match sm.call_service( frame, ctx.clone() )
 		{
 			Ok (f) => f,
-			Err(e) => return self.handle( RequestError::from( e ) ).await,
+			Err(e) => return self.handle( RequestError::from(e) ).await,
 		};
 
 
