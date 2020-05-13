@@ -76,7 +76,7 @@ impl<T, Wf> BoundsOut<Wf> for T
 /// In principle you setup the peer with at least one ServiceMap before starting it, that way it
 /// is fully operational before it receives the first incoming message. `service_map!` let's you
 /// set a `dyn Address<S>` as handler, whereas `RelayMap` can accept both an address that receives
-/// both `BytesFormat` (for Sends) and `peer::Call` for calls, but also a closure that let's you
+/// both `ThesWF` (for Sends) and `peer::Call` for calls, but also a closure that let's you
 /// provide such address on a per message basis, which allows you to implement load balancing
 /// to several backends providing the same service. Neither of these maps allow you to "unset"
 /// a handler, only replace it with a new one. The point is a difference in error messages. It
@@ -99,7 +99,7 @@ impl<T, Wf> BoundsOut<Wf> for T
 /// ### Sending messages to remote processes.
 ///
 /// As far as the Peer type is concerned sending actor messages to a remote is relatively simple.
-/// Once you have serialized a message as `BytesFormat`, sending that directly to `Peer` will be considered
+/// Once you have serialized a message as `ThesWF`, sending that directly to `Peer` will be considered
 /// a Send to a remote actor and it will just be sent out. For a Call, there is the Call message type,
 /// which will resolve to a channel you can await in order to get your response from the remote process.
 /// The `service_map!` macro provides a `RemoteAddress` type which acts much the same as a local actor address
@@ -141,7 +141,7 @@ impl<T, Wf> BoundsOut<Wf> for T
 //
 #[ derive( Actor ) ]
 //
-pub struct Peer<Wf: 'static = BytesFormat>
+pub struct Peer<Wf: 'static = ThesWF>
 {
 	/// The sink
 	//
@@ -293,7 +293,7 @@ impl<Wf> Peer<Wf>
 }
 
 
-impl Peer<BytesFormat>
+impl Peer<ThesWF>
 {
 	#[ cfg( feature = "futures_codec" ) ]
 	//
@@ -313,16 +313,17 @@ impl Peer<BytesFormat>
 		addr        : Addr<Self>                                                              ,
 		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static              ,
 		max_size    : usize                                                                   ,
-		exec        : impl SpawnHandle<Result<Response<BytesFormat>, PeerErr>> + Send + Sync + 'static ,
+		exec        : impl SpawnHandle<Result<Response<ThesWF>, PeerErr>> + Send + Sync + 'static ,
 		bp          : Option<Arc<BackPressure>>                                               ,
 	)
 
 		-> Result< Self, PeerErr >
 
 	{
-		let codec = ThesCodec::new(max_size);
+		let (writer, reader) = socket.split();
 
-		let (sink, stream) = FutFramed::new( socket, codec ).split();
+		let stream = thes_wf::Decoder::new( reader );
+		let sink   = thes_wf::Encoder::new( writer );
 
 		Peer::new( addr, stream, sink, Arc::new(exec), bp )
 	}
@@ -347,7 +348,7 @@ impl Peer<BytesFormat>
 		addr        : Addr<Self>                                                              ,
 		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static                 ,
 		max_size    : usize                                                                   ,
-		exec        : impl SpawnHandle<Result<Response<BytesFormat>, PeerErr>> + Send + Sync + 'static ,
+		exec        : impl SpawnHandle<Result<Response<ThesWF>, PeerErr>> + Send + Sync + 'static ,
 		bp          : Option<Arc<BackPressure>>                                               ,
 	)
 
@@ -626,6 +627,12 @@ impl<Wf: WireFormat> Peer<Wf>
 		// sid null is the marker that this is an error message.
 		//
 		let msg = Wf::from(( ServiceID::null(), cid, serialized.into() ));
+
+		let mut msg = Wf::with_capacity( std::mem::size_of::<ConnectionError>() );
+		msg.set_sid( ServiceID::null() );
+		msg.set_cid( cid               );
+
+		serde_cbor::to_writer( &mut msg, &err );
 
 		// We are already trying to report an error. If we can't send, just give up.
 		//

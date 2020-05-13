@@ -29,12 +29,12 @@ pub mod peer              ;
     mod service_handler   ;
     mod service_map       ;
     mod service_map_macro ;
-pub mod bytes_format      ;
+pub mod thes_wf           ;
 pub mod wire_format       ;
 
 pub use
 {
-	bytes_format      :: * ,
+	thes_wf           :: * ,
 	peer              :: * ,
 	relay_map         :: * ,
 	service_handler   :: * ,
@@ -89,8 +89,9 @@ mod import
 		std ::
 		{
 			collections  :: { HashMap, VecDeque                 } ,
-			convert      :: { TryFrom                           } ,
+			convert      :: { TryFrom, TryInto                  } ,
 			fmt                                                   ,
+			io                                                    ,
 			future       :: { Future                            } ,
 			hash         :: { Hasher                            } ,
 			marker       :: { PhantomData                       } ,

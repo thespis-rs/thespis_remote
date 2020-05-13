@@ -19,7 +19,7 @@ pub(crate) use wire_type::WireType;
 //
 #[ allow(clippy::len_without_is_empty) ]
 //
-pub trait WireFormat : Message< Return = Result<(), PeerErr> > + From< (ServiceID, ConnID, Bytes) >
+pub trait WireFormat : Message< Return = Result<(), PeerErr> > + Default
 {
 	/// The service id of this message. When coming in over the wire, this identifies
 	/// which service you are calling. A ServiceID should be unique for a given service.
@@ -34,11 +34,15 @@ pub trait WireFormat : Message< Return = Result<(), PeerErr> > + From< (ServiceI
 
 	/// The serialized payload message.
 	//
-	fn mesg( &self ) -> Bytes;
+	fn mesg( &self ) -> &[u8];
 
 	/// The total length of the WireFormat in bytes (header+payload).
 	//
-	fn len( &self ) -> usize;
+	fn len( &self ) -> u64;
+
+	/// Make sure there is enough room for the serialized payload to avoid frequent re-allocation.
+	//
+	fn reserve( &mut self, additional: usize );
 
 
 	fn kind( &self ) -> WireType
