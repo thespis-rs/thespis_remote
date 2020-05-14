@@ -11,8 +11,7 @@ use crate::{ import::*, * };
 //
 pub struct Call<Wf>
 {
-	 sid  : ServiceID       ,
-	 msg  : Bytes           ,
+	 wf   : Wf              ,
 	_ghost: PhantomData<Wf> ,
 }
 
@@ -28,16 +27,16 @@ impl<Wf: WireFormat> Call<Wf>
 {
 	/// Create a new Call to send an outgoing message over the peer.
 	//
-	pub fn new( sid: ServiceID, msg: Bytes ) -> Self
+	pub fn new( wf: Wf ) -> Self
 	{
-		Self{ sid, msg, _ghost: PhantomData }
+		Self{ wf, _ghost: PhantomData }
 	}
 
 	/// Get the service id.
 	//
 	pub fn service( &self ) -> ServiceID
 	{
-		self.sid
+		self.wf.sid()
 	}
 }
 
@@ -53,7 +52,7 @@ impl<Wf: WireFormat> Call<Wf>
 //
 impl<Wf: WireFormat + Send + 'static> Handler<Call<Wf>> for Peer<Wf>
 {
-	#[async_fn] fn handle( &mut self, call: Call<Wf> ) -> <Call<Wf> as Message>::Return
+	#[async_fn] fn handle( &mut self, mut call: Call<Wf> ) -> <Call<Wf> as Message>::Return
 	{
 		let identity = self.identify();
 
@@ -75,19 +74,19 @@ impl<Wf: WireFormat + Send + 'static> Handler<Call<Wf>> for Peer<Wf>
 		//
 		let mut self_addr = self.addr.as_ref().unwrap().clone();
 		let mut cid       = ConnID::from( self.conn_id_counter.fetch_add(1, Relaxed ) );
-		let     sid       = call.sid;
+		let     sid       = call.wf.sid();
 
 		// We wrapped round.
 		// It must not be 0 otherwise the remote will consider it a send, and it's reserved.
 		//
 		if cid.is_null()
 		{
-			cid = ConnID::from( self.conn_id_counter.fetch_add(1, Relaxed ) );
+			cid = ConnID::from( self.conn_id_counter.fetch_add( 1, Relaxed ) );
 		}
 
-		let mesg = Wf::from(( sid, cid, call.msg ));
+		call.wf.set_cid( cid );
 
-		self.send_msg( mesg ).await?;
+		self.send_msg( call.wf ).await?;
 
 		// If the above succeeded, store the other end of the channel
 		//

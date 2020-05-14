@@ -34,7 +34,7 @@ impl Handler<Add> for Slow
 service_map!
 (
 	namespace  : timeouts    ;
-	wire_format: BytesFormat ;
+	wire_format: ThesWF ;
 	services   : Add         ;
 );
 

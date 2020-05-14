@@ -1,9 +1,9 @@
 
 use
 {
-	crate     :: { import::*, PeerErr, wire_format::*  } ,
-	byteorder :: { ReadBytesExt, LittleEndian          } ,
-	std       :: { io::Seek                            } ,
+	crate     :: { import::*, PeerErr, wire_format::*        } ,
+	byteorder :: { ReadBytesExt, WriteBytesExt, LittleEndian } ,
+	std       :: { io::{ Seek, Write as IoWrite }            } ,
 };
 
 
@@ -94,19 +94,28 @@ impl Message for ThesWF
 }
 
 
+impl ThesWF
+{
+	/// Get direct access to the buffer.
+	//
+	fn as_buf( &self ) -> &[u8]
+	{
+		self.data.get_ref()
+	}
+}
+
 
 // All the methods here can panic. We should make sure that bytes is always big enough,
 // because bytes.slice panics if it's to small. Same for bytes.put.
 //
 impl WireFormat for ThesWF
 {
-
 	/// The service id of this message. When coming in over the wire, this identifies
 	/// which service you are calling. A ServiceID should be unique for a given service.
 	/// The reference implementation combines a unique type id with a namespace so that
 	/// several processes can accept the same type of service under a unique name each.
 	//
-	fn service ( &self ) -> ServiceID
+	fn sid( &self ) -> ServiceID
 	{
 		// TODO: is this the most efficient way?
 		//
@@ -114,11 +123,24 @@ impl WireFormat for ThesWF
 	}
 
 
+	fn set_sid( &mut self, sid: ServiceID )
+	{
+		self.data.get_mut()[ IDX_SID..IDX_SID+LEN_SID ].as_mut().write_u64::<LittleEndian>( sid.into() ).unwrap().into()
+	}
+
+
+
 	/// The connection id. This is used to match responses to outgoing calls.
 	//
-	fn conn_id( &self ) -> ConnID
+	fn cid( &self ) -> ConnID
 	{
 		self.data.get_ref()[ IDX_CID..IDX_CID+LEN_CID ].as_ref().read_u64::<LittleEndian>().unwrap().into()
+	}
+
+
+	fn set_cid( &mut self, cid: ConnID )
+	{
+		self.data.get_mut()[ IDX_CID..IDX_CID+LEN_CID ].as_mut().write_u64::<LittleEndian>( cid.into() ).unwrap().into()
 	}
 
 
@@ -136,11 +158,24 @@ impl WireFormat for ThesWF
 		self.data.get_ref()[ IDX_LEN..IDX_LEN+LEN_LEN ].as_ref().read_u64::<LittleEndian>().unwrap()
 	}
 
+	fn set_len( &mut self, len: u64 )
+	{
+		self.data.get_mut()[ IDX_LEN..IDX_LEN+LEN_LEN ].as_mut().write_u64::<LittleEndian>( len ).unwrap().into()
+	}
+
 	/// Make sure there is enough room for the serialized payload to avoid frequent re-allocation.
 	//
-	fn reserve( &mut self, additional: usize )
+	fn with_capacity( size: usize ) -> Self
 	{
-		self.data.get_mut().reserve( additional )
+		let mut wf = Self
+		{
+			data: io::Cursor::new( Vec::with_capacity( size + LEN_HEADER ) )
+		};
+
+		wf.data.write( &[0u8; LEN_HEADER] ).unwrap();
+		wf.set_len( LEN_HEADER as u64 );
+
+		wf
 	}
 }
 
@@ -151,7 +186,12 @@ impl io::Write for ThesWF
 	fn write( &mut self, buf: &[u8] ) -> io::Result<usize>
 	{
 		self.data.seek( io::SeekFrom::End(0) )?;
-		self.data.write( buf )
+
+		self.data.write( buf ).map(|written|
+		{
+			self.set_len( self.len() + written as u64 );
+			written
+		})
 	}
 
 	fn flush( &mut self ) -> io::Result<()>
@@ -166,7 +206,15 @@ impl Default for ThesWF
 {
 	fn default() -> Self
 	{
-		Self { data: io::Cursor::new( Vec::new() ) }
+		let mut wf = Self
+		{
+			data: io::Cursor::new( Vec::with_capacity( LEN_HEADER *2 ) )
+		};
+
+		wf.data.write( &[0u8; LEN_HEADER] ).unwrap();
+		wf.set_len( LEN_HEADER as u64 );
+
+		wf
 	}
 }
 

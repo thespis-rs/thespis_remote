@@ -335,7 +335,7 @@ impl Services
 	) -> Result< Pin<Box< dyn Future< Output=Result<Response<$wf>, PeerErr> > + Send >>, PeerErr >
 
 		where  S                    : Service + Send,
-		      <S as Message>::Return: Serialize + DeserializeOwned + Send,
+		      <S as Message>::Return: Serialize + DeserializeOwned + Send + ,
 
 	{
 		let sid = <S as Service>::sid();
@@ -357,7 +357,7 @@ impl Services
 
 
 		let mut rec = backup.clone_box() ;
-		let     cid = msg.conn_id()      ;
+		let     cid = msg.cid()      ;
 
 		Ok( async move
 		{
@@ -378,33 +378,27 @@ impl Services
 			};
 
 
-			// serialize the response
-			//
-			let ser = serde_cbor::to_vec( &response );
-
-			let serialized = match ser
-			{
-				Ok(x) => x,
-
-				Err(_) =>
-				{
-					// unwrap: we pass it in from below in this file, it has a context guaranteed.
-					//
-					ctx.context.as_mut().map( |c| c.push_str( " - Response to remote call" ) );
-
-					return Err( PeerErr::Serialize{ ctx } );
-				}
-			};
-
-
 			// Create a $wf response.
 			// The sid must be full to differentiate a response from a request. If the request
 			// has timed out, the remote peer will no longer have the cid in their list of open requests,
 			// so they would not know this was a response otherwise.
 			//
-			let resp = <$wf>::from(( ServiceID::full(), cid, serialized.into() ));
+			let mut wf = <$wf>::with_capacity( ::std::mem::size_of::<S>() );
+			wf.set_sid( ServiceID::full() );
+			wf.set_cid( cid               );
 
-			Ok( Response::CallResponse( CallResponse::new(resp) ))
+			// serialize the response
+			//
+			serde_cbor::to_writer( &mut wf, &response ).map_err( |_|
+			{
+				ctx.context.as_mut().map( |c| c.push_str( " - Response to remote call" ) );
+
+				PeerErr::Serialize{ ctx }
+
+			})?;
+
+
+			Ok( Response::CallResponse( CallResponse::new(wf) ))
 
 		}.boxed() )
 	}
@@ -440,7 +434,7 @@ impl ServiceMap<$wf> for Services
 		-> Result< Pin<Box< dyn Future< Output=Result<Response<$wf>, PeerErr> > + Send >>, PeerErr >
 
 	{
-		let sid = msg.service();
+		let sid = msg.sid();
 		let ctx = ctx.context( "Services::send_service".to_string() );
 
 		// This sid should be in our map.
@@ -516,7 +510,7 @@ impl ServiceMap<$wf> for Services
 
 	) -> Result< Pin<Box< dyn Future< Output=Result<Response<$wf>, PeerErr> > + Send >>, PeerErr >
 	{
-		let sid = msg.service();
+		let sid = msg.sid();
 		let ctx = ctx.context( "Services::call_service".to_string() );
 
 		let receiver = match self.handlers.get( &sid )
@@ -591,9 +585,13 @@ impl RemoteAddr
 	{
 		let sid = <S as Service>::sid();
 
-		let serialized: Vec<u8> = serde_cbor::to_vec( &msg )
+		let mut wf = <$wf>::with_capacity( ::std::mem::size_of::<S>() );
+		wf.set_sid( sid );
+		wf.set_cid( cid );
 
-			.map_err( |_|
+		// serialize the response
+		//
+		serde_cbor::to_writer( &mut wf, &msg ).map_err( |_|
 		{
 			let mut ctx = PeerErrCtx::default();
 			ctx.context = "Outgoing request".to_string().into();
@@ -603,8 +601,7 @@ impl RemoteAddr
 
 		})?;
 
-
-		Ok( <$wf>::from(( sid, cid, serialized.into() )) )
+		Ok( wf )
 	}
 
 
@@ -618,9 +615,12 @@ impl RemoteAddr
 	{
 		let sid = <S as Service>::sid();
 
-		let serialized: Vec<u8> = serde_cbor::to_vec( &msg )
+		let mut wf = <$wf>::with_capacity( ::std::mem::size_of::<S>() );
+		wf.set_sid( sid );
 
-			.map_err( |_|
+		// serialize the response
+		//
+		serde_cbor::to_writer( &mut wf, &msg ).map_err( |_|
 		{
 			let mut ctx = PeerErrCtx::default();
 			ctx.context = "Outgoing request".to_string().into();
@@ -630,8 +630,7 @@ impl RemoteAddr
 
 		})?;
 
-
-		Ok( Call::new( sid, serialized.into() ) )
+		Ok( Call::new( wf ) )
 	}
 }
 
@@ -719,7 +718,7 @@ impl<S> Address<S> for RemoteAddr
 							peer_id  : self.peer.id().into()                                    ,
 							peer_name: self.peer.name()                                         ,
 							sid      : <S as Service>::sid().into()                             ,
-							cid      : resp.conn_id().into()                                    ,
+							cid      : resp.cid().into()                                        ,
 						};
 
 						PeerErr::Deserialize{ ctx }

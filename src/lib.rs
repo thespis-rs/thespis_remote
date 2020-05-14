@@ -113,6 +113,7 @@ mod import
 			prelude :: { Stream, Sink      } ,
 			sink    :: { SinkExt           } ,
 			stream  :: { StreamExt         } ,
+			io      :: { AsyncReadExt      } ,
 		},
 	};
 

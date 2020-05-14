@@ -190,8 +190,12 @@ async fn relay_unknown_service()
 		// Create some random data that shouldn't deserialize
 		//
 		let sid  = ServiceID::from( 1 );
-		let msg  = serde_cbor::to_vec( &Add(5) ).unwrap().into();
-		let call = Call::new( sid, msg );
+
+		let mut wf = ThesWF::with_capacity( std::mem::size_of::<Add>() );
+		wf.set_sid( sid );
+		serde_cbor::to_writer( &mut wf, &Add(5) ).unwrap();
+
+		let call = Call::new( wf );
 
 		let rx = relay.call( call ).await
 

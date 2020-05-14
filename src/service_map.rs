@@ -9,7 +9,7 @@ use crate::{ *, import::*, peer::Response } ;
 /// The crux is that a service map returns a future that processes the requests and returns
 /// whatever is relevant to the remote client.
 //
-pub trait ServiceMap<Wf = BytesFormat>: fmt::Debug + Send + Sync
+pub trait ServiceMap<Wf = ThesWF>: fmt::Debug + Send + Sync
 {
 	/// Send a message to a handler. This should take care of deserialization.
 	//

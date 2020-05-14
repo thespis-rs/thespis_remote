@@ -1,11 +1,11 @@
-use crate::{ CallResponse };
+use crate::{ CallResponse, ThesWF };
 
 /// A type to unify the two types of responses that can be returned by spawned tasks that
 /// process a request.
 //
 #[ derive(Debug) ]
 //
-pub enum Response<Wf>
+pub enum Response<Wf = ThesWF>
 {
 	/// Eg. a relay, we are not using back pressure for this in the peer.
 	//

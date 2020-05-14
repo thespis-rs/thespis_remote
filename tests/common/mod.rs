@@ -18,6 +18,7 @@ pub mod import
 
 		std::
 		{
+			io           :: Write      ,
 			net          :: SocketAddr ,
 			convert      :: TryFrom    ,
 			future       :: Future     ,
@@ -330,7 +331,7 @@ pub async fn relay_closure
 service_map!
 (
 	namespace  : remotes        ;
-	wire_format: BytesFormat    ;
+	wire_format: ThesWF    ;
 	services   : Add, Sub, Show ;
 );
 

@@ -42,8 +42,9 @@ impl<Wf: WireFormat + Send + 'static> Handler<Incoming<Wf>> for Peer<Wf>
 				// Can be:
 				// - WireErr::MessageSizeExceeded (Codec)
 				// - WireErr::Deserialize (BytesFormat)
+				// - WireErr::IO...
 				//
-				let err = PeerErr::WireFormat{ source: error, ctx: self.ctx( None, None, "Incoming message" ) };
+				let err = PeerErr::WireFormat{ source: error, ctx: self.ctx( None, None, "Deserialize Incoming message or IO error." ) };
 
 				self.handle( RequestError::from( err ) ).await;
 
@@ -52,17 +53,16 @@ impl<Wf: WireFormat + Send + 'static> Handler<Incoming<Wf>> for Peer<Wf>
 		};
 
 
-		let sid  = frame.service();
-		let cid  = frame.conn_id();
-		let kind = frame.kind();
-		let msg  = frame.mesg();
+		let sid    = frame.sid();
+		let cid    = frame.cid();
+		let kind   = frame.kind();
 
 		// TODO: when we have benchmarks, verify if it's better to return boxed submethods here
 		// rather than awaiting. Implies the rest of this method can run sync.
 		//
 		match kind
 		{
-			WireType::ConnectionError => self.remote_conn_err( msg, cid        ).await,
+			WireType::ConnectionError => self.remote_conn_err( frame, cid        ).await,
 			WireType::IncomingSend    => self.incoming_send  ( sid, frame      ).await,
 			WireType::IncomingCall    => self.incoming_call  ( cid, sid, frame ).await,
 
@@ -103,11 +103,13 @@ impl<Wf: WireFormat> Peer<Wf>
 	//
 	// This includes failing to deserialize our messages, failing to relay, unknown service, ...
 	//
-	async fn remote_conn_err( &mut self, msg: Bytes, cid: ConnID )
+	async fn remote_conn_err( &mut self, wf: Wf, cid: ConnID )
 	{
+		let serialized = wf.mesg();
+
 		// We can correctly interprete the error
 		//
-		if let Ok( err ) = serde_cbor::from_slice::<ConnectionError>( &msg )
+		if let Ok( err ) = serde_cbor::from_slice::<ConnectionError>( serialized )
 		{
 			// We need to report the connection error to the caller
 			//

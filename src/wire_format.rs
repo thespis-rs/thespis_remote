@@ -19,18 +19,23 @@ pub(crate) use wire_type::WireType;
 //
 #[ allow(clippy::len_without_is_empty) ]
 //
-pub trait WireFormat : Message< Return = Result<(), PeerErr> > + Default
+pub trait WireFormat : Message< Return = Result<(), PeerErr> > + Default + Clone + io::Write
 {
 	/// The service id of this message. When coming in over the wire, this identifies
 	/// which service you are calling. A ServiceID should be unique for a given service.
 	/// The reference implementation combines a unique type id with a namespace so that
 	/// several processes can accept the same type of service under a unique name each.
 	//
-	fn service ( &self ) -> ServiceID;
+	fn sid( &self ) -> ServiceID;
+
+	fn set_sid( &mut self, sid: ServiceID );
 
 	/// The connection id. This is used to match responses to outgoing calls.
 	//
-	fn conn_id( &self ) -> ConnID;
+	fn cid( &self ) -> ConnID;
+
+	fn set_cid( &mut self, cid: ConnID );
+
 
 	/// The serialized payload message.
 	//
@@ -40,21 +45,23 @@ pub trait WireFormat : Message< Return = Result<(), PeerErr> > + Default
 	//
 	fn len( &self ) -> u64;
 
+	fn set_len( &mut self, len: u64 );
+
 	/// Make sure there is enough room for the serialized payload to avoid frequent re-allocation.
 	//
-	fn reserve( &mut self, additional: usize );
+	fn with_capacity( size: usize ) -> Self;
 
 
 	fn kind( &self ) -> WireType
 	{
-		match self.service()
+		match self.sid()
 		{
 			x if x.is_null() => WireType::ConnectionError ,
 			x if x.is_full() => WireType::CallResponse    ,
 
 			_ =>
 			{
-				match self.conn_id()
+				match self.cid()
 				{
 					x if x.is_null() => WireType::IncomingSend ,
 					_                => WireType::IncomingCall ,

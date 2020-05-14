@@ -1,40 +1,60 @@
 use
 {
-	crate     :: { import::*, ThesWF } ,
+	crate     :: { ThesWF                      } ,
 	super     :: { *                           } ,
 	byteorder :: { ReadBytesExt, LittleEndian  } ,
-	std       :: { io::{ Write, Cursor }       } ,
+	std       :: { future::Future              } ,
+	futures   :: { io::AsyncReadExt            } ,
 };
 
 
 
 pub struct Decoder<T>
 {
-	byte_stream: T,
-	in_progress: Option< Cursor<Vec<u8>> >,
-	closed: bool,
+	byte_stream: Option<T>                                                                     ,
+	get_len    : Option< Pin<Box< dyn Future<Output=(T, io::Result<[u8;LEN_LEN]>)> + Send >> > ,
+	get_msg    : Option< Pin<Box< dyn Future<Output=(T, io::Result<Vec<u8>     >)> + Send >> > ,
+	closed     : bool                                                                          ,
+	max_size   : usize                                                                         ,
 }
 
 
 impl<T> Decoder<T>
 {
-	pub fn new( byte_stream: T ) -> Self
+	pub fn new( byte_stream: T, max_size: usize ) -> Self
 	{
 		Self
 		{
-			byte_stream,
-			in_progress: None,
-			closed: false,
+			byte_stream: Some( byte_stream ) ,
+			get_len    : None                ,
+			get_msg    : None                ,
+			closed     : false               ,
+			max_size                         ,
 		}
 	}
 }
 
 
+impl<T: fmt::Debug> fmt::Debug for Decoder<T>
+{
+	fn fmt( &self, fmt: &mut fmt::Formatter<'_> ) -> fmt::Result
+	{
+		fmt.debug_struct( "thes_wf::decoder" )
+
+			.field( "byte_stream", &self.byte_stream                                                   )
+			.field( "get_len"    , &self.get_len.as_ref().map( |_| "future getting the length field" ) )
+			.field( "get_msg"    , &self.get_len.as_ref().map( |_| "future getting the message"      ) )
+			.field( "closed"     , &self.closed                                                        )
+			.field( "max_size"   , &self.max_size                                                      )
+
+		.finish()
+	}
+}
 
 
 impl<T> Stream for Decoder<T>
 
-	where T: FutAsyncRead + Unpin
+	where T: FutAsyncRead + Unpin + Send + 'static
 {
 	type Item = Result<ThesWF, WireErr>;
 
@@ -46,190 +66,121 @@ impl<T> Stream for Decoder<T>
 		}
 
 
-		let mut in_progress = self.in_progress.take().unwrap_or_else( || Cursor::new( vec![0u8;LEN_LEN] ) );
-
 		loop
 		{
-			// Order of the patterns matters.
-			// TODO: conversion needs to be checked. It may be best to limit to usize::MAX.
+			// We are getting the serialized user message.
 			//
-			match TryInto::<usize>::try_into( in_progress.position() ).unwrap()
+			if let Some(mut get_msg) = self.get_msg.take()
 			{
-				// No data so far.
-				//
-				0 =>
+				match get_msg.as_mut().poll( cx )
 				{
-					match Pin::new( &mut self.byte_stream ).poll_read( cx, &mut in_progress.get_ref() )
+					Poll::Pending =>
 					{
-						Poll::Ready(Ok( read )) if read < LEN_LEN =>
+						self.get_msg = Some( get_msg );
+						return Poll::Pending;
+					}
+
+					Poll::Ready( (transport, Err(e)) ) =>
+					{
+						self.closed = true;
+						self.byte_stream = Some(transport);
+
+						match e.kind()
 						{
-							in_progress.set_position( read.try_into().unwrap() );
-							self.in_progress = Some( in_progress );
-							return Poll::Pending;
+							io::ErrorKind::UnexpectedEof => return Poll::Ready( None ),
+							_                            => return Some(Err( WireErr::from(e) )).into(),
 						}
+					}
 
+					Poll::Ready( (transport, Ok(all)) ) =>
+					{
+						self.byte_stream = Some(transport);
+						let thes_wf = ThesWF::try_from( all )?;
 
-						Poll::Ready(Ok( LEN_LEN )) =>
-						{
-							in_progress.set_position( LEN_LEN.try_into().unwrap() );
-							continue;
-						}
-
-
-						Poll::Ready( Err(e) ) =>
-						{
-							// TODO: is there some errors that would allow us to continue afterwards?
-							//
-							self.closed = true;
-
-							return Some(Err( WireErr::from(e) )).into();
-						}
-
-
-						_ => unreachable!( "read more bytes than buffer size" ),
+						return Poll::Ready( Some(Ok( thes_wf )) );
 					}
 				}
+			}
 
 
-				// We read a partial length, that is less than one u64. Continue trying to read just the length.
-				//
-				pos if pos < LEN_LEN =>
+			// We are getting the length.
+			//
+			if let Some(mut get_len) = self.get_len.take()
+			{
+				match get_len.as_mut().poll( cx )
 				{
-					match Pin::new( &mut self.byte_stream ).poll_read( cx, &mut in_progress.get_ref()[pos..] )
+					Poll::Pending =>
 					{
-						Poll::Ready(Ok( read )) if read < LEN_LEN =>
-						{
-							in_progress.set_position( read.try_into().unwrap() );
-							self.in_progress = Some( in_progress );
-							return Poll::Pending;
-						}
-
-
-						Poll::Ready(Ok( LEN_LEN )) =>
-						{
-							in_progress.set_position( LEN_LEN.try_into().unwrap() );
-							continue;
-						}
-
-
-						Poll::Ready( Err(e) ) =>
-						{
-							// TODO: is there some errors that would allow us to continue afterwards?
-							//
-							self.closed = true;
-
-							return Some(Err( WireErr::from(e) )).into();
-						}
-
-
-						_ => unreachable!( "read more bytes than buffer size" ),
+						self.get_len = Some( get_len );
+						return Poll::Pending;
 					}
-				}
 
-
-				// We read the length u64, we can now try to read the rest of the message in an exactly sized buffer.
-				//
-				pos if pos == LEN_LEN =>
-				{
-					// TODO: this can truncate.
-					//
-					let len: usize = in_progress.get_ref()[ 0..LEN_LEN ].as_ref().read_u64::<LittleEndian>().unwrap().try_into().unwrap();
-					let to_read    = len - LEN_LEN;
-
-					// if we havent allocated to buffer yet on a previous run:
-					//
-					if in_progress.get_ref().len() < len
+					Poll::Ready( (transport, Err(e)) ) =>
 					{
-						// TODO: do we get perf wins if we use debug_assert! here and get_unchecked_mut below?
-						//
-						assert!( len >= LEN_HEADER );
+						self.closed = true;
+						self.byte_stream = Some(transport);
+
+						match e.kind()
+						{
+							io::ErrorKind::UnexpectedEof => return Poll::Ready( None ),
+							_                            => return Some(Err( WireErr::from(e) )).into(),
+						}
+					}
+
+					Poll::Ready( (mut transport, Ok(buf)) ) =>
+					{
+						let len: usize = buf[ 0..LEN_LEN ].as_ref().read_u64::<LittleEndian>().unwrap().try_into().unwrap();
+
+						debug_assert!( len >= LEN_HEADER );
+
+						if len > self.max_size
+						{
+							let err = WireErr::MessageSizeExceeded
+							{
+								size    : len                          ,
+								max_size: self.max_size                ,
+								context : "ThesWF Decoder".to_string() ,
+							};
+
+							return Poll::Ready( Some(Err( err )) );
+						}
 
 						// Create a zeroed buffer of the size of the entire message.
 						// TODO: check the perf difference with an unzeroed buffer.
 						//
-						let tmp = io::Cursor::new( vec![0u8;len] );
+						let mut all = vec![0u8;len];
 
 						// put the length in the new buffer.
 						//
-						tmp.write( &in_progress.get_ref()[0..LEN_LEN] )?;
+						all[ 0..LEN_LEN ].copy_from_slice( &buf );
 
-						in_progress = tmp;
-					}
-
-
-					match Pin::new( &mut self.byte_stream ).poll_read( cx, &mut in_progress.get_ref()[ LEN_LEN..len ] )
-					{
-						Poll::Pending =>
+						self.get_msg = Some( async move
 						{
-							self.in_progress = Some( in_progress );
-							return Poll::Pending;
-						}
+							let res = transport.read_exact( &mut all[LEN_LEN..] ).await.map( |_| all );
 
-						Poll::Ready(Ok( read )) if read < to_read =>
-						{
-							in_progress.set_position( read.try_into().unwrap() );
-							self.in_progress = Some( in_progress );
-							return Poll::Pending;
-						}
+							(transport, res)
 
-						// We have a full item.
-						//
-						Poll::Ready(Ok( to_read )) =>
-						{
-							debug_assert_eq!( len as u64, in_progress.position() );
-
-							let thes_wf = ThesWF::try_from( in_progress.into_inner() )?;
-
-							return Poll::Ready( Some(Ok( thes_wf )) );
-						}
-
-						_ => unreachable!( "read more bytes than buffer size" ),
+						}.boxed() );
 					}
 				}
+			}
 
-
-				// We read a partial message.
+			// nothing in progress.
+			//
+			else
+			{
+				// create get_len.
 				//
-				pos =>
+				let mut transport = self.byte_stream.take().unwrap();
+
+				self.get_len = Some( async move
 				{
-					let len     = in_progress.get_ref()[ 0..LEN_LEN ].as_ref().read_u64::<LittleEndian>().unwrap() as usize;
-					let to_read = len - pos;
+					let mut buf = [0u8;LEN_LEN];
+					let res = transport.read_exact( &mut buf ).await.map( |_| buf );
 
-					match Pin::new( &mut self.byte_stream ).poll_read( cx, &mut in_progress.get_ref()[ LEN_LEN..len ] )
-					{
-						Poll::Pending =>
-						{
-							self.in_progress = Some( in_progress );
-							return Poll::Pending;
-						}
+					(transport, res)
 
-						Poll::Ready(Ok( read )) if read < to_read =>
-						{
-							in_progress.set_position( in_progress.position() + read as u64 );
-							self.in_progress = Some( in_progress );
-							return Poll::Pending;
-						}
-
-						// We have a full item.
-						//
-						Poll::Ready(Ok( to_read )) =>
-						{
-							debug_assert_eq!( len as u64, in_progress.position() );
-
-							let thes_wf = ThesWF::try_from( in_progress.into_inner() )?;
-
-							return Poll::Ready( Some(Ok( thes_wf )) );
-						}
-
-						_ => unreachable!( "read more bytes than buffer size" ),
-					}
-				}
-
-
-				// We would have read more than an entire message, but we don't ever create a buffer that is so big,
-				// this is an error.
-				//
-				_pos if _pos as u64 > in_progress.position() => unreachable!( "read more bytes than buffer size 2" ),
+				}.boxed() );
 			}
 		}
 	}

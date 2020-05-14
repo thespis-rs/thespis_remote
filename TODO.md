@@ -31,6 +31,8 @@
 
 ## Testing
 
+- figure out the io errors. Can be returned by the decoder, eg. connection closed by remote vs connection loss... can we detect the difference?
+
 - polish testing code. Abstract out things more so actual tests have less code.
 - test all the error handling.
 	- verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
@@ -64,6 +66,14 @@
   - mock the peer -> allows testing the service map implementation.
 
   - mock the handlers? If they panic, time out, ... what happens.
+
+
+## Benchmarking
+
+  - compare BytesFormat and ThesWF
+  - check whether we allocate buffers of the correct size. We allocate mem::size_of unserialized message. If CBOR where on average just a bit bigger than
+    the in memory representation, we should default to allocating bigger. and document encoder and decoder properly.
+  - non initialized buffers?
 
 ## Examples
 

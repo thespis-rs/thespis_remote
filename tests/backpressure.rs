@@ -72,7 +72,7 @@ impl Handler<Show> for After
 service_map!
 (
 	namespace  : bpsm            ;
-	wire_format: BytesFormat     ;
+	wire_format: ThesWF     ;
 	services   : Add, Add2, Show ;
 );
 

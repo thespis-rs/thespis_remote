@@ -146,7 +146,11 @@ async fn header_unknown_service_error()
 		//
 		let sid = ServiceID::from(1);
 		let cid = ConnID::random();
-		let ms  = BytesFormat::from(( sid, cid, serde_cbor::to_vec( &Add(5) ).expect( "serialize Add(5)" ).into() ));
+
+		let mut ms = ThesWF::with_capacity( std::mem::size_of::<Add>() );
+		ms.set_sid( sid );
+		ms.set_cid( cid );
+		serde_cbor::to_writer( &mut ms, &Add(5) ).unwrap();
 
 		peera.call( ms ).await.expect( "call peera" ).expect( "call peera" );
 
@@ -219,12 +223,17 @@ async fn call_deserialize()
 
 		let mut buf = BytesMut::new();
 
+		buf.put_u64_le( 0   );
 		buf.put_u64_le( sid );
 		buf.put_u64_le( cid );
 		buf.extend    ( cod );
 		buf.extend    ( msg );
 
-		let mesg  = BytesFormat::try_from( buf.freeze() ).expect( "serialize Add(5)" );
+		let len = buf.len();
+
+		let mut mesg = ThesWF::try_from( buf.to_vec() ).expect( "serialize Add(5)" );
+
+		mesg.set_len( len as u64 );
 
 		peera.call( mesg ).await.expect( "send ms to peera" ).expect( "no network error" );
 
@@ -292,9 +301,14 @@ async fn sm_deserialize_error()
 		//
 		let sid = <Add as remotes::Service>::sid();
 		let cid = ConnID::random();
-		let ms  = BytesFormat::from(( sid, cid, Bytes::from(vec![3,3]) ));
 
-		peera.call( ms ).await.expect( "call peera" ).expect( "call peera" );
+
+		let mut wf = ThesWF::with_capacity( 2 );
+		wf.set_sid( sid );
+		wf.set_cid( cid );
+		wf.write( &[3,3] ).unwrap();
+
+		peera.call( wf ).await.expect( "call peera" ).expect( "call peera" );
 
 		assert_eq!
 		(

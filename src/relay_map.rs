@@ -39,7 +39,7 @@ impl<Wf: WireFormat> ServiceMap<Wf> for RelayMap<Wf>
 	{
 		trace!( "RelayMap: Incoming Send for relayed actor." );
 
-		let sid = msg.service();
+		let sid = msg.sid();
 
 		// This sid should be in our map.
 		//
@@ -90,7 +90,7 @@ impl<Wf: WireFormat> ServiceMap<Wf> for RelayMap<Wf>
 	{
 		trace!( "RelayMap: Incoming Call for relayed actor." );
 
-		let sid = frame.service();
+		let sid = frame.sid();
 
 		match &*self.handler.lock()
 		{
@@ -117,13 +117,13 @@ async fn make_call<T, Wf: WireFormat + Send + 'static>( mut relay: Box<T>, frame
 	where T: Address<Call<Wf>, Error=ThesErr> + ?Sized
 
 {
-	let cid        = frame.conn_id();
+	let cid        = frame.cid();
 	let ctx        = ctx.context( "Process incoming Call to relay".to_string() );
 	let peer_id    = ctx.peer_id;
 	let relay_id   = relay.id();
 	let relay_name = relay.name();
 	let relay_gone = PeerErr::RelayGone{ ctx, relay_id, relay_name };
-	let new_call   = Call::new( frame.service(), frame.mesg() );
+	let new_call   = Call::new( frame );
 
 	// Peer for relay still online.
 	// FIXME: use map_err when rustc supports it... currently relay_gone would have to be cloned.
@@ -170,13 +170,13 @@ async fn make_call<T, Wf: WireFormat + Send + 'static>( mut relay: Box<T>, frame
 		// The remote managed to process the message and send a result back
 		// (no connection errors like deserialization failures etc)
 		//
-		Ok( resp ) =>
+		Ok( mut resp ) =>
 		{
 			trace!( "Peer {:?}: Got response from relayed call, sending out.", &peer_id );
 
 			// Put the old cid back!
 			//
-			let resp = Wf::from(( resp.service(), cid, resp.mesg() ));
+			resp.set_cid( cid );
 
 			Ok( Response::CallResponse(CallResponse::new(resp)) )
 		},

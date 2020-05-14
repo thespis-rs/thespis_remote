@@ -320,47 +320,47 @@ impl Peer<ThesWF>
 		-> Result< Self, PeerErr >
 
 	{
-		let (writer, reader) = socket.split();
+		let (reader, writer) = socket.split();
 
-		let stream = thes_wf::Decoder::new( reader );
-		let sink   = thes_wf::Encoder::new( writer );
+		let stream = thes_wf::Decoder::new( reader, max_size );
+		let sink   = thes_wf::Encoder::new( writer, max_size );
 
 		Peer::new( addr, stream, sink, Arc::new(exec), bp )
 	}
 
 
 
-	#[ cfg( feature = "tokio_codec" ) ]
-	//
-	/// Create a Peer directly from a tokio asynchronous stream. This is a convenience wrapper around Peer::new so
-	/// you don't have to bother with framing the connection.
-	///
-	/// *addr*: This peers own adress.
-	///
-	/// *socket*: The async stream to frame.
-	///
-	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
-	/// stream if it exceeds this size. Also used for encoding outgoing messages.
-	/// **Set the same max_size in the remote!**.
-	//
-	pub fn from_tokio_async_read
-	(
-		addr        : Addr<Self>                                                              ,
-		socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static                 ,
-		max_size    : usize                                                                   ,
-		exec        : impl SpawnHandle<Result<Response<ThesWF>, PeerErr>> + Send + Sync + 'static ,
-		bp          : Option<Arc<BackPressure>>                                               ,
-	)
+	// #[ cfg( feature = "tokio_codec" ) ]
+	// //
+	// /// Create a Peer directly from a tokio asynchronous stream. This is a convenience wrapper around Peer::new so
+	// /// you don't have to bother with framing the connection.
+	// ///
+	// /// *addr*: This peers own adress.
+	// ///
+	// /// *socket*: The async stream to frame.
+	// ///
+	// /// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
+	// /// stream if it exceeds this size. Also used for encoding outgoing messages.
+	// /// **Set the same max_size in the remote!**.
+	// //
+	// pub fn from_tokio_async_read
+	// (
+	// 	addr        : Addr<Self>                                                              ,
+	// 	socket      : impl TokioAsyncR + TokioAsyncW + Unpin + Send + 'static                 ,
+	// 	max_size    : usize                                                                   ,
+	// 	exec        : impl SpawnHandle<Result<Response<ThesWF>, PeerErr>> + Send + Sync + 'static ,
+	// 	bp          : Option<Arc<BackPressure>>                                               ,
+	// )
 
-		-> Result< Self, PeerErr >
+	// 	-> Result< Self, PeerErr >
 
-	{
-		let codec = ThesCodec::new(max_size);
+	// {
+	// 	let codec = ThesCodec::new(max_size);
 
-		let (sink, stream) = TokioFramed::new( socket, codec ).split();
+	// 	let (sink, stream) = TokioFramed::new( socket, codec ).split();
 
-		Peer::new( addr, stream, sink, exec, bp )
-	}
+	// 	Peer::new( addr, stream, sink, exec, bp )
+	// }
 }
 
 
@@ -570,8 +570,8 @@ impl<Wf: WireFormat> Peer<Wf>
 		{
 			Some( out ) =>
 			{
-				let sid = msg.service();
-				let cid = msg.conn_id();
+				let sid = msg.sid();
+				let cid = msg.cid();
 
 				out.send( msg ).await
 
@@ -619,20 +619,11 @@ impl<Wf: WireFormat> Peer<Wf>
 			None                => return,
 		};
 
-		// There is no documentation on serde_cbor or serde_derive about why this would return an error.
-		// As far as I can tell it shouldn't ever fail.
-		//
-		let serialized = serde_cbor::to_vec( err ).expect( "serialize ConnectionError" );
 
 		// sid null is the marker that this is an error message.
 		//
-		let msg = Wf::from(( ServiceID::null(), cid, serialized.into() ));
+		let msg = Self::prep_error( cid, &err );
 
-		let mut msg = Wf::with_capacity( std::mem::size_of::<ConnectionError>() );
-		msg.set_sid( ServiceID::null() );
-		msg.set_cid( cid               );
-
-		serde_cbor::to_writer( &mut msg, &err );
 
 		// We are already trying to report an error. If we can't send, just give up.
 		//
@@ -655,19 +646,12 @@ impl<Wf: WireFormat> Peer<Wf>
 	//
 	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> Wf
 	{
-		// There is no documentation on serde_cbor or serde_derive about why this would return an error.
-		// As far as I can tell it shouldn't ever fail.
-		//
-		let serialized = serde_cbor::to_vec( err ).expect( "serialize response" );
+		let mut msg = Wf::with_capacity( std::mem::size_of::<ConnectionError>() );
+		msg.set_sid( ServiceID::null() );
+		msg.set_cid( cid               );
+		serde_cbor::to_writer( &mut msg, err ).expect( "serialize ConnectionError" );
 
-		// sid null is the marker that this is an error message.
-		//
-		Wf::from
-		((
-			ServiceID::null() ,
-			cid               ,
-			serialized.into() ,
-		))
+		msg
 	}
 }
 

@@ -148,7 +148,7 @@ impl Handler< Show > for Parallel
 service_map!
 (
 	namespace   : parallel    ;
-	wire_format : BytesFormat ;
+	wire_format : ThesWF ;
 	services    : Show        ;
 );
 
