@@ -1,5 +1,3 @@
-#![ cfg( feature = "futures_codec" ) ]
-
 // Tests:
 //
 // ✔ basic remote funcionality: intertwined sends and calls.

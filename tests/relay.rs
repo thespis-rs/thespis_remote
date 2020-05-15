@@ -1,5 +1,3 @@
-#![ cfg( feature = "futures_codec" ) ]
-
 // Tests:
 //
 // ✔ Basic relaying

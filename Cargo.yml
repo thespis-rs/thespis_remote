@@ -49,17 +49,7 @@ badges:
 
 features:
 
-  default: [ futures_codec ]
-
-  # Enable creating a peer directly from a type that implements AsyncRead+AsyncWrite
-  # from the futures library, and enables the codec to frame such connection.
-  #
-  futures_codec: [ futures_codec_crate, futures_cbor_codec ]
-
-  # Enable creating a peer directly from a type that implements AsyncRead+AsyncWrite
-  # from the futures library, and enables the codec to frame such connection.
-  #
-  tokio_codec  : [ tokio, tokio-util, tokio-serde-cbor ]
+  default: []
 
   wasm: [ futures-timer/wasm-bindgen ]
 
@@ -90,20 +80,11 @@ dependencies:
   futures_cbor_codec  : { version: ^0.2, optional: true                                     }
   async_executors     : { version: ^0.3.0-beta                                              }
 
-  # Bytes is a public dep of futures_codec
-  #
-  bytes               : { version: ^0.5    }
-
   # Pharos events are public on Peer
   #
   pharos              : { version: ^0.4    }
   thespis             : { path: ../thespis }
   byteorder           : ^1
-
-  # tokio stuff, AsyncRead/Write and Codecs are in the public API
-  #
-  tokio     : { version: ^0.2, features: [ io-util ], optional: true }
-  tokio-util: { version: ^0.2, features: [ codec   ], optional: true }
 
 
   # private deps. TODO: verify for thespis_impl before release.

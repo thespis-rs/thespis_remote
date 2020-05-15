@@ -1,5 +1,3 @@
-#![ cfg( feature = "futures_codec" ) ]
-
 // This currently combines testing error handling and peer events, because often the events are the way
 // to be notified of errors.
 //
@@ -213,25 +211,21 @@ async fn call_deserialize()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid: u64   = <Add as remotes::Service>::sid().into();
-		let cid: u64   = ConnID::random().into();
-		let msg: Bytes = serde_cbor::to_vec( &Add(5) ).unwrap().into();
+		let sid = <Add as remotes::Service>::sid();
+		let cid = ConnID::random();
 
 		// This is the corrupt one that should trigger a deserialization error and close the connection
 		//
-		let cod = Bytes::from( vec![ 1,2,3,4 ] );
+		let cod = vec![ 1,2,3,4 ];
 
-		let mut buf = BytesMut::new();
+		let mut wf = ThesWF::default();
 
-		buf.put_u64_le( 28 + msg.len() as u64 );
-		buf.put_u64_le( sid );
-		buf.put_u64_le( cid );
-		buf.extend    ( cod );
-		buf.extend    ( msg );
+		wf.set_sid( sid );
+		wf.set_cid( cid );
+		wf.write( &cod ).expect( "write to wf" );
+		serde_cbor::to_writer( &mut wf, &Add(5) ).unwrap();
 
-		let mesg = ThesWF::try_from( buf.to_vec() ).expect( "serialize Add(5)" );
-
-		peera.call( mesg ).await.expect( "send ms to peera" ).expect( "no network error" );
+		peera.call( wf ).await.expect( "send ms to peera" ).expect( "no network error" );
 
 		assert_eq!
 		(

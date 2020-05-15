@@ -22,9 +22,6 @@ version = "^0.3.0-beta"
 [dependencies.async_nursery]
 path = "../../async_nursery"
 
-[dependencies.bytes]
-version = "^0.5"
-
 [dependencies.futures]
 default-features = false
 features = ["std", "compat"]
@@ -72,19 +69,9 @@ path = "../thespis"
 [dependencies.thespis_impl]
 path = "../thespis_impl"
 
-[dependencies.tokio]
-features = ["io-util"]
-optional = true
-version = "^0.2"
-
 [dependencies.tokio-serde-cbor]
 optional = true
 version = "^0.4"
-
-[dependencies.tokio-util]
-features = ["codec"]
-optional = true
-version = "^0.2"
 
 [dependencies.twox-hash]
 version = "^1"
@@ -128,10 +115,8 @@ features = ["sync", "stream"]
 version = "^0.2"
 
 [features]
-default = ["futures_codec"]
+default = []
 external_doc = []
-futures_codec = ["futures_codec_crate", "futures_cbor_codec"]
-tokio_codec = ["tokio", "tokio-util", "tokio-serde-cbor"]
 wasm = ["futures-timer/wasm-bindgen"]
 
 [lib]

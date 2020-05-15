@@ -13,7 +13,6 @@ pub mod import
 		thespis_impl    :: { *                                 } ,
 		thespis_remote  :: { *, service_map, peer              } ,
 		log             :: { *                                 } ,
-		bytes           :: { Bytes, BytesMut, BufMut           } ,
 		pharos          :: { Observable, ObserveConfig, Events } ,
 
 		std::
@@ -70,10 +69,10 @@ pub fn add_show_sum() -> remotes::Services
 
 pub fn peer_listen
 (
-	socket: Endpoint                                                     ,
-	sm    : Arc<impl ServiceMap + Send + Sync + 'static>                 ,
+	socket: Endpoint                                                                                                                   ,
+	sm    : Arc<impl ServiceMap + Send + Sync + 'static>                                                                               ,
 	exec  : impl Spawn + SpawnHandle< Option<Inbox<Peer>> > + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static ,
-	name  : &str                                                         ,
+	name  : &str                                                                                                                       ,
 )
 
 	-> (Addr<Peer>, Events<PeerEvent>, JoinHandle< Option<Inbox<Peer>> >)

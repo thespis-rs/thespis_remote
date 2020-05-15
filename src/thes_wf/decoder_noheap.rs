@@ -4,7 +4,6 @@ use
 	super     :: { *                           } ,
 	byteorder :: { ReadBytesExt, LittleEndian  } ,
 	std       :: { io::{ Write, Cursor }       } ,
-	log_derive:: { *                           } ,
 };
 
 
@@ -43,7 +42,7 @@ impl<T> Stream for DecoderNoHeap<T>
 	type Item = Result<ThesWF, WireErr>;
 
 
-	// #[logfn(Debug)]
+	// #[log_derive::logfn(Debug)]
 	//
 	fn poll_next( mut self: Pin<&mut Self>, cx: &mut Context<'_> ) -> Poll< Option<Self::Item> >
 	{

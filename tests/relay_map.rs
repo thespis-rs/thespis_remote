@@ -1,5 +1,3 @@
-#![ cfg( feature = "futures_codec" ) ]
-
 // Tests TODO:
 //
 // - ... a bunch of stuff to be written ...

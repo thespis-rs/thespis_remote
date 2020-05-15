@@ -15,6 +15,8 @@
 
 - get rid of Send and Sync where possible
 
+- bring back tokio support
+
 
 ## Implementation
 

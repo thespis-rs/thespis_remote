@@ -73,7 +73,6 @@ mod import
 	{
 		async_executors :: { SpawnHandle, SpawnHandleExt, JoinHandle   } ,
 		async_nursery   :: { NurseExt, Nursery, NurseryStream          } ,
-		bytes           :: { Bytes, BytesMut, BufMut                   } ,
 		futures_timer   :: { Delay                                     } ,
 		log             :: { *                                         } ,
 		once_cell       :: { sync::Lazy as SyncLazy                    } ,
@@ -118,36 +117,6 @@ mod import
 			AsyncWrite as FutAsyncWrite ,
 		},
 	};
-
-
-	#[ cfg( feature = "tokio_codec" ) ]
-	//
-	pub(crate) use
-	{
-		tokio      :: { prelude::{ AsyncRead as TokioAsyncR, AsyncWrite as TokioAsyncW }                                      } ,
-		tokio_util :: { codec::{ Decoder as TokioDecoder, Encoder as TokioEncoder, Framed as TokioFramed /*, FramedParts, FramedRead, FramedWrite*/ } } ,
-	};
-
-
-	#[ cfg( feature = "futures_codec" ) ]
-	//
-	pub(crate) use
-	{
-		futures_codec_crate ::
-		{
-			Encoder as FutEncoder,
-			Decoder as FutDecoder,
-			Framed  as FutFramed ,
-		} ,
-	};
-
-	#[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ]
-	//
-	pub(crate) use
-	{
-		bytes:: { Buf } ,
-	};
-
 
 
 	#[ cfg(test) ]

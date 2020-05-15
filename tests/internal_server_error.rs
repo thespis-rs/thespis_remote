@@ -1,5 +1,3 @@
-#![ cfg( feature = "futures_codec" ) ]
-
 // Tests:
 //
 // ✔ Provoke an internal_server_error and make sure we get it back.
