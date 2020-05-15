@@ -342,7 +342,7 @@ impl Services
 
 		// Deserialize the message.
 		//
-		let message: S = match des( &msg.mesg() )
+		let message: S = match des( &msg.msg() )
 		{
 			Ok (x) => x,
 			Err(_) => return Err( PeerErr::Deserialize{ ctx } )
@@ -383,7 +383,7 @@ impl Services
 			// has timed out, the remote peer will no longer have the cid in their list of open requests,
 			// so they would not know this was a response otherwise.
 			//
-			let mut wf = <$wf>::with_capacity( ::std::mem::size_of::<S>() );
+			let mut wf = <$wf>::with_capacity( ::std::mem::size_of::<S>() * 2 );
 			wf.set_sid( ServiceID::full() );
 			wf.set_cid( cid               );
 
@@ -462,7 +462,7 @@ impl ServiceMap<$wf> for Services
 
 					// Deserialize.
 					//
-					let message: $services = match des( &msg.mesg() )
+					let message: $services = match des( &msg.msg() )
 					{
 						Ok (x) => x,
 						Err(_) => return Err( PeerErr::Deserialize{ ctx } ),
@@ -585,7 +585,7 @@ impl RemoteAddr
 	{
 		let sid = <S as Service>::sid();
 
-		let mut wf = <$wf>::with_capacity( ::std::mem::size_of::<S>() );
+		let mut wf = <$wf>::with_capacity( ::std::mem::size_of::<S>() * 2 );
 		wf.set_sid( sid );
 		wf.set_cid( cid );
 
@@ -615,7 +615,10 @@ impl RemoteAddr
 	{
 		let sid = <S as Service>::sid();
 
-		let mut wf = <$wf>::with_capacity( ::std::mem::size_of::<S>() );
+		// CBOR serialized is almost always bigger than the struct, especially if it has
+		// heap allocated data.
+		//
+		let mut wf = <$wf>::with_capacity( ::std::mem::size_of::<S>() * 2 );
 		wf.set_sid( sid );
 
 		// serialize the response
@@ -708,7 +711,7 @@ impl<S> Address<S> for RemoteAddr
 			{
 				// Deserialize the payload and return it to the caller.
 				//
-				Ok( des( &resp.mesg() )
+				Ok( des( &resp.msg() )
 
 					.map_err( |_|
 					{

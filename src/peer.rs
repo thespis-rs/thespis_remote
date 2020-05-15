@@ -646,7 +646,9 @@ impl<Wf: WireFormat> Peer<Wf>
 	//
 	pub fn prep_error( cid: ConnID, err: &ConnectionError ) -> Wf
 	{
-		let mut msg = Wf::with_capacity( std::mem::size_of::<ConnectionError>() );
+		// It's bigger in CBOR because it has String data.
+		//
+		let mut msg = Wf::with_capacity( std::mem::size_of::<ConnectionError>() * 2 );
 		msg.set_sid( ServiceID::null() );
 		msg.set_cid( cid               );
 		serde_cbor::to_writer( &mut msg, err ).expect( "serialize ConnectionError" );

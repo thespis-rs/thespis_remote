@@ -44,11 +44,8 @@ async fn basic_remote()
 		let mut addr = remotes::RemoteAddr::new( peera.clone() );
 
 		assert_eq!( Ok(()), addr.call( Add(5) ).await );
-
-		addr.send( Add(5) ).await.expect( "Send failed" );
-
-		let resp = addr.call( Show ).await.expect( "Call failed" );
-		assert_eq!( 10, resp );
+		assert_eq!( Ok(()), addr.send( Add(5) ).await );
+		assert_eq!( Ok(10), addr.call( Show   ).await );
 
 		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 	};

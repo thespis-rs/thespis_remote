@@ -53,7 +53,7 @@ impl<Wf: WireFormat> ServiceMap<Wf> for RelayMap<Wf>
 				{
 					match a.send( msg ).await
 					{
-						Ok (_) => Ok ( Response::Nothing                 ) ,
+						Ok (_) => Ok ( Response::Nothing           ) ,
 						Err(_) => Err( PeerErr::HandlerDead{ ctx } ) ,
 					}
 				};
@@ -70,8 +70,8 @@ impl<Wf: WireFormat> ServiceMap<Wf> for RelayMap<Wf>
 				{
 					match a.send( msg ).await
 					{
-						Ok (_) => Ok( Response::Nothing ),
-						Err(_) => Err( PeerErr::HandlerDead{ ctx } )
+						Ok (_) => Ok ( Response::Nothing           ) ,
+						Err(_) => Err( PeerErr::HandlerDead{ ctx } ) ,
 					}
 				};
 

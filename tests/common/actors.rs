@@ -36,7 +36,6 @@ impl Handler< Sub > for Sum
 		trace!( "called sum with: {:?}", msg );
 
 		self.0 -= msg.0;
-
 	}
 }
 
@@ -49,6 +48,5 @@ impl Handler< Show > for Sum
 		trace!( "called sum with: Show" );
 
 		self.0
-
 	}
 }

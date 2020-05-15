@@ -105,7 +105,7 @@ impl<Wf: WireFormat> Peer<Wf>
 	//
 	async fn remote_conn_err( &mut self, wf: Wf, cid: ConnID )
 	{
-		let serialized = wf.mesg();
+		let serialized = wf.msg();
 
 		// We can correctly interprete the error
 		//

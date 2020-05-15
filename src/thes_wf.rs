@@ -9,9 +9,11 @@ use
 
 mod encoder;
 mod decoder;
+mod decoder_noheap;
 
 pub use encoder::*;
 pub use decoder::*;
+pub use decoder_noheap::*;
 
 const LEN_LEN: usize = 8; // u64
 const LEN_SID: usize = 8; // u64
@@ -102,6 +104,12 @@ impl ThesWF
 	{
 		self.data.get_ref()
 	}
+
+	fn set_len( &mut self, len: u64 ) -> &mut Self
+	{
+		self.data.get_mut()[ IDX_LEN..IDX_LEN+LEN_LEN ].as_mut().write_u64::<LittleEndian>( len ).unwrap();
+		self
+	}
 }
 
 
@@ -123,9 +131,10 @@ impl WireFormat for ThesWF
 	}
 
 
-	fn set_sid( &mut self, sid: ServiceID )
+	fn set_sid( &mut self, sid: ServiceID ) -> &mut Self
 	{
-		self.data.get_mut()[ IDX_SID..IDX_SID+LEN_SID ].as_mut().write_u64::<LittleEndian>( sid.into() ).unwrap().into()
+		self.data.get_mut()[ IDX_SID..IDX_SID+LEN_SID ].as_mut().write_u64::<LittleEndian>( sid.into() ).unwrap();
+		self
 	}
 
 
@@ -138,15 +147,16 @@ impl WireFormat for ThesWF
 	}
 
 
-	fn set_cid( &mut self, cid: ConnID )
+	fn set_cid( &mut self, cid: ConnID ) -> &mut Self
 	{
-		self.data.get_mut()[ IDX_CID..IDX_CID+LEN_CID ].as_mut().write_u64::<LittleEndian>( cid.into() ).unwrap().into()
+		self.data.get_mut()[ IDX_CID..IDX_CID+LEN_CID ].as_mut().write_u64::<LittleEndian>( cid.into() ).unwrap();
+		self
 	}
 
 
 	/// The serialized payload message.
 	//
-	fn mesg( &self ) -> &[u8]
+	fn msg( &self ) -> &[u8]
 	{
 		&self.data.get_ref()[ IDX_MSG.. ]
 	}
@@ -158,15 +168,12 @@ impl WireFormat for ThesWF
 		self.data.get_ref()[ IDX_LEN..IDX_LEN+LEN_LEN ].as_ref().read_u64::<LittleEndian>().unwrap()
 	}
 
-	fn set_len( &mut self, len: u64 )
-	{
-		self.data.get_mut()[ IDX_LEN..IDX_LEN+LEN_LEN ].as_mut().write_u64::<LittleEndian>( len ).unwrap().into()
-	}
-
 	/// Make sure there is enough room for the serialized payload to avoid frequent re-allocation.
 	//
 	fn with_capacity( size: usize ) -> Self
 	{
+		debug!( "creating wf with capacity: {}", size );
+
 		let mut wf = Self
 		{
 			data: io::Cursor::new( Vec::with_capacity( size + LEN_HEADER ) )
@@ -189,6 +196,8 @@ impl io::Write for ThesWF
 
 		self.data.write( buf ).map(|written|
 		{
+			debug!( "writing wf with mesg length: {}", self.len() + written as u64 - LEN_HEADER as u64 );
+
 			self.set_len( self.len() + written as u64 );
 			written
 		})
@@ -204,6 +213,9 @@ impl io::Write for ThesWF
 
 impl Default for ThesWF
 {
+	/// Will create a default ThesWF with an internal buffer with capacity of LEN_HEADER *2,
+	/// length set to LEN_HEADER, and sid and cid are zeroed.
+	//
 	fn default() -> Self
 	{
 		let mut wf = Self
@@ -211,8 +223,7 @@ impl Default for ThesWF
 			data: io::Cursor::new( Vec::with_capacity( LEN_HEADER *2 ) )
 		};
 
-		wf.data.write( &[0u8; LEN_HEADER] ).unwrap();
-		wf.set_len( LEN_HEADER as u64 );
+		wf.write( &[0u8; LEN_HEADER] ).unwrap();
 
 		wf
 	}
@@ -241,39 +252,131 @@ impl TryFrom< Vec<u8> > for ThesWF
 
 
 
+#[ cfg(test) ]
+//
+mod tests
+{
+	// Tests:
+	//
+	// - creation:
+	//   - default
+	//   - with_capacity
+	// - set_len/len equality and check the actual data
+	// - set_sid/sid equality and check the actual data
+	// - set_cid/cid equality and check the actual data
+	//
+	use super::{ *, assert_eq };
+	use crate::{ wire_format::TestSuite };
+	use futures::io::{ WriteHalf, ReadHalf };
 
 
+	#[test]
+	//
+	fn default_impl()
+	{
+		let wf = ThesWF::default();
+
+		assert_eq!( LEN_HEADER * 2   , wf.data.get_ref().capacity() );
+		assert_eq!( LEN_HEADER as u64, wf.len()                     );
+		assert_eq!( wf.len() as usize, wf.data.get_ref().len()      );
+
+		assert!( wf.sid().is_null() );
+		assert!( wf.cid().is_null() );
+
+		assert_eq!( 0, wf.msg().len() );
+	}
 
 
-// #[ cfg(test) ]
-// //
-// mod tests
-// {
-// 	// Tests:
-// 	//
-// 	// 1. try_from bytes, try something to small
-// 	//
+	#[test]
+	//
+	fn with_capacity()
+	{
+		let wf = ThesWF::with_capacity( 5 );
 
-// 	use super::{ * };
+		assert_eq!( LEN_HEADER + 5   , wf.data.get_ref().capacity() );
+		assert_eq!( LEN_HEADER as u64, wf.len()                     );
+		assert_eq!( wf.len() as usize, wf.data.get_ref().len()      );
+
+		assert!( wf.sid().is_null() );
+		assert!( wf.cid().is_null() );
+
+		assert_eq!( 0, wf.msg().len() );
+	}
 
 
-// 	#[test]
-// 	//
-// 	fn tryfrom_bytes_to_small()
-// 	{
-// 		// The minimum size of the header + 1 byte payload is 33
-// 		//
-// 		let buf = Bytes::from( vec![5;HEADER_LEN-1] );
+	#[test]
+	//
+	fn set_len()
+	{
+		let mut wf = ThesWF::default();
 
-// 		match ThesWF::try_from( buf )
-// 		{
-// 			Ok (_) => panic!( "ThesWF::try_from( Bytes ) should fail for data shorter than header" ),
+		wf.set_len( 33 );
+		assert_eq!( wf.len(), 33 );
+	}
 
-// 			Err(e) => match e
-// 			{
-// 				WireErr::Deserialize{..} => {}
-// 				_                        => panic!( "Wrong error type (should be DeserializeWireFormat): {:?}", e ),
-// 			}
-// 		}
-// 	}
-// }
+
+	#[test]
+	//
+	fn set_sid()
+	{
+		let mut wf = ThesWF::default();
+		let sid = ServiceID::from_seed( &[ 1, 2, 3 ] );
+
+		wf.set_sid( sid );
+		assert_eq!( wf.sid(), sid );
+	}
+
+
+	#[test]
+	//
+	fn set_cid()
+	{
+		let mut wf = ThesWF::default();
+		let cid = ConnID::random();
+
+		wf.set_cid( cid );
+		assert_eq!( wf.cid(), cid );
+	}
+
+
+	fn frame( socket: Box<dyn MockConnection>, max_size: usize ) -> (Encoder<WriteHalf<Box<dyn MockConnection>>>, Decoder<ReadHalf<Box<dyn MockConnection>>>)
+	{
+		let (reader, writer) = socket.split();
+
+		let stream = Decoder::new( reader, max_size );
+		let sink   = Encoder::new( writer, max_size );
+
+		(sink, stream)
+	}
+
+
+	#[async_std::test]
+	//
+	async fn decoder_encoder_heap()
+	{
+		let test_suite = TestSuite::new( frame );
+
+		test_suite.run().await;
+	}
+
+
+	fn frame_noheap( socket: Box<dyn MockConnection>, max_size: usize ) -> (Encoder<WriteHalf<Box<dyn MockConnection>>>, DecoderNoHeap<ReadHalf<Box<dyn MockConnection>>>)
+	{
+		let (reader, writer) = socket.split();
+
+		let stream = DecoderNoHeap::new( reader, max_size );
+		let sink   = Encoder::new( writer, max_size );
+
+		(sink, stream)
+	}
+
+
+	#[async_std::test]
+	//
+	async fn decoder_encoder_noheap()
+	{
+		let test_suite = TestSuite::new( frame_noheap );
+
+		test_suite.run().await;
+	}
+}

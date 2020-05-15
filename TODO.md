@@ -31,6 +31,7 @@
 
 ## Testing
 
+- encoder/decoder, add missing tests.
 - figure out the io errors. Can be returned by the decoder, eg. connection closed by remote vs connection loss... can we detect the difference?
 
 - polish testing code. Abstract out things more so actual tests have less code.

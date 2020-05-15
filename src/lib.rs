@@ -114,6 +114,8 @@ mod import
 			sink    :: { SinkExt           } ,
 			stream  :: { StreamExt         } ,
 			io      :: { AsyncReadExt      } ,
+			AsyncRead  as FutAsyncRead  ,
+			AsyncWrite as FutAsyncWrite ,
 		},
 	};
 
@@ -137,12 +139,6 @@ mod import
 			Decoder as FutDecoder,
 			Framed  as FutFramed ,
 		} ,
-
-		futures::
-		{
-			AsyncRead  as FutAsyncRead  ,
-			AsyncWrite as FutAsyncWrite ,
-		}
 	};
 
 	#[ cfg(any( feature = "futures_codec", feature = "tokio_codec" )) ]

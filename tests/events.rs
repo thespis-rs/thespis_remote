@@ -111,7 +111,7 @@ async fn close_connection_call()
 //
 async fn header_unknown_service_error()
 {
-	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=trace, thespis_remote_impl=trace, tokio=warn" ).start().unwrap();
+	// flexi_logger::Logger::with_str( "events=trace, thespis_impl=info, thespis_remote=trace, tokio=warn" ).start().unwrap();
 
 	let (server, client) = Endpoint::pair( 64, 64 );
 
@@ -223,17 +223,13 @@ async fn call_deserialize()
 
 		let mut buf = BytesMut::new();
 
-		buf.put_u64_le( 0   );
+		buf.put_u64_le( 28 + msg.len() as u64 );
 		buf.put_u64_le( sid );
 		buf.put_u64_le( cid );
 		buf.extend    ( cod );
 		buf.extend    ( msg );
 
-		let len = buf.len();
-
-		let mut mesg = ThesWF::try_from( buf.to_vec() ).expect( "serialize Add(5)" );
-
-		mesg.set_len( len as u64 );
+		let mesg = ThesWF::try_from( buf.to_vec() ).expect( "serialize Add(5)" );
 
 		peera.call( mesg ).await.expect( "send ms to peera" ).expect( "no network error" );
 
