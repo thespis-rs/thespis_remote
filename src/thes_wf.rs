@@ -172,7 +172,7 @@ impl WireFormat for ThesWF
 	//
 	fn with_capacity( size: usize ) -> Self
 	{
-		debug!( "creating wf with capacity: {}", size );
+		trace!( "creating wf with capacity: {}", size );
 
 		let mut wf = Self
 		{
@@ -196,7 +196,7 @@ impl io::Write for ThesWF
 
 		self.data.write( buf ).map(|written|
 		{
-			debug!( "writing wf with mesg length: {}", self.len() + written as u64 - LEN_HEADER as u64 );
+			trace!( "writing wf with mesg length: {}", self.len() + written as u64 - LEN_HEADER as u64 );
 
 			self.set_len( self.len() + written as u64 );
 			written

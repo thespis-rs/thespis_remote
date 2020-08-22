@@ -6,6 +6,10 @@ status = "actively-developed"
 [badges.travis-ci]
 repository = "thespis-rs/thespis_remote"
 
+[[bench]]
+harness = false
+name = "ring"
+
 [dependencies]
 byteorder = "^1"
 log = "^0.4"
@@ -78,6 +82,7 @@ version = "^1"
 
 [dev-dependencies]
 assert_matches = "^1"
+criterion = "^0.3"
 futures-test = "^0.3"
 pretty_assertions = "^0.6"
 

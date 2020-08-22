@@ -71,11 +71,11 @@ pub fn peer_listen
 (
 	socket: Endpoint                                                                                                                   ,
 	sm    : Arc<impl ServiceMap + Send + Sync + 'static>                                                                               ,
-	exec  : impl Spawn + SpawnHandle< Option<Inbox<Peer>> > + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle< Option<Mailbox<Peer>> > + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static ,
 	name  : &str                                                                                                                       ,
 )
 
-	-> (Addr<Peer>, Events<PeerEvent>, JoinHandle< Option<Inbox<Peer>> >)
+	-> (Addr<Peer>, Events<PeerEvent>, JoinHandle< Option<Mailbox<Peer>> >)
 {
 	// Create mailbox for peer
 	//
@@ -130,9 +130,9 @@ pub fn peer_connect
 pub fn provider
 (
 	name: Option<Arc<str>>,
-	exec  : impl Spawn + SpawnHandle< Option<Inbox<Peer>> > + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle< Option<Mailbox<Peer>> > + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static ,
 )
-	-> (Endpoint, JoinHandle< Option<Inbox<Peer>> >)
+	-> (Endpoint, JoinHandle< Option<Mailbox<Peer>> >)
 
 {
 	let name = name.map( |n| n.to_string() ).unwrap_or_else( || "unnamed".to_string() );

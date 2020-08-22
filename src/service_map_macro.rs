@@ -107,7 +107,7 @@ use
 	$crate::external_deps::
 	{
 		once_cell       :: { sync::Lazy                                   } ,
-		futures         :: { future::FutureExt, task::{ Context, Poll }   } ,
+		futures         :: { future::FutureExt, task::{ Context, Poll }, SinkExt   } ,
 		thespis         :: { *                                            } ,
 		thespis_impl    :: { Addr, Receiver, ThesErr, ThesRes             } ,
 		serde_cbor      :: { self, from_slice as des                      } ,

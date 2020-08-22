@@ -59,7 +59,7 @@ impl<T> Stream for Decoder<T>
 	type Item = Result<ThesWF, WireErr>;
 
 
-	#[log_derive::logfn(Debug)]
+	#[log_derive::logfn(Trace)]
 	//
 	fn poll_next( mut self: Pin<&mut Self>, cx: &mut Context<'_> ) -> Poll< Option<Self::Item> >
 	{

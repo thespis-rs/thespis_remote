@@ -1,9 +1,5 @@
 //! # Thespis reference implementation
 //!
-//! ## Cargo Features
-//!
-//! - tokio: makes the tokio executor available. enabled by default.
-
 #![ doc    ( html_root_url = "https://docs.rs/thespis_remote_impl"       ) ]
 #![ deny   ( /*missing_docs,*/ bare_trait_objects                        ) ]
 #![ forbid ( unsafe_code                                                 ) ]

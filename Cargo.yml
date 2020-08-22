@@ -103,7 +103,7 @@ dependencies:
   #
   thiserror           : ^1
   paste               : ^0.1
-  log-derive        : ^0.3
+  log-derive          : ^0.3
 
 
 dev-dependencies:
@@ -121,6 +121,14 @@ dev-dependencies:
   async-std         : { version: ^1.6.0-beta, features: [ attributes ] }
   rand              : { version: ^0.7 }
   rand_chacha       : { version: ^0.2 }
+  criterion         : ^0.3
+
+
+bench:
+
+  - name   : ring
+    harness: false
+
 
 profile:
 

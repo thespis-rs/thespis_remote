@@ -30,6 +30,8 @@
   cheaper serialization: bincode as a feature flag?
 - do we really want to use Bytes as underlying storage and use codec?
 
+- The wire format is a hand baked solution just to get it working. Now we should find out what the final formats might look like. Cap'n proto? or SBE? : https://polysync.io/blog/session-types-for-hearty-codecs
+
 
 ## Testing
 
