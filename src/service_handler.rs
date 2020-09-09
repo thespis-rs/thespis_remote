@@ -4,9 +4,17 @@ use crate :: { import::*, * };
 
 /// Convenience trait specifying that some address can deliver both ThesWF and peer::Call messages.
 //
-pub trait Relay<Wf: Send + 'static + Message = ThesWF>: Address<Wf, Error=ThesErr> + Address<Call<Wf>, Error=ThesErr> + Identify + Send {}
+pub trait Relay<Wf = ThesWF>
 
-impl<T, Wf: Send + 'static + Message> Relay<Wf> for T where T: Address<Wf, Error=ThesErr> + Address<Call<Wf>, Error=ThesErr> + Identify + Send {}
+	where Wf  : WireFormat,
+	      Self: Address<Wf, Error=ThesErr> + Address<Call<Wf>, Error=ThesErr> + Send,
+{}
+
+impl<T, Wf> Relay<Wf> for T
+
+	where Wf  : WireFormat,
+	      Self: Address<Wf, Error=ThesErr> + Address<Call<Wf>, Error=ThesErr> + Send,
+{}
 
 
 pub type RelayClosure<Wf = ThesWF> = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay<Wf>> + Send>;

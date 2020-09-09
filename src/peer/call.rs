@@ -15,7 +15,7 @@ pub struct Call<Wf>
 	_ghost: PhantomData<Wf> ,
 }
 
-impl<Wf: Send + 'static> Message for Call<Wf>
+impl<Wf: WireFormat> Message for Call<Wf>
 {
 	/// We do not await the receiver in the async handle method below, since we don't want
 	/// to hang the peer whilst waiting for the response. That's why we return a channel.

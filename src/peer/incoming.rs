@@ -12,7 +12,7 @@ pub(super) struct Incoming<Wf>
 	pub(crate) msg: Result<Wf, WireErr>
 }
 
-impl<Wf: Send + 'static> Message for Incoming<Wf>
+impl<Wf: WireFormat> Message for Incoming<Wf>
 {
 	type Return = ();
 }
