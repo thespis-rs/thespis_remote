@@ -41,8 +41,11 @@ async fn basic_remote()
 		//
 		let mut addr = remotes::RemoteAddr::new( peera.clone() );
 
+		// The receiving end doesn't guarantee order of processing with send, so we only
+		// use call here.
+		//
 		assert_eq!( Ok(()), addr.call( Add(5) ).await );
-		assert_eq!( Ok(()), addr.send( Add(5) ).await );
+		assert_eq!( Ok(()), addr.call( Add(5) ).await );
 		assert_eq!( Ok(10), addr.call( Show   ).await );
 
 		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );

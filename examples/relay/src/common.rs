@@ -7,7 +7,7 @@ pub mod import
 	pub use
 	{
 		async_std           :: { net::{ TcpListener, TcpStream }, io::{ Read as _, Write as _ } } ,
-		async_executors     :: { AsyncStd, SpawnHandle, LocalSpawnHandle                        } ,
+		async_executors     :: { AsyncStd, SpawnHandle, SpawnHandleExt, LocalSpawnHandle        } ,
 		futures_ringbuf     :: { Endpoint                                                       } ,
 		thespis             :: { *                                                              } ,
 		thespis_impl        :: { *                                                              } ,
@@ -85,31 +85,37 @@ impl Handler< Show > for Sum
 }
 
 
-
-pub async fn peer_connect( socket: TcpStream, exec: impl Spawn + Clone + Send + Sync + 'static, name: &'static str ) -> (Addr<Peer>, Events<PeerEvent>)
+pub fn peer_connect
+(
+	socket: TcpStream                                   ,
+	exec  : impl Spawn + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static ,
+	name  : &str                                       ,
+)
+	-> (Addr<Peer>, Events<PeerEvent>)
 {
 	// Create mailbox for peer
 	//
-	let mb  : Inbox<Peer> = Inbox::new( Some( name.into() ) );
-	let addr              = Addr ::new( mb.sender() );
+	let (peer_addr, peer_mb) = Addr::builder().name( name.into() ).build();
+
 
 	// create peer with stream/sink + service map
 	//
-	let mut peer = Peer::from_async_read( addr.clone(), socket, 1024, Arc::new( exec.clone() ), None ).expect( "create peer" );
+	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, exec.clone(), None ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
 	debug!( "start mailbox for [{}] in peer_connect", name );
 
-	exec.spawn( mb.start_fut(peer) ).expect( "start mailbox of Peer" );
+	exec.spawn( async{ peer_mb.start(peer).await; } ).expect( "start mailbox of Peer" );
 
-	(addr, evts)
+	(peer_addr, evts)
 }
 
 
 service_map!
 (
-	namespace:     remotes   ;
-	services     : Add, Show ;
+	namespace  :     remotes ;
+	wire_format: ThesWF      ;
+	services   : Add, Show   ;
 );
 

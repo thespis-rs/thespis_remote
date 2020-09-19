@@ -23,12 +23,12 @@ pharos = "^0.4"
 simple_logger = "^1"
 
 [dependencies.async-std]
-features = ["futures-io", "futures-core", "mio"]
+features = ["attributes"]
 version = "^1"
 
 [dependencies.async_executors]
-features = ["spawn_handle", "async_std"]
-path = "../../../../async_executors"
+features = ["async_std"]
+version = "0.3.0"
 
 [dependencies.byteorder]
 version = "^1.3"
@@ -64,13 +64,12 @@ version = "^1"
 version = "^0.10"
 
 [dependencies.thespis]
-path = "../../../thespis"
+version = "0.1.0-alpha"
 
 [dependencies.thespis_impl]
 path = "../../../thespis_impl"
 
 [dependencies.thespis_remote]
-features = ["futures_codec"]
 path = "../../../thespis_remote"
 
 [dependencies.twox-hash]

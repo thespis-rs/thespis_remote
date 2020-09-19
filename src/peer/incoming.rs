@@ -195,9 +195,9 @@ impl<Wf: WireFormat> Peer<Wf>
 
 				let err = match e
 				{
-					PeerErr::NoHandler  {..} => PeerErr::NoHandler  {ctx},
-					PeerErr::Deserialize{..} => PeerErr::Deserialize{ctx},
-					_                              => unreachable!(),
+					PeerErr::NoHandler  {..} => PeerErr::NoHandler  {ctx} ,
+					PeerErr::Deserialize{..} => PeerErr::Deserialize{ctx} ,
+					_                        => unreachable!()            ,
 				};
 
 

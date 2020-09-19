@@ -38,9 +38,9 @@ bin:
 
 dependencies:
 
-  thespis             : { path: ../../../thespis        }
-  thespis_impl        : { path: ../../../thespis_impl }
-  thespis_remote      : { path: ../../../thespis_remote, features: [ futures_codec ] }
+  thespis             : { version: 0.1.0-alpha          }
+  thespis_impl        : { path: ../../../thespis_impl   }
+  thespis_remote      : { path: ../../../thespis_remote }
   futures             : { version: ^0.3, features: [ std, compat, thread-pool ], default-features: false }
   log                 : ^0.4
   simple_logger       : ^1
@@ -64,17 +64,7 @@ dependencies:
   flexi_logger      : ^0.14
   hex               : ^0.4
 
-  async_executors   : { path: ../../../../async_executors, features: [ spawn_handle, async_std ] }
-  futures_ringbuf   : ^0.1
+  async-std         : { version: ^1, features: [ attributes ] }
+  async_executors   : { version: 0.3.0, features: [ async_std ] }
   futures_ringbuf   : ^0.2
   # futures_ringbuf   : { path: ../../futures_ringbuf }
-  async-std         : { version: ^1, features: [ futures-io, futures-core, mio ] }
-
-
-# patch:
-
-#   crates-io:
-
-#     futures: { version: ^0.3, path: ../../../../RUST/futures-rs/futures }
-#     futures-io: { version: ^0.3, path: ../../../../RUST/futures-rs/futures-io }
-#     futures-core: { version: ^0.3, path: ../../../../RUST/futures-rs/futures-core }
