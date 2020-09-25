@@ -755,7 +755,7 @@ impl<S> Address<S> for RemoteAddr
 					// TODO: Document this as users might be confused when they raise their timeout and it still
 					// times out. It will be logged as a remote error by the code in peer/incoming.rs
 					//
-					ConnectionError::Timeout(_) =>
+					ConnectionError::Timeout{..} =>
 					{
 						ctx.context = Some( "Time out waiting for response to outgoing call".to_string() );
 

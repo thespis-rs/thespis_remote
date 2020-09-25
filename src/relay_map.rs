@@ -8,7 +8,7 @@ use crate :: { import::*, *, peer::Response };
 //
 pub struct RelayMap<Wf>
 {
-	// I decided not to take a static reference to ServiceID, because it seems kind or limiting how people
+	// I decided not to take a static reference to ServiceID, because it seems kind of limiting on how people
 	// can store them. In this case, the process does not need to compile in the actual handlers.
 	// ServiceID is just 16 bytes of data.
 	//

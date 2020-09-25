@@ -78,7 +78,6 @@ mod import
 		serde           :: { Serialize, Deserialize                    } ,
 		thespis         :: { *                                         } ,
 		thespis_impl    :: { Addr, ThesErr                             } ,
-		thiserror       :: { Error                                     } ,
 		twox_hash       :: { XxHash64                                  } ,
 
 		std ::

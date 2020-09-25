@@ -3,15 +3,13 @@ use crate::{ import::*, ConnID, ServiceID, ConnectionError, WireErr };
 
 /// Errors that can happen in thespis_impl.
 //
-#[ derive( Debug, Error, Clone, PartialEq, Eq ) ]
+#[ derive( Debug, Clone, PartialEq, Eq ) ]
 //
 #[ non_exhaustive ]
 //
 pub enum PeerErr
 {
 	/// Cannot use peer after the connection is closed.
-	//
-	#[ error( "Cannot use peer after the connection is closed, operation.{ctx}" ) ]
 	//
 	ConnectionClosed
 	{
@@ -23,8 +21,6 @@ pub enum PeerErr
 	/// Failed to deserialize an Actor message. The message data will be dropped and the remote will be notified of the error.
 	/// The connection shall remain functional.
 	//
-	#[ error( "Failed to deserialize an Actor message.{ctx}" ) ]
-	//
 	Deserialize
 	{
 		/// The contex in which the error happened.
@@ -33,8 +29,6 @@ pub enum PeerErr
 	},
 
 	/// Cannot deliver because the handling actor is no longer running.
-	//
-	#[ error( "Cannot deliver because the handling actor is no longer running.{ctx}" ) ]
 	//
 	HandlerDead
 	{
@@ -48,8 +42,6 @@ pub enum PeerErr
 	/// use a closure with RelayMap and it returns `None`, because otherwise they don't
 	/// advertise services for which they haven't got a handler.
 	//
-	#[ error( "No handler has been set for this service.{ctx}" ) ]
-	//
 	NoHandler
 	{
 		/// The contex in which the error happened.
@@ -58,8 +50,6 @@ pub enum PeerErr
 	},
 
 	/// When trying to send a message to the peer, it errored. This means either the peer has panicked or you dropped it's inbox.
-	//
-	#[ error( "The Peer actor has panicked.{ctx}" ) ]
 	//
 	PeerGone
 	{
@@ -70,8 +60,6 @@ pub enum PeerErr
 
 	/// Failed to relay a request because the connection to the relay has been closed.
 	//
-	#[ error( "Failed to relay a request because the connection to the relay has been closed. context.{ctx} relay_id: {relay_id}, relay_name: {relay_name:?}" ) ]
-	//
 	RelayGone
 	{
 		ctx       : PeerErrCtx     ,
@@ -81,17 +69,13 @@ pub enum PeerErr
 
 	/// An error happened when a remote tried to process your message.
 	//
-	#[ error( "A remote could not process a message we sent it{err:?}.{ctx}" ) ]
-	//
 	Remote
 	{
 		ctx: PeerErrCtx      ,
 		err: ConnectionError ,
 	},
 
-	/// Failed to deserialize.
-	//
-	#[ error( "Failed to serialize.{ctx}" ) ]
+	/// Failed to serialize actor message.
 	//
 	Serialize
 	{
@@ -101,8 +85,6 @@ pub enum PeerErr
 	},
 
 	/// Failed to spawn a task.
-	//
-	#[ error( "Spawning a task failed.{ctx}" ) ]
 	//
 	Spawn
 	{
@@ -118,8 +100,6 @@ pub enum PeerErr
 	/// be able to return those as well as the more remote specific errors that might happen in
 	/// the same method.
 	//
-	#[ error( "ThesErr.{ctx}" ) ]
-
 	ThesErr
 	{
 		ctx   : PeerErrCtx ,
@@ -127,8 +107,6 @@ pub enum PeerErr
 	},
 
 	/// An operation timed out. Currently used for outgoing calls.
-	//
-	#[ error( "Operation Timed out.{ctx}" ) ]
 	//
 	Timeout
 	{
@@ -139,8 +117,6 @@ pub enum PeerErr
 
 	/// Cannot deliver message to unknown service.
 	//
-	#[ error( "Cannot deliver message to unknown service.{ctx}" ) ]
-	//
 	UnknownService
 	{
 		/// The contex in which the error happened.
@@ -150,8 +126,6 @@ pub enum PeerErr
 
 	/// Error for encoding/decoding the bytestream or underlying IO errors.
 	//
-	#[ error( "An error happened on the underlying stream: {source}.{ctx}" ) ]
-	//
 	WireFormat
 	{
 		/// The contex in which the error happened.
@@ -159,6 +133,72 @@ pub enum PeerErr
 		ctx   : PeerErrCtx ,
 		source: WireErr    ,
 	},
+}
+
+
+
+impl std::error::Error for PeerErr {}
+
+
+impl fmt::Display for PeerErr
+{
+	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
+	{
+		match &self
+		{
+			PeerErr::ConnectionClosed{ ctx } =>
+
+				write!( f, "Cannot use peer after the connection is closed, operation.{}", ctx ),
+
+			PeerErr::Deserialize{ ctx } =>
+
+				write!( f, "Failed to deserialize an Actor message.{}", ctx ),
+
+			PeerErr::HandlerDead{ ctx } =>
+
+				write!( f, "Cannot deliver because the handling actor is no longer running.{}", ctx ),
+
+			PeerErr::NoHandler{ ctx } =>
+
+				write!( f, "No handler has been set for this service.{}", ctx ),
+
+			PeerErr::PeerGone{ ctx } =>
+
+				write!( f, "The Peer actor has panicked.{}", ctx ),
+
+			PeerErr::RelayGone{ ctx, relay_id, relay_name } =>
+
+				write!( f, "Failed to relay a request because the connection to the relay has been closed. context.{} relay_id: {}, relay_name: {:?}", ctx, relay_id, relay_name ),
+
+			PeerErr::Remote{ err, ctx } =>
+
+				write!( f, "A remote could not process a message we sent it{:?}.{}", err, ctx ),
+
+			PeerErr::Serialize{ ctx } =>
+
+				write!( f, "Failed to serialize:{}", ctx ),
+
+			PeerErr::Spawn{ ctx } =>
+
+				write!( f, "Failed to spawn task:{}", ctx ),
+
+			PeerErr::ThesErr{ ctx, source } =>
+
+				write!( f, "ThesErr {}.{}", source, ctx ),
+
+			PeerErr::Timeout{ ctx } =>
+
+				write!( f, "Operation Timed out.{}", ctx ),
+
+			PeerErr::UnknownService{ ctx } =>
+
+				write!( f, "Cannot deliver message to unknown service.{}", ctx ),
+
+			PeerErr::WireFormat{ ctx, source } =>
+
+				write!( f, "An error happened on the underlying stream: {}.{}", source, ctx ),
+		}
+	}
 }
 
 
@@ -271,6 +311,7 @@ impl PeerErrCtx
 		self
 	}
 }
+
 
 
 impl fmt::Display for PeerErrCtx

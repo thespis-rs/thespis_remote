@@ -34,7 +34,7 @@ impl<Wf: Send> Handler<Timeout> for Peer<Wf>
 			{
 				// If this fails, the receiver is already gone, so ignore the result.
 				//
-				let _ = tx.send( Err( ConnectionError::Timeout( msg.sid ) ) );
+				let _ = tx.send( Err( ConnectionError::Timeout{ sid: msg.sid } ) );
 			}
 
 		}.boxed()
