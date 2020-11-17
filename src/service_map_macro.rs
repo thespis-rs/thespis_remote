@@ -409,16 +409,9 @@ impl ServiceMap<$wf> for Services
 {
 	// We need to make a Vec here because the hashmap.keys() doesn't have a static lifetime.
 	//
-	fn services( &self ) -> Vec<ServiceID>
+	fn services( &self ) -> Box<dyn Iterator<Item = &ServiceID> + '_ >
 	{
-		let mut s: Vec<ServiceID> = Vec::with_capacity( self.handlers.len() );
-
-		for sid in self.handlers.keys()
-		{
-			s.push( *sid );
-		}
-
-		s
+		Box::new( self.handlers.keys() )
 	}
 
 

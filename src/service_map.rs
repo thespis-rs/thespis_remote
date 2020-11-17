@@ -31,5 +31,7 @@ pub trait ServiceMap<Wf = ThesWF>: fmt::Debug + Send + Sync
 
 	/// Get a list of all services provided by this service map.
 	//
-	fn services( &self ) -> Vec<ServiceID>;
+	// TODO: Find a way to avoid the heap allocation.
+	//
+	fn services( &self ) -> Box<dyn Iterator<Item = &ServiceID> + '_ >;
 }

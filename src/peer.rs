@@ -509,7 +509,7 @@ impl<Wf: WireFormat> Peer<Wf>
 	//
 	pub fn register_services( &mut self, sm: Arc< dyn ServiceMap<Wf>> )
 	{
-		for sid in sm.services().into_iter()
+		for sid in sm.services()
 		{
 			trace!( "{}: Register Service: {:?}", self.identify(), &sid );
 
@@ -519,7 +519,7 @@ impl<Wf: WireFormat> Peer<Wf>
 				"{}: Register Service: Can't register same service twice. sid: {}", self.identify(), &sid ,
 			);
 
-			self.services.insert( sid, sm.clone() );
+			self.services.insert( *sid, sm.clone() );
 		}
 	}
 

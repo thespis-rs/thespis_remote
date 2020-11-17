@@ -75,7 +75,7 @@ impl<Wf: WireFormat> ServiceMap<Wf> for RelayMap<Wf>
 					}
 				};
 
-				Ok( task.boxed() )			}
+				Ok( task.boxed() ) }
 		}
 	}
 
@@ -99,11 +99,10 @@ impl<Wf: WireFormat> ServiceMap<Wf> for RelayMap<Wf>
 		}
 	}
 
-	// We need to make a Vec here because the hashmap.keys() doesn't have a static lifetime.
-	//
-	fn services( &self ) -> Vec<ServiceID>
+
+	fn services( &self ) -> Box<dyn Iterator<Item = &ServiceID> + '_ >
 	{
-		self.services.clone()
+		Box::new( self.services.iter() )
 	}
 }
 
