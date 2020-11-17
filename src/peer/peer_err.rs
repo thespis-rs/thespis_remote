@@ -133,6 +133,21 @@ pub enum PeerErr
 		ctx   : PeerErrCtx ,
 		source: WireErr    ,
 	},
+
+	/// A PubSub allows you to have a publish subscribe model. This implies
+	/// that one sender can have multiple subscribers, which means we cannot
+	/// implement a request-response type communication. Which subscriber
+	/// is formulating the response?
+	///
+	/// Thus you can only use `Sink::send` but not `Address::call` over
+	/// a PubSub.
+	//
+	PubSubNoCall
+	{
+		/// The contex in which the error happened.
+		//
+		ctx   : PeerErrCtx ,
+	},
 }
 
 
@@ -197,6 +212,10 @@ impl fmt::Display for PeerErr
 			PeerErr::WireFormat{ ctx, source } =>
 
 				write!( f, "An error happened on the underlying stream: {}.{}", source, ctx ),
+
+			PeerErr::PubSubNoCall{ ctx } =>
+
+				write!( f, "PubSub does not support `Address::call` operation, only `Sink::send`.{}", ctx ),
 		}
 	}
 }
@@ -261,6 +280,7 @@ impl PeerErr
 			PeerErr::Timeout          { ctx, .. } => ctx,
 			PeerErr::UnknownService   { ctx, .. } => ctx,
 			PeerErr::WireFormat       { ctx, .. } => ctx,
+			PeerErr::PubSubNoCall     { ctx, .. } => ctx,
 		}
 	}
 }

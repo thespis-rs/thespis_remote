@@ -1,6 +1,8 @@
 # thespis_remote TODO
 
+- can incoming messages provide unfair competition for Peer mailbox which will prevent outgoing? eg. can it continuously fill the mailbox preventing outgoing messages from getting out? With default back pressure?
 
+  - It will depend on the fairness of the channel. When the outgoing blocks, it should get a slot.
 
 ## API
 
@@ -13,7 +15,7 @@
   to add/remove entire service maps? After login for example?
 	- we could possibly provide update_handler for services, but not insert handler on a shared reference.
 
-- get rid of Send and Sync where possible
+- get rid of Send and Sync bounds where possible
 
 - bring back tokio support
 

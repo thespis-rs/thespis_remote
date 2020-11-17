@@ -78,7 +78,7 @@ dependencies:
   futures-macro       : { version: ^0.3                                                     }
   futures_codec_crate : { version: ^0.4, optional: true, package: futures_codec             }
   futures_cbor_codec  : { version: ^0.2, optional: true                                     }
-  async_executors     : { version: ^0.3.0-beta                                              }
+  async_executors     : { version: ^0.4.0-beta                                              }
   thespis_impl        : { path: ../thespis_impl   }
 
   # Pharos events are public on Peer
@@ -109,8 +109,8 @@ dev-dependencies:
   pretty_assertions : ^0.6
   flexi_logger      : { version: ^0.15, default-features: false }
 
-  async_executors   : { version: ^0.3.0-beta, features: [ async_std, threadpool ] }
-  futures_ringbuf   : { path: ../../futures_ringbuf, features: [ tokio, sketchy ] }
+  async_executors   : { version: ^0.4.0-beta, features: [ async_std, threadpool ] }
+  futures_ringbuf   : { version: ^0.3.0, features: [ sketchy ] }
   futures-test      : ^0.3
   futures           : { version: ^0.3, features: [ thread-pool ] }
   tokio             : { version: ^0.2, features: [ sync, stream ] }

@@ -55,10 +55,10 @@ impl Message for NewChatMsg { type Return = ()                       ; }
 //
 pub enum ServerMsg
 {
-	ChatMsg       { time: i64, sid: usize, txt: String   } ,
-	UserJoined    { time: i64, nick : String, sid: usize } ,
-	UserLeft      { time: i64, sid: usize                } ,
-	NickChanged   { time: i64, sid: usize, nick: String  } ,
+	ChatMsg     { time: i64, sid: usize, txt: String   } ,
+	UserJoined  { time: i64, nick : String, sid: usize } ,
+	UserLeft    { time: i64, sid: usize                } ,
+	NickChanged { time: i64, sid: usize, nick: String  } ,
 }
 
 impl Message for ServerMsg { type Return = (); }

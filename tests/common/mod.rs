@@ -330,7 +330,7 @@ pub async fn relay_closure
 service_map!
 (
 	namespace  : remotes        ;
-	wire_format: ThesWF    ;
+	wire_format: ThesWF         ;
 	services   : Add, Sub, Show ;
 );
 

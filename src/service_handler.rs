@@ -25,7 +25,7 @@ pub type RelayClosure<Wf = ThesWF> = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay<
 /// I considered using this for service_map_macro as well, but it's complicated to get right. Since that
 /// get's the compiler to verify that a handler does in fact implement Handler for the type, we would have
 /// to make this generic. However, since for relays we need it to have a handler that deals with both
-/// ThesWF and Call, we would have to create some Eiter enum. That would still have been acceptable,
+/// ThesWF and Call, we would have to create some Either enum. That would still have been acceptable,
 /// yet the both types have different return types as associated types in the Message impl. That means
 /// that the return type would also have to be an enum. My gut says this is becoming to complex.
 /// As an added down-side, the compiler can't map the Either Message type to the Either return type,

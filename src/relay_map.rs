@@ -11,6 +11,10 @@ use crate :: { import::*, *, peer::Response };
 //
 pub struct RelayMap<Wf>
 {
+	// Unfortunately we need the Mutex because mpsc::Sender's are generally not `Sync` and `ServiceMap`
+	// definitely has to be `Sync`. We cannot have a guarantee that cloning a channel sender is thread safe.
+	// We also cannot use `RwLock` because that only protects mut access, but cloning only uses immutable access.
+	//
 	handler : Mutex<ServiceHandler<Wf>> ,
 	services: Vec<ServiceID>            ,
 }
@@ -74,7 +78,8 @@ impl<Wf: WireFormat> ServiceMap<Wf> for RelayMap<Wf>
 					}
 				};
 
-				Ok( task.boxed() ) }
+				Ok( task.boxed() )
+			}
 		}
 	}
 

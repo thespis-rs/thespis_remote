@@ -15,7 +15,7 @@
 use
 {
 	super           :: { *, assert_eq          } ,
-	futures_ringbuf :: { Endpoint, SketchyRead, Dictator } ,
+	futures_ringbuf :: { Endpoint, Sketchy, Dictator } ,
 	async_executors :: { AsyncStd              } ,
 	futures         :: { task::LocalSpawnExt, join   } ,
 };
@@ -46,9 +46,9 @@ pub struct TestSuite<Wf, Si, St>
 
 impl<Wf, Si, St> TestSuite<Wf, Si, St>
 
-	where Wf: WireFormat                               ,
-	      Si: Sink<Wf, Error=WireErr> + Send + 'static + Unpin   ,
-	      St: Stream<Item=Result<Wf, WireErr>> + Unpin ,
+	where Wf: WireFormat                                       ,
+	      Si: Sink<Wf, Error=WireErr> + Send + 'static + Unpin ,
+	      St: Stream<Item=Result<Wf, WireErr>> + Unpin         ,
 
 {
 	/// Create a new test suite with the given function pointer that will frame the connection.
@@ -151,7 +151,7 @@ impl<Wf, Si, St> TestSuite<Wf, Si, St>
 			// let seed = 9493852723399469118;
 
 			let (trans_a, trans_b) = Endpoint::pair( 64, 64 );
-			let trans_b = SketchyRead::new( trans_b, seed );
+			let trans_b = Sketchy::new( trans_b, seed );
 
 			let (mut sink_a, _  ) = (self.factory)( Box::new(trans_a), 64 );
 			let (_, mut stream_b) = (self.factory)( Box::new(trans_b), 64 );

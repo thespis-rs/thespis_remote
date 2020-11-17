@@ -357,8 +357,13 @@ impl<Wf: WireFormat> Peer<Wf>
 
 			.map_err( |_| -> PeerErr
 			{
-				let mut ctx = PeerErrCtx::default();
-				ctx.context = "Request results stream for peer".to_string().into();
+				let ctx = PeerErrCtx::default()
+
+					.peer_id  ( addr.id()                                             )
+					.peer_name( addr.name()                                           )
+					.context  ( Some( "Request results stream for peer".to_string() ) )
+				;
+
 				PeerErr::Spawn{ ctx }
 			})?
 		;
@@ -627,7 +632,7 @@ impl<Wf: WireFormat> Peer<Wf>
 //
 impl<Wf: WireFormat> Handler<Wf> for Peer<Wf>
 {
-	#[async_fn] fn handle( &mut self, msg: Wf ) -> Result<(), PeerErr>
+	#[async_fn] fn handle( &mut self, msg: Wf ) -> <Wf as Message>::Return
 	{
 		trace!( "{}: sending OUT WireFormat", self.identify() );
 

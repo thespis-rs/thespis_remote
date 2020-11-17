@@ -22,6 +22,7 @@
 
 pub mod peer              ;
     mod relay_map         ;
+    mod pub_sub           ;
     mod service_handler   ;
     mod service_map       ;
     mod service_map_macro ;
@@ -32,6 +33,7 @@ pub use
 {
 	thes_wf           :: * ,
 	peer              :: * ,
+	pub_sub           :: * ,
 	relay_map         :: * ,
 	service_handler   :: * ,
 	service_map       :: * ,
