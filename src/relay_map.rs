@@ -2,16 +2,15 @@ use crate :: { import::*, *, peer::Response };
 
 
 
-/// Register services to be relayed to other backend providers. The difference with the `service_map` macro, which is
+/// Register services to be relayed to backend providers. The difference with the `service_map` macro, which is
 /// used for local handlers is that handlers here don't have to implement `Handler<M>` for the actual message type.
 /// They only have to implement `Handler<BytesFormat>` (for sends) and `Handler<peer::Call>` for calls.
+///
+/// # Example
+/// TODO
 //
 pub struct RelayMap<Wf>
 {
-	// I decided not to take a static reference to ServiceID, because it seems kind of limiting on how people
-	// can store them. In this case, the process does not need to compile in the actual handlers.
-	// ServiceID is just 16 bytes of data.
-	//
 	handler : Mutex<ServiceHandler<Wf>> ,
 	services: Vec<ServiceID>            ,
 }
