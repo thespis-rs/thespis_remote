@@ -109,7 +109,7 @@ dev-dependencies:
   pretty_assertions : ^0.6
   flexi_logger      : { version: ^0.15, default-features: false }
 
-  async_executors   : { version: ^0.4.0-beta, features: [ async_std, threadpool ] }
+  async_executors   : { version: ^0.4.0-beta, features: [ async_std, threadpool, tracing ] }
   futures_ringbuf   : { version: ^0.3.0, features: [ sketchy ] }
   futures-test      : ^0.3
   futures           : { version: ^0.3, features: [ thread-pool ] }
@@ -119,7 +119,9 @@ dev-dependencies:
   rand              : { version: ^0.7 }
   rand_chacha       : { version: ^0.2 }
   criterion         : ^0.3
-
+  tracing             : { version: ^0.1 }
+  tracing-futures     : { version: ^0.2, features: [ futures-03 ] }
+  tracing-subscriber  : { version: ^0.2, default-features: false, features: [ fmt, json, tracing-log, chrono ] }
 
 bench:
 

@@ -37,6 +37,10 @@ pub enum ConnectionError
 	/// We don't provide this service.
 	//
 	UnknownService{ sid: Option<ServiceID>, cid: Option<ConnID> },
+
+	/// We don't provide this service.
+	//
+	PubSubNoCall{ sid: Option<ServiceID>, cid: Option<ConnID> },
 }
 
 
@@ -69,6 +73,10 @@ impl fmt::Display for ConnectionError
 			ConnectionError::UnknownService{ sid, .. } =>
 
 				write!( f, "Remote does not expose the service you are trying to call (sid: {:?}).", sid ),
+
+			ConnectionError::PubSubNoCall{ sid, .. } =>
+
+				write!( f, "Remote broadcasts this message type using thespis_remote::PubSub which does not support the `call` operation. Only `send` is supported (sid: {:?}).", sid ),
 		}
 	}
 }

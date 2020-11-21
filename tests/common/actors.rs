@@ -33,7 +33,7 @@ impl Handler< Sub > for Sum
 {
 	#[async_fn] fn handle( &mut self, msg: Sub ) -> ()
 	{
-		trace!( "called sum with: {:?}", msg );
+		debug!( "called sum with: {:?}", msg );
 
 		self.0 -= msg.0;
 	}

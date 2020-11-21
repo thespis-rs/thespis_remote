@@ -1,9 +1,28 @@
 # thespis_remote TODO
 
 - test grace_period
+- integration test pubsub with subscription at runtime.
+
 - can incoming messages provide unfair competition for Peer mailbox which will prevent outgoing? eg. can it continuously fill the mailbox preventing outgoing messages from getting out? With default back pressure?
 
   - It will depend on the fairness of the channel. When the outgoing blocks, it should get a slot.
+
+- Include codec like functionality in the WireFormat trait, so Peer::from_async_read is always implemented and not only for ThesWf?
+- PeerErr is now also thrown by other objects, notably PubSub and RelayMap. Verify consistency,
+  as these do not have a peer_id.
+- in general verify and test all error handling.
+
+- figure out a way to let the user know which connection a message came from to make it easier to do authorization, as opposed to sending a secret along with every message.
+
+- reconnect strategy? Allow people to give the peer a new connection without data loss?
+
+    - returning the peer object and spawning the mailbox again, but that requires the signature of mailbox to change so the actor can be returned as well as the mailbox.
+    - take connection as an object that has shared mutability so the connection can be reset?
+
+  what about server vs client side? Client could reconnect, but on server you need to wait for the client to reconnect and then
+  instead of making a new peer, you need to identify that this is a reconnect and recover the peer?
+
+
 
 ## API
 

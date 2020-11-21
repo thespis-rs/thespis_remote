@@ -103,12 +103,12 @@ mod import
 
 		futures ::
 		{
-			channel :: { oneshot           } ,
+			channel :: { oneshot, mpsc::{ self, UnboundedSender as futUnboundSender } } ,
 			future  :: { FutureExt         } ,
 			lock    :: { Mutex as FutMutex } ,
 			prelude :: { Stream, Sink      } ,
 			sink    :: { SinkExt           } ,
-			stream  :: { StreamExt         } ,
+			stream  :: { StreamExt, FuturesUnordered         } ,
 			io      :: { AsyncReadExt      } ,
 			AsyncRead  as FutAsyncRead  ,
 			AsyncWrite as FutAsyncWrite ,

@@ -92,7 +92,7 @@ features = ["attributes"]
 version = "^1.6.0-beta"
 
 [dev-dependencies.async_executors]
-features = ["async_std", "threadpool"]
+features = ["async_std", "threadpool", "tracing"]
 version = "^0.4.0-beta"
 
 [dev-dependencies.flexi_logger]
@@ -118,6 +118,18 @@ path = "../thespis_impl"
 
 [dev-dependencies.tokio]
 features = ["sync", "stream"]
+version = "^0.2"
+
+[dev-dependencies.tracing]
+version = "^0.1"
+
+[dev-dependencies.tracing-futures]
+features = ["futures-03"]
+version = "^0.2"
+
+[dev-dependencies.tracing-subscriber]
+default-features = false
+features = ["fmt", "json", "tracing-log", "chrono"]
 version = "^0.2"
 
 [features]

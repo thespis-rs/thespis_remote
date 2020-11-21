@@ -152,11 +152,22 @@ impl<Wf: WireFormat> Handler<RequestError> for Peer<Wf>
 				self.send_err( cid, &err, false ).await;
 			}
 
+
+			PeerErr::PubSubNoCall{ ctx } =>
+			{
+				// This is not fatal, NOT closing the connection.
+				//
+				let err = ConnectionError::PubSubNoCall{ sid: ctx.sid, cid: cid.into() };
+
+				self.send_err( cid, &err, false ).await;
+			}
+
+
 			// We shouldn't accept any other errors unknowingly.
 			// Especially we log the error above the match, so if there is other
 			// error types, we really need to add the variant to the match.
 			//
-			_ => { unreachable!() }
+			e => { unreachable!(e) }
 		}
 
 	}.boxed() }
