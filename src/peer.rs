@@ -141,7 +141,7 @@ impl<T, Wf> BoundsOut<Wf> for T
 //
 #[ derive( Actor ) ]
 //
-pub struct Peer<Wf: 'static = ThesWF>
+pub struct Peer<Wf: 'static + WireFormat = ThesWF>
 {
 	/// The sink
 	//
@@ -202,10 +202,64 @@ pub struct Peer<Wf: 'static = ThesWF>
 	// you have send u64::MAX calls. Normally timeout should prevent that.
 	//
 	conn_id_counter: AtomicU64,
+
+
+	// When the remote closes the connection, we could immediately drop all outstanding tasks related to
+	// this peer. This makes sense for a request-response type connection, as it doesn't make sense to
+	// continue using resources processing requests for which we can no longer send the response. However
+	// it is not always desirable. For one way information flow, we might want to finish processing all the
+	// outstanding packets before closing down.
+	//
+	grace_period: Option<Duration>,
 }
 
 
-impl<Wf> Peer<Wf>
+
+impl Peer<ThesWF>
+{
+	/// Create a Peer directly from an asynchronous stream. This is a convenience wrapper around Peer::new so
+	/// you don't have to bother with framing the connection.
+	///
+	/// *addr*: This peers own address.
+	///
+	/// *socket*: The async stream to frame.
+	///
+	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
+	/// stream if it exceeds this size. Also used for encoding outgoing messages.
+	/// **Set the same max_size in the remote!**.
+	///
+	/// *grace_period*: When the remote closes the connection, we could immediately drop all outstanding tasks related to
+	/// this peer. This makes sense for a request-response type connection, as it doesn't make sense to
+	/// continue using resources processing requests for which we can no longer send the response. However
+	/// it is not always desirable. For one way information flow, we might want to finish processing all the
+	/// outstanding packets before closing down. This also applies when you send a `CloseConnection` message to
+	/// this peer locally.
+	//
+	pub fn from_async_read
+	(
+		addr        : Addr<Self>                                                                  ,
+		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static                  ,
+		max_size    : usize                                                                       ,
+		exec        : impl SpawnHandle<Result<Response<ThesWF>, PeerErr>> + Send + Sync + 'static ,
+		bp          : Option<Arc<BackPressure>>                                                   ,
+		grace_period: Option<Duration>                                                            ,
+	)
+
+		-> Result< Self, PeerErr >
+
+	{
+		let (reader, writer) = socket.split();
+
+		let stream = thes_wf::Decoder::new( reader, max_size );
+		let sink   = thes_wf::Encoder::new( writer, max_size );
+
+		Peer::new( addr, stream, sink, Arc::new(exec), bp, grace_period )
+	}
+}
+
+
+
+impl<Wf: WireFormat> Peer<Wf>
 {
 	pub fn identify( &self ) -> String
 	{
@@ -290,57 +344,27 @@ impl<Wf> Peer<Wf>
 	{
 		self.timeout = delay;
 	}
-}
-
-
-impl Peer<ThesWF>
-{
-	/// Create a Peer directly from an asynchronous stream. This is a convenience wrapper around Peer::new so
-	/// you don't have to bother with framing the connection.
-	///
-	/// *addr*: This peers own adress.
-	///
-	/// *socket*: The async stream to frame.
-	///
-	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
-	/// stream if it exceeds this size. Also used for encoding outgoing messages.
-	/// **Set the same max_size in the remote!**.
-	//
-	pub fn from_async_read
-	(
-		addr        : Addr<Self>                                                                  ,
-		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static                  ,
-		max_size    : usize                                                                       ,
-		exec        : impl SpawnHandle<Result<Response<ThesWF>, PeerErr>> + Send + Sync + 'static ,
-		bp          : Option<Arc<BackPressure>>                                                   ,
-	)
-
-		-> Result< Self, PeerErr >
-
-	{
-		let (reader, writer) = socket.split();
-
-		let stream = thes_wf::Decoder::new( reader, max_size );
-		let sink   = thes_wf::Encoder::new( writer, max_size );
-
-		Peer::new( addr, stream, sink, Arc::new(exec), bp )
-	}
-}
 
 
 
-impl<Wf: WireFormat> Peer<Wf>
-{
 	/// Create a new peer to represent a connection to some remote.
 	/// `addr` is the actor address for this actor.
+	///
+	/// *grace_period*: When the remote closes the connection, we could immediately drop all outstanding tasks related to
+	/// this peer. This makes sense for a request-response type connection, as it doesn't make sense to
+	/// continue using resources processing requests for which we can no longer send the response. However
+	/// it is not always desirable. For one way information flow, we might want to finish processing all the
+	/// outstanding packets before closing down. This also applies when you send a `CloseConnection` message to
+	/// this peer locally.
 	//
 	pub fn new
 	(
-		addr     : Addr<Self>                                                                ,
-		incoming : impl BoundsIn<Wf>                                                         ,
-		outgoing : impl BoundsOut<Wf>                                                        ,
-		exec     : impl SpawnHandle<Result<Response<Wf>, PeerErr>> + Send + Sync + 'static   ,
-		bp       : Option<Arc<BackPressure>>                                                 ,
+		addr        : Addr<Self>                                                                ,
+		incoming    : impl BoundsIn<Wf>                                                         ,
+		outgoing    : impl BoundsOut<Wf>                                                        ,
+		exec        : impl SpawnHandle<Result<Response<Wf>, PeerErr>> + Send + Sync + 'static   ,
+		bp          : Option<Arc<BackPressure>>                                                 ,
+		grace_period: Option<Duration>                                                          ,
 	)
 
 		-> Result< Self, PeerErr >
@@ -394,6 +418,7 @@ impl<Wf: WireFormat> Peer<Wf>
 			closed         : false                      ,
 			nursery_stream : Some( nursery_handle )     ,
 			nursery                                     ,
+			grace_period                                ,
 
 			// must not start at 0. Zero has a special meaning.
 			//
@@ -644,7 +669,7 @@ impl<Wf: WireFormat> Handler<Wf> for Peer<Wf>
 
 // Pharos, shine!
 //
-impl<Wf> Observable<PeerEvent> for Peer<Wf>
+impl<Wf: WireFormat> Observable<PeerEvent> for Peer<Wf>
 {
 	type Error = pharos::Error;
 
@@ -666,7 +691,7 @@ impl<Wf> Observable<PeerEvent> for Peer<Wf>
 
 
 
-impl<Wf> fmt::Debug for Peer<Wf>
+impl<Wf: WireFormat> fmt::Debug for Peer<Wf>
 {
 	fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result
 	{
@@ -675,7 +700,7 @@ impl<Wf> fmt::Debug for Peer<Wf>
 }
 
 
-impl<Wf> Drop for Peer<Wf>
+impl<Wf: WireFormat> Drop for Peer<Wf>
 {
 	fn drop( &mut self )
 	{

@@ -6,6 +6,8 @@ use { crate :: { import::* }};
 // is <= 0, this will return Pending and can be awaited. When the counter becomes >= 1, the last waker
 // that awaits it will be woken up. Thus you should only use it from within one context.
 //
+// TODO: Review and document behavior. It uses a vecdeque, so it stores more than one waker...
+//
 // Currently used only for incoming calls, not incoming sends.
 //
 #[ derive( Debug, Actor ) ]

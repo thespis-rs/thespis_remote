@@ -108,7 +108,7 @@ async fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr.clone(), server, 1024, AsyncStd, None ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peer_addr.clone(), server, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -137,7 +137,7 @@ async fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr.clone(), client, 1024, AsyncStd, None ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peer_addr.clone(), client, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//

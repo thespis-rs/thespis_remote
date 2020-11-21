@@ -23,6 +23,7 @@ pub mod import
 			future       :: Future     ,
 			pin          :: Pin        ,
 			sync         :: Arc        ,
+			time         :: Duration   ,
 			sync::atomic :: { AtomicUsize, Ordering::Relaxed } ,
 		},
 
@@ -81,9 +82,10 @@ pub fn peer_listen
 	//
 	let (peer_addr, peer_mb) = Addr::builder().name( name.into() ).build();
 
-	// create peer with stream/sink
+	// create peer
 	//
-	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, Arc::new( exec.clone() ), None ).expect( "spawn peer" );
+	let delay = Some( Duration::from_millis(10) );
+	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, Arc::new( exec.clone() ), None, delay ).expect( "spawn peer" );
 
 	let peer_evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
@@ -115,7 +117,9 @@ pub fn peer_connect
 
 	// create peer with stream/sink + service map
 	//
-	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, exec.clone(), None ).expect( "spawn peer" );
+	let delay = Some( Duration::from_millis(10) );
+
+	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
 
@@ -192,7 +196,9 @@ pub async fn relay
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1, None ).expect( "spawn peer" );
+		let delay = Some( Duration::from_millis(10) );
+
+		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1, None, delay ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
@@ -269,7 +275,9 @@ pub async fn relay_closure
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1, None ).expect( "spawn peer" );
+		let delay = Some( Duration::from_millis(10) );
+
+		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1, None, delay ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();

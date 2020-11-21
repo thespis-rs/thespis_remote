@@ -82,7 +82,7 @@ async fn timeout()
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::from_async_read( peera.clone(), client, 1024, AsyncStd, None ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read( peera.clone(), client, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 
 		// This is the relevant line for this test!

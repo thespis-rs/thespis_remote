@@ -112,6 +112,7 @@ mod import
 			io      :: { AsyncReadExt      } ,
 			AsyncRead  as FutAsyncRead  ,
 			AsyncWrite as FutAsyncWrite ,
+			pin_mut,
 		},
 	};
 

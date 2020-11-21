@@ -70,9 +70,24 @@ impl<Wf: WireFormat> Handler<CloseConnection> for Peer<Wf>
 		};
 
 
+		self.nursery.close_nursery();
+
+
 		// try to drop close our mailbox and drop ourselves
 		//
-		self.addr           = None;
+		self.addr = None;
+
+		if let Some( duration ) = self.grace_period {
+		if let Some( stream   ) = self.nursery_stream.take()
+		{
+			let delay = Delay::new( duration );
+
+			pin_mut!( delay  );
+			pin_mut!( stream );
+
+			futures::future::select( delay, stream ).await;
+		}}
+
 		self.nursery_stream = None;
 
 

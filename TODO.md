@@ -1,5 +1,6 @@
 # thespis_remote TODO
 
+- test grace_period
 - can incoming messages provide unfair competition for Peer mailbox which will prevent outgoing? eg. can it continuously fill the mailbox preventing outgoing messages from getting out? With default back pressure?
 
   - It will depend on the fairness of the channel. When the outgoing blocks, it should get a slot.

@@ -73,9 +73,6 @@ async fn relay_once()
 
 		let resp = addr.call( Show ).await.expect( "Call failed" );
 
-		// TODO: This assert sometimes fails with 5, so an addition above didn't happen but didn't return an error.
-		//       To detect we should run in a loop with trace and debug.
-		//
 		assert_eq!( 10, resp );
 
 		warn!( "consumer end, telling relay to close connection" );

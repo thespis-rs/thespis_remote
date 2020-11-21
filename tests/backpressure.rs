@@ -116,7 +116,16 @@ async fn backpressure_basic()
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr, server, 1024, AsyncStd, Some( Arc::new( BackPressure::new(2) ) ) ).expect( "spawn peer" );
+		let mut peer = Peer::from_async_read
+		(
+			peer_addr,
+			server,
+			1024,
+			AsyncStd,
+			Some(Arc::new( BackPressure::new(2) )),
+			None
+
+		).expect( "spawn peer" );
 
 
 		// register service map with peer
