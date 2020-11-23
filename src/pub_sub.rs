@@ -23,6 +23,7 @@ pub struct PubSub<Wf: 'static = ThesWF>
 	//
 	subscribers: Arc<Mutex<HashMap< usize, Subscriber<Wf> >>>,
 	rt_sub     : Option< JoinHandle<()> >,
+	rt_unsub   : Option< JoinHandle<()> >,
 }
 
 
@@ -37,9 +38,10 @@ impl<Wf: WireFormat> PubSub<Wf>
 	{
 		Self
 		{
-			services,
-			subscribers: Arc::new(Mutex::new( HashMap::new() )),
-			rt_sub: None,
+			services                                            ,
+			subscribers: Arc::new(Mutex::new( HashMap::new() )) ,
+			rt_sub     : None                                   ,
+			rt_unsub   : None                                   ,
 		}
 	}
 
@@ -109,7 +111,7 @@ impl<Wf: WireFormat> PubSub<Wf>
 
 		-> Result< futUnboundSender< usize >, ThesErr >
 	{
-		assert!( self.rt_sub.is_none(), "Can only call rt_subscribe once. Clone the Sender if you need it in several places." );
+		assert!( self.rt_unsub.is_none(), "Can only call rt_subscribe once. Clone the Sender if you need it in several places." );
 
 		let (tx, mut rx) = mpsc::unbounded::<usize>();
 		let map          = self.subscribers.clone();
@@ -124,7 +126,7 @@ impl<Wf: WireFormat> PubSub<Wf>
 			}
 		};
 
-		self.rt_sub = Some
+		self.rt_unsub = Some
 		(
 			exec.spawn_handle(task)
 			.map_err( |_| ThesErr::Spawn{ actor: "PubSub".to_string() } )?

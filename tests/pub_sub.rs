@@ -1,4 +1,8 @@
-
+//! Test PubSub:
+//!
+//! ✔ Basic usage
+//! ✔ Use subscribe and unsubscribe at runtime.
+//
 mod common;
 
 use common::*                       ;
@@ -112,11 +116,9 @@ async fn pubsub()
 	}.instrument( span_relay2 );
 
 
-
-
-	let consumer_c = consumer( "task_c", cb, AsyncStd.instrument( span_c.clone() ) ).instrument( span_c );
-	let consumer_d = consumer( "task_d", db, AsyncStd.instrument( span_d.clone() ) ).instrument( span_d );
-	let consumer_e = consumer( "task_e", eb, AsyncStd.instrument( span_e.clone() ) ).instrument( span_e );
+	let consumer_c = consumer( "task_c", cb, 15, AsyncStd.instrument( span_c.clone() ) ).instrument( span_c );
+	let consumer_d = consumer( "task_d", db, 15, AsyncStd.instrument( span_d.clone() ) ).instrument( span_d );
+	let consumer_e = consumer( "task_e", eb, 15, AsyncStd.instrument( span_e.clone() ) ).instrument( span_e );
 
 	let relays     = relays  ;
 	let provider   = provider.instrument( tracing::info_span!("task_provider") );
@@ -134,7 +136,7 @@ async fn pubsub()
 }
 
 
-async fn consumer( name: &str, endpoint: Endpoint, exec: tracing_futures::Instrumented<AsyncStd> )
+async fn consumer( name: &str, endpoint: Endpoint, expect: i64, exec: tracing_futures::Instrumented<AsyncStd> )
 {
 	// Create mailbox for our handler
 	//
@@ -160,9 +162,195 @@ async fn consumer( name: &str, endpoint: Endpoint, exec: tracing_futures::Instru
 
 	handle.await;
 
-	assert_eq!( 15, addr_handler.call(Show).await.expect( "Call failed") );
+	assert_eq!( expect, addr_handler.call(Show).await.expect( "Call failed"), "{}", &name );
 
 	trace!( "End of consumer {}", name );
+}
+
+
+
+
+
+// Some hypothetical steps in our flow.
+//
+#[ derive( Debug, Clone, PartialEq, Eq )]
+//
+enum Step
+{
+	Start,
+   Send1,
+   Send2,
+   Send3,
+   Sub2 ,
+   Sub3 ,
+}
+
+
+// Test subscribe/unsubscribe at runtime.
+// TODO: this test is lousy. It uses arbitrary timers to slow things down. Need a way to make it
+// deterministic.
+//
+#[async_std::test]
+//
+async fn pubsub_rt()
+{
+	// tracing_subscriber::fmt::Subscriber::builder()
+
+	// 	// .with_timer( tracing_subscriber::fmt::time::ChronoLocal::rfc3339() )
+	// 	.json()
+	//    .with_max_level(tracing::Level::TRACE)
+	//    .init()
+	// ;
+
+	let span_c         = tracing::info_span!( "task_c"       );
+	let span_d         = tracing::info_span!( "task_d"       );
+	let span_e         = tracing::info_span!( "task_e"       );
+	let span_relay     = tracing::info_span!( "task_relay"    );
+	let span_provider  = tracing::info_span!( "task_provider" );
+	let span_relay2    = span_relay.clone();
+	let span_provider2 = span_provider.clone();
+
+	let (ab, ba) = Endpoint::pair( 64, 64 );
+	let (bc, cb) = Endpoint::pair( 64, 64 );
+	let (bd, db) = Endpoint::pair( 64, 64 );
+	let (be, eb) = Endpoint::pair( 64, 64 );
+
+	let steps = async_progress::Progress::new( Step::Start );
+	let steps2 = steps.clone();
+
+	let send1 = steps.once( Step::Send1 );
+	let send2 = steps.once( Step::Send2 );
+	let send3 = steps.once( Step::Send3 );
+	let sub2  = steps.once( Step::Sub2  );
+	let sub3  = steps.once( Step::Sub3  );
+
+
+	let provider = async move
+	{
+		let exec = AsyncStd.instrument( span_provider );
+
+		debug!( "start mailbox for provider_to_relay" );
+
+		let (mut to_relay, _)  = peer_connect( ab, exec, "provider_to_relay" );
+
+		// Call the service and receive the response
+		//
+		let mut addr = remotes::RemoteAddr::new( to_relay.clone() );
+
+
+		send1.await;
+
+			assert_eq!( Ok(()), addr.send( Add(5) ).await );
+
+		steps2.set_state( Step::Sub2 ).await;
+		send2.await;
+
+			assert_eq!( Ok(()), addr.send( Add(5) ).await );
+
+		steps2.set_state( Step::Sub3 ).await;
+		send3.await;
+
+			assert_eq!( Ok(()), addr.send( Add(5) ).await );
+
+
+		warn!( "provider end, telling relay to close connection" );
+
+		to_relay.call( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to relay" );
+
+		warn!( "provider end, relay processed CloseConnection" );
+
+	}.instrument( span_provider2 );
+
+
+	let relays = async move
+	{
+		let exec = AsyncStd.instrument( span_relay );
+
+
+		let services = vec![<Add as remotes::Service>::sid()];
+
+		// Create mailbox for peer to consumer_c
+		//
+		let (peer_addr_a, peer_mb_a) = Addr::builder().name( "relay_to_provider".into() ).build();
+
+		let (mut peer_addr_c, peer_mb_c) = Addr::builder().name( "relay_to_consumer_c".into() ).build();
+		let (mut peer_addr_d, peer_mb_d) = Addr::builder().name( "relay_to_consumer_d".into() ).build();
+		let (mut peer_addr_e, peer_mb_e) = Addr::builder().name( "relay_to_consumer_e".into() ).build();
+
+		let delay = Some( Duration::from_millis(10) );
+
+		// create peer with stream/sink
+		//
+		let peer_c = Peer::from_async_read( peer_addr_c.clone(), bc, 1024, exec.clone(), None, delay.clone() ).expect( "spawn peer_c" );
+		let peer_d = Peer::from_async_read( peer_addr_d.clone(), bd, 1024, exec.clone(), None, delay.clone() ).expect( "spawn peer_d" );
+		let peer_e = Peer::from_async_read( peer_addr_e.clone(), be, 1024, exec.clone(), None, delay.clone() ).expect( "spawn peer_e" );
+
+		let mut peer_a = Peer::from_async_read( peer_addr_a, ba, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
+
+		let mut pubsub       = PubSub::new( services );
+		let mut subscriber   = pubsub.rt_subscribe  ( &exec ).expect( "get subsriber"   );
+		let mut unsubscriber = pubsub.rt_unsubscribe( &exec ).expect( "get unsubsriber" );
+
+
+		peer_a.register_services( Arc::new( pubsub ) );
+
+		let  peer_a_handle = peer_mb_a.start_handle( peer_a, &exec ).expect( "spawn mb" );
+		let _peer_c_handle = peer_mb_c.start_handle( peer_c, &exec ).expect( "spawn mb" );
+		let _peer_d_handle = peer_mb_d.start_handle( peer_d, &exec ).expect( "spawn mb" );
+		let _peer_e_handle = peer_mb_e.start_handle( peer_e, &exec ).expect( "spawn mb" );
+
+
+			let peer_addr_c2 = peer_addr_c.clone_box();
+			subscriber.send( peer_addr_c2 ).await.expect( "send on channel" );
+
+		steps.set_state( Step::Send1 ).await;
+		sub2.await;
+		futures_timer::Delay::new( Duration::from_millis(1)).await;
+
+			let peer_addr_d2 = peer_addr_d.clone_box();
+			subscriber.send( peer_addr_d2 ).await.expect( "send on channel" );
+
+		steps.set_state( Step::Send2 ).await;
+		sub3.await;
+		futures_timer::Delay::new( Duration::from_millis(1)).await;
+
+			let peer_addr_e2 = peer_addr_e.clone_box();
+			subscriber.send( peer_addr_e2 ).await.expect( "send on channel" );
+			let id = peer_addr_e.id();
+			unsubscriber.send( id ).await.expect( "send on channel" );
+
+		steps.set_state( Step::Send3 ).await;
+
+
+		peer_a_handle.await;
+
+		warn!( "Closing connection from relay to consumers" );
+		peer_addr_c.call( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection relay_c" );
+		peer_addr_d.call( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection relay_d" );
+		peer_addr_e.call( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection relay_e" );
+
+		warn!( "relays end" );
+
+	}.instrument( span_relay2 );
+
+
+	let consumer_c = consumer( "task_c", cb, 15, AsyncStd.instrument( span_c.clone() ) ).instrument( span_c );
+	let consumer_d = consumer( "task_d", db, 10, AsyncStd.instrument( span_d.clone() ) ).instrument( span_d );
+	let consumer_e = consumer( "task_e", eb, 0, AsyncStd.instrument( span_e.clone() ) ).instrument( span_e );
+
+	let relays     = relays  ;
+	let provider   = provider.instrument( tracing::info_span!("task_provider") );
+
+
+	let mut futs = futures::stream::FuturesUnordered::new();
+
+	futs.push( AsyncStd.spawn_handle( consumer_c ).unwrap() );
+	futs.push( AsyncStd.spawn_handle( consumer_d ).unwrap() );
+	futs.push( AsyncStd.spawn_handle( consumer_e ).unwrap() );
+	futs.push( AsyncStd.spawn_handle( relays     ).unwrap() );
+	futs.push( AsyncStd.spawn_handle( provider   ).unwrap() );
+
+	while let Some(_) = futs.next().await {}
 }
 
 

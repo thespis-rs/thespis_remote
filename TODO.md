@@ -1,7 +1,6 @@
 # thespis_remote TODO
 
 - test grace_period
-- integration test pubsub with subscription at runtime.
 
 - can incoming messages provide unfair competition for Peer mailbox which will prevent outgoing? eg. can it continuously fill the mailbox preventing outgoing messages from getting out? With default back pressure?
 
