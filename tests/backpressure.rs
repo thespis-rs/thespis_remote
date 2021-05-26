@@ -143,7 +143,7 @@ async fn backpressure_basic()
 
 	let peerb = async move
 	{
-		let (mut peera, _)  = peer_connect( client, AsyncStd, "peer_b_to_peera" );
+		let (mut peera, _)  = peer_connect( client, AsyncStd, "peer_b_to_peera" ).await;
 
 		// Call the service and receive the response
 		//

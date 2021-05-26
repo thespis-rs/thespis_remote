@@ -69,18 +69,18 @@ mod import
 {
 	pub(crate) use
 	{
-		async_executors :: { SpawnHandle, SpawnHandleExt, JoinHandle   } ,
-		async_nursery   :: { NurseExt, Nursery, NurseryStream          } ,
-		futures_timer   :: { Delay                                     } ,
-		log             :: { *                                         } ,
-		once_cell       :: { sync::Lazy as SyncLazy                    } ,
-		parking_lot     :: { Mutex                                     } ,
-		pharos          :: { Pharos, Observable, ObserveConfig, Events } ,
-		rand            :: { Rng                                       } ,
-		serde           :: { Serialize, Deserialize                    } ,
-		thespis         :: { *                                         } ,
-		thespis_impl    :: { Addr, ThesErr                             } ,
-		twox_hash       :: { XxHash64                                  } ,
+		async_executors :: { SpawnHandle, SpawnHandleExt, JoinHandle             } ,
+		async_nursery   :: { NurseExt, Nursery, NurseryStream                    } ,
+		futures_timer   :: { Delay                                               } ,
+		log             :: { *                                                   } ,
+		once_cell       :: { sync::Lazy as SyncLazy                              } ,
+		parking_lot     :: { Mutex                                               } ,
+		pharos          :: { Pharos, Observe, Observable, ObserveConfig, PharErr } ,
+		rand            :: { Rng                                                 } ,
+		serde           :: { Serialize, Deserialize                              } ,
+		thespis         :: { *                                                   } ,
+		thespis_impl    :: { Addr, ThesErr                                       } ,
+		twox_hash       :: { XxHash64                                            } ,
 
 		std ::
 		{

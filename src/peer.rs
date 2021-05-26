@@ -214,6 +214,14 @@ pub struct Peer<Wf: 'static + WireFormat = ThesWF>
 }
 
 
+pub trait PeerExec<Wf: WireFormat = ThesWF> : SpawnHandle<Result<Response<Wf>, PeerErr>> + SpawnHandle<()> + Clone + Send + Sync + 'static {}
+
+impl<T, Wf: WireFormat> PeerExec<Wf> for T
+
+	where T: SpawnHandle<Result<Response<Wf>, PeerErr>> + SpawnHandle<()> + Clone + Send + Sync + 'static
+
+{}
+
 
 impl Peer<ThesWF>
 {
@@ -240,7 +248,7 @@ impl Peer<ThesWF>
 		addr        : Addr<Self>                                                                  ,
 		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static                  ,
 		max_size    : usize                                                                       ,
-		exec        : impl SpawnHandle<Result<Response<ThesWF>, PeerErr>> + Send + Sync + 'static ,
+		exec        : impl PeerExec<ThesWF> ,
 		bp          : Option<Arc<BackPressure>>                                                   ,
 		grace_period: Option<Duration>                                                            ,
 	)
@@ -671,7 +679,7 @@ impl<Wf: WireFormat> Handler<Wf> for Peer<Wf>
 //
 impl<Wf: WireFormat> Observable<PeerEvent> for Peer<Wf>
 {
-	type Error = pharos::Error;
+	type Error = PharErr;
 
 	/// Register an observer to receive events from this connection. This will allow you to detect
 	/// Connection errors and loss. Note that the peer automatically goes in shut down mode if the
@@ -683,7 +691,7 @@ impl<Wf: WireFormat> Observable<PeerEvent> for Peer<Wf>
 	///
 	/// See [PeerEvent] for more details on all possible events.
 	//
-	fn observe( &mut self, config: ObserveConfig<PeerEvent> ) -> Result< Events<PeerEvent>, pharos::Error >
+	fn observe( &mut self, config: ObserveConfig<PeerEvent> ) -> Observe< '_, PeerEvent, PharErr >
 	{
 		self.pharos.observe( config )
 	}

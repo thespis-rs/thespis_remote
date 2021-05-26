@@ -38,7 +38,7 @@ async fn no_handler()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "peera" );
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "peera" ).await;
 
 		handle.await;
 
@@ -48,7 +48,7 @@ async fn no_handler()
 
 	let peerb = async move
 	{
-		let (mut peera, _)  = peer_connect( client, AsyncStd, "peer_b_to_peera" );
+		let (mut peera, _)  = peer_connect( client, AsyncStd, "peer_b_to_peera" ).await;
 
 		// Call the service and receive the response
 		//

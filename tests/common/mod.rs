@@ -68,15 +68,15 @@ pub fn add_show_sum() -> remotes::Services
 }
 
 
-pub fn peer_listen
+pub async fn peer_listen
 (
 	socket: Endpoint                                                                                                                   ,
 	sm    : Arc<impl ServiceMap + Send + Sync + 'static>                                                                               ,
-	exec  : impl Spawn + SpawnHandle< Option<Mailbox<Peer>> > + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle<MailboxEnd<Peer>> + PeerExec ,
 	name  : &str                                                                                                                       ,
 )
 
-	-> (Addr<Peer>, Events<PeerEvent>, JoinHandle< Option<Mailbox<Peer>> >)
+	-> (Addr<Peer>, Events<PeerEvent>, JoinHandle< MailboxEnd<Peer> >)
 {
 	// Create mailbox for peer
 	//
@@ -87,7 +87,7 @@ pub fn peer_listen
 	let delay = Some( Duration::from_millis(10) );
 	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, Arc::new( exec.clone() ), None, delay ).expect( "spawn peer" );
 
-	let peer_evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
+	let peer_evts = peer.observe( ObserveConfig::default() ).await.expect( "pharos not closed" );
 
 	// register service map with peer
 	//
@@ -101,10 +101,10 @@ pub fn peer_listen
 
 
 
-pub fn peer_connect
+pub async fn peer_connect
 (
 	socket: Endpoint                                   ,
-	exec  : impl Spawn + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle<MailboxEnd<Peer>> + PeerExec ,
 	name  : &str                                       ,
 )
 	-> (Addr<Peer>, Events<PeerEvent>)
@@ -121,7 +121,7 @@ pub fn peer_connect
 
 	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
 
-	let evts = peer.observe( ObserveConfig::default() ).expect( "pharos not closed" );
+	let evts = peer.observe( ObserveConfig::default() ).await.expect( "pharos not closed" );
 
 	debug!( "start mailbox for [{}] in peer_connect", name );
 
@@ -131,12 +131,12 @@ pub fn peer_connect
 }
 
 
-pub fn provider
+pub async fn provider
 (
 	name: Option<Arc<str>>,
-	exec  : impl Spawn + SpawnHandle< Option<Mailbox<Peer>> > + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static ,
+	exec  : impl Spawn + SpawnHandle<MailboxEnd<Peer>> + PeerExec ,
 )
-	-> (Endpoint, JoinHandle< Option<Mailbox<Peer>> >)
+	-> (Endpoint, JoinHandle< MailboxEnd<Peer> >)
 
 {
 	let name = name.map( |n| n.to_string() ).unwrap_or_else( || "unnamed".to_string() );
@@ -159,7 +159,7 @@ pub fn provider
 	let (ab, ba) = Endpoint::pair( 128, 128 );
 
 	debug!( "start mailbox for provider" );
-	let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), exec, "provider" );
+	let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), exec, "provider" ).await;
 
 	drop( peer_addr );
 	trace!( "End of provider" );
@@ -177,12 +177,12 @@ pub async fn relay
 	listen    : Endpoint                                 ,
 	next      : Pin<Box< dyn Future<Output=()> + Send >> ,
 	relay_show: bool                                     ,
-	exec      : impl Spawn + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static  ,
+	exec      : impl Spawn + SpawnHandle<MailboxEnd<Peer>> + PeerExec  ,
 )
 {
 	debug!( "start mailbox for relay_to_provider" );
 
-	let (mut provider_addr, _provider_evts) = peer_connect( connect, exec.clone(), "relay_to_provider" );
+	let (mut provider_addr, _provider_evts) = peer_connect( connect, exec.clone(), "relay_to_provider" ).await;
 	let provider_addr2                      = provider_addr.clone();
 	let ex1                                 = exec.clone();
 
@@ -247,7 +247,7 @@ pub async fn relay_closure
 	listen    : Endpoint                                 ,
 	next      : Pin<Box< dyn Future<Output=()> + Send >> ,
 	relay_show: bool                                     ,
-	exec      : impl Spawn + SpawnHandle< Result<Response, PeerErr> > + Clone + Send + Sync + 'static,
+	exec      : impl Spawn + SpawnHandle<MailboxEnd<Peer>> + PeerExec,
 )
 {
 	debug!( "start mailbox for relay_to_provider" );
@@ -257,7 +257,7 @@ pub async fn relay_closure
 	for (idx, endpoint) in connect.into_iter().enumerate()
 	{
 		let name = format!( "relay_to_provider{}", idx );
-		let (provider_addr, _provider_evts) = peer_connect( endpoint, exec.clone(), &name );
+		let (provider_addr, _provider_evts) = peer_connect( endpoint, exec.clone(), &name ).await;
 
 		providers.push( provider_addr );
 	}

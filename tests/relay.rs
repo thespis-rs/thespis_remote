@@ -46,7 +46,7 @@ async fn relay_once()
 		// get a framed connection
 		//
 		debug!( "start mailbox for provider" );
-		let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), AsyncStd, "provider" );
+		let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), AsyncStd, "provider" ).await;
 
 		drop( peer_addr );
 
@@ -62,7 +62,7 @@ async fn relay_once()
 	{
 		debug!( "start mailbox for consumer_to_relay" );
 
-		let (mut to_relay, _)  = peer_connect( cb, AsyncStd, "consumer_to_relay" );
+		let (mut to_relay, _)  = peer_connect( cb, AsyncStd, "consumer_to_relay" ).await;
 
 		// Call the service and receive the response
 		//
@@ -112,7 +112,7 @@ async fn relay_multi()
 	{
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( ab, Arc::new( add_show_sum() ), AsyncStd, "provider" );
+		let (_, _, handle) = peer_listen( ab, Arc::new( add_show_sum() ), AsyncStd, "provider" ).await;
 
 		handle.await;
 
@@ -124,7 +124,7 @@ async fn relay_multi()
 
 	let consumer = async move
 	{
-		let (mut relay, _)  = peer_connect( fe, AsyncStd, "consumer_to_relay" );
+		let (mut relay, _)  = peer_connect( fe, AsyncStd, "consumer_to_relay" ).await;
 
 		// Call the service and receive the response
 		//
@@ -168,7 +168,7 @@ async fn relay_unknown_service()
 	{
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( ab, Arc::new( add_show_sum() ), AsyncStd, "provider" );
+		let (_, _, handle) = peer_listen( ab, Arc::new( add_show_sum() ), AsyncStd, "provider" ).await;
 
 		handle.await;
 
@@ -180,7 +180,7 @@ async fn relay_unknown_service()
 
 	let consumer = async move
 	{
-		let (mut relay, _relay_evts) = peer_connect( cb, AsyncStd, "consumer_to_relay" );
+		let (mut relay, _relay_evts) = peer_connect( cb, AsyncStd, "consumer_to_relay" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//

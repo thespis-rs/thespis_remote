@@ -45,7 +45,7 @@ async fn pubsub()
 
 		debug!( "start mailbox for provider_to_relay" );
 
-		let (mut to_relay, _)  = peer_connect( ab, exec, "provider_to_relay" );
+		let (mut to_relay, _)  = peer_connect( ab, exec, "provider_to_relay" ).await;
 
 		// Call the service and receive the response
 		//
@@ -154,7 +154,7 @@ async fn consumer( name: &str, endpoint: Endpoint, expect: i64, exec: tracing_fu
 	// get a framed connection
 	//
 	debug!( "start mailbox for consumer" );
-	let (peer_addr, _peer_evts, handle) = peer_listen( endpoint, Arc::new( sm ), exec, name );
+	let (peer_addr, _peer_evts, handle) = peer_listen( endpoint, Arc::new( sm ), exec, name ).await;
 
 	// this way the only peer address is in the peer itself, so we don't keep it alive after the connection ends.
 	//
@@ -231,7 +231,7 @@ async fn pubsub_rt()
 
 		debug!( "start mailbox for provider_to_relay" );
 
-		let (mut to_relay, _)  = peer_connect( ab, exec, "provider_to_relay" );
+		let (mut to_relay, _)  = peer_connect( ab, exec, "provider_to_relay" ).await;
 
 		// Call the service and receive the response
 		//

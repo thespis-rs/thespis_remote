@@ -64,7 +64,7 @@ async fn timeout()
 
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "peera" );
+		let (_, _, handle) = peer_listen( server, Arc::new( sm ), AsyncStd, "peera" ).await;
 
 		handle.await;
 
@@ -74,11 +74,11 @@ async fn timeout()
 
 	let peerb = async move
 	{
-		let name: Arc<str> = "timeout client".into();
+		let name = "timeout client";
 
 		// Create mailbox for peer
 		//
-		let (mut peera, peer_mb) = Addr::builder().name( name.clone() ).build();
+		let (mut peera, peer_mb) = Addr::builder().name( name ).build();
 
 		// create peer with stream/sink + service map
 		//
@@ -101,7 +101,7 @@ async fn timeout()
 
 		let resp = remote_addr.call( Add(1) ).await;
 
-		assert_matches!( resp, Err( PeerErr::Timeout{..} ) );
+		crate::assert_matches!( resp, Err( PeerErr::Timeout{..} ) );
 		assert_eq!     ( COUNTER.load( Ordering::SeqCst ), 0 );
 
 		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );

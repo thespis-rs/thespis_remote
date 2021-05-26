@@ -33,7 +33,7 @@ async fn close_connection()
 	{
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
+		let (_, _, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" ).await;
 
 		handle.await;
 	};
@@ -41,7 +41,7 @@ async fn close_connection()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" ).await;
 
 		// Close the connection and check the event
 		//
@@ -74,7 +74,7 @@ async fn close_connection_call()
 	{
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
+		let (_, _, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" ).await;
 
 		handle.await;
 	};
@@ -82,7 +82,7 @@ async fn close_connection_call()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" ).await;
 
 		// Close the connection and check the event
 		//
@@ -118,7 +118,7 @@ async fn header_unknown_service_error()
 	{
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" ).await;
 
 		let sid = Some( ServiceID::from(1) );
 
@@ -138,7 +138,7 @@ async fn header_unknown_service_error()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -188,7 +188,7 @@ async fn call_deserialize()
 	{
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" ).await;
 
 
 		match evts.next().await.unwrap()
@@ -207,7 +207,7 @@ async fn call_deserialize()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts)  = peer_connect( client, AsyncStd, "nodeb_to_nodea" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//
@@ -267,7 +267,7 @@ async fn sm_deserialize_error()
 	{
 		// get a framed connection
 		//
-		let (_, mut evts, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" );
+		let (_, mut evts, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "nodea" ).await;
 
 		match evts.next().await.unwrap()
 		{
@@ -285,7 +285,7 @@ async fn sm_deserialize_error()
 
 	let nodeb = async move
 	{
-		let (mut peera, mut peera_evts) = peer_connect( client, AsyncStd, "nodeb_to_nodea" );
+		let (mut peera, mut peera_evts) = peer_connect( client, AsyncStd, "nodeb_to_nodea" ).await;
 
 		// Create some random data that shouldn't deserialize
 		//

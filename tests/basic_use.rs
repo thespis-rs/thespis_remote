@@ -25,7 +25,7 @@ async fn basic_remote()
 	{
 		// get a framed connection
 		//
-		let (_, _, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "peera" );
+		let (_, _, handle) = peer_listen( server, Arc::new( add_show_sum() ), AsyncStd, "peera" ).await;
 
 		handle.await;
 
@@ -35,7 +35,7 @@ async fn basic_remote()
 
 	let peerb = async move
 	{
-		let (mut peera, _)  = peer_connect( client, AsyncStd, "peer_b_to_peera" );
+		let (mut peera, _)  = peer_connect( client, AsyncStd, "peer_b_to_peera" ).await;
 
 		// Call the service and receive the response
 		//
@@ -191,7 +191,7 @@ async fn call_after_close_connection()
 
 	let nodeb = async move
 	{
-		let (peera, mut peera_evts) = peer_connect( client, AsyncStd, "nodeb_to_node_a" );
+		let (peera, mut peera_evts) = peer_connect( client, AsyncStd, "nodeb_to_node_a" ).await;
 
 		// Call the service and receive the response
 		//

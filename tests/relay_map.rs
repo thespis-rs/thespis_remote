@@ -21,8 +21,8 @@ async fn relay_once_load_balance()
 
 	let (bc, cb) = Endpoint::pair( 64, 64 );
 
-	let (provider_cx , provider_handle ) = provider( Some( "provider1".into() ), AsyncStd );
-	let (provider_cx2, provider_handle2) = provider( Some( "provider1".into() ), AsyncStd );
+	let (provider_cx , provider_handle ) = provider( Some( "provider1".into() ), AsyncStd ).await;
+	let (provider_cx2, provider_handle2) = provider( Some( "provider1".into() ), AsyncStd ).await;
 
 
 	// --------------------------------------
@@ -31,7 +31,7 @@ async fn relay_once_load_balance()
 	{
 		debug!( "start mailbox for consumer_to_relay" );
 
-		let (mut to_relay, _)  = peer_connect( cb, AsyncStd, "consumer_to_relay" );
+		let (mut to_relay, _)  = peer_connect( cb, AsyncStd, "consumer_to_relay" ).await;
 
 		// Call the service and receive the response
 		//
