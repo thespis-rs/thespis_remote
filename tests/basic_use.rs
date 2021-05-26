@@ -80,9 +80,9 @@ impl Handler< Show > for Parallel
 
 service_map!
 (
-	namespace  : parallel    ;
-	wire_format: ThesWF ;
-	services   : Show        ;
+	namespace  : parallel ;
+	wire_format: ThesWF   ;
+	services   : Show     ;
 );
 
 

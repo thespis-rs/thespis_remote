@@ -108,14 +108,14 @@ use
 
 	$crate::external_deps::
 	{
-		once_cell       :: { sync::Lazy                                   } ,
-		futures         :: { future::FutureExt, task::{ Context, Poll }, SinkExt   } ,
-		thespis         :: { *                                            } ,
-		thespis_impl    :: { Addr, Receiver, ThesErr, ThesRes             } ,
-		serde_cbor      :: { self, from_slice as des                      } ,
-		serde           :: { Serialize, Deserialize, de::DeserializeOwned } ,
-		log             :: { error                                        } ,
-		parking_lot     :: { Mutex                                        } ,
+		once_cell       :: { sync::Lazy                                          } ,
+		futures         :: { future::FutureExt, task::{ Context, Poll }, SinkExt } ,
+		thespis         :: { *                                                   } ,
+		thespis_impl    :: { Addr, ThesErr, ThesRes                              } ,
+		serde_cbor      :: { self, from_slice as des                             } ,
+		serde           :: { Serialize, Deserialize, de::DeserializeOwned        } ,
+		log             :: { error                                               } ,
+		parking_lot     :: { Mutex                                               } ,
 		paste,
 	},
 };
@@ -229,7 +229,7 @@ impl fmt::Debug for Services
 
 				// This expect shouldn't ever fail. We manually make the receiver in this file.
 				//
-				let handler: &Receiver<$services> = h.downcast_ref().expect( "downcast receiver in Debug for Services" );
+				let handler: &BoxAddress<$services, ThesErr> = h.downcast_ref().expect( "downcast receiver in Debug for Services" );
 
 				match handler.name()
 				{
@@ -272,9 +272,9 @@ impl Clone for Services
 						// This should never fail, we make this type in this file.
 						//
 						let v = v.lock();
-						let h: &Receiver<$services> = v.downcast_ref().expect( "downcast receiver in Clone" );
+						let h: &BoxAddress<$services, ThesErr> = v.downcast_ref().expect( "downcast receiver in Clone" );
 
-						handlers.insert( *k, Mutex::new( Box::new( h.clone() ) ) );
+						handlers.insert( *k, Mutex::new( Box::new(h.clone_box()) ) );
 					},
 				)+
 
@@ -323,7 +323,7 @@ impl Services
 		where  S                    : Service,
 		      <S as Message>::Return: Serialize + DeserializeOwned,
 	{
-		self.handlers.insert( <S as Service>::sid(), Mutex::new(Box::new( Receiver::new(handler) )) );
+		self.handlers.insert( <S as Service>::sid(), Mutex::new(Box::new( handler )) );
 	}
 
 
@@ -355,7 +355,7 @@ impl Services
 
 		// Downcast the receiver, should never fail as we make it in this file.
 		//
-		let backup: &Receiver<S> = receiver.downcast_ref()
+		let backup: &BoxAddress<S, ThesErr> = receiver.downcast_ref()
 
 			.expect( "downcast receiver in call_service_gen" );
 
@@ -452,7 +452,7 @@ impl ServiceMap<$wf> for Services
 				{
 					// This should always succeed, receiver is made in this very file.
 					//
-					let rec: &Receiver<$services> = receiver.downcast_ref()
+					let rec: &BoxAddress<$services, ThesErr> = receiver.downcast_ref()
 
 						.expect( "downcast receiver in send_service" );
 
