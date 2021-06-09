@@ -53,6 +53,7 @@ version = "^0.5"
 
 [dependencies.rand]
 default-features = false
+features = ["std_rng", "std"]
 version = "^0.8"
 
 [dependencies.serde]
@@ -148,6 +149,7 @@ license = "Unlicense"
 name = "thespis_remote"
 readme = "README.md"
 repository = "https://github.com/thespis-rs/thespis_remote"
+resolver = "2"
 version = "0.1.0"
 
 [package.metadata]

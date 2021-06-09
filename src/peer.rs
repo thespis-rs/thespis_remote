@@ -245,12 +245,12 @@ impl Peer<ThesWF>
 	//
 	pub fn from_async_read
 	(
-		addr        : Addr<Self>                                                                  ,
-		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static                  ,
-		max_size    : usize                                                                       ,
-		exec        : impl PeerExec<ThesWF> ,
-		bp          : Option<Arc<BackPressure>>                                                   ,
-		grace_period: Option<Duration>                                                            ,
+		addr        : Addr<Self>                                                 ,
+		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static ,
+		max_size    : usize                                                      ,
+		exec        : impl PeerExec<ThesWF>                                      ,
+		bp          : Option<Arc<BackPressure>>                                  ,
+		grace_period: Option<Duration>                                           ,
 	)
 
 		-> Result< Self, PeerErr >
