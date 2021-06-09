@@ -92,8 +92,7 @@ async fn timeout()
 
 		debug!( "start mailbox for [{}] in peerb", name );
 
-		peer_mb.spawn( peer, &AsyncStd ).expect( "start mailbox of Peer" );
-
+		AsyncStd.spawn( peer_mb.start(peer).map(|_|()) ).expect( "Start mailbox of Peer" );
 
 		// Call the service and receive the response
 		//

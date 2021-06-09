@@ -98,11 +98,10 @@ async fn pubsub()
 
 		peer_a.register_services( Arc::new( pubsub ) );
 
-		let  peer_a_handle = peer_mb_a.start_handle( peer_a, &exec ).expect( "spawn mb" );
-		let _peer_c_handle = peer_mb_c.start_handle( peer_c, &exec ).expect( "spawn mb" );
-		let _peer_d_handle = peer_mb_d.start_handle( peer_d, &exec ).expect( "spawn mb" );
-		let _peer_e_handle = peer_mb_e.start_handle( peer_e, &exec ).expect( "spawn mb" );
-
+		let  peer_a_handle = AsyncStd.spawn_handle( peer_mb_a.start(peer_a) ).expect( "Start mb" );
+		let _peer_c_handle = AsyncStd.spawn_handle( peer_mb_c.start(peer_c) ).expect( "Start mb" );
+		let _peer_d_handle = AsyncStd.spawn_handle( peer_mb_d.start(peer_d) ).expect( "Start mb" );
+		let _peer_e_handle = AsyncStd.spawn_handle( peer_mb_e.start(peer_e) ).expect( "Start mb" );
 
 		peer_a_handle.await;
 
@@ -294,11 +293,12 @@ async fn pubsub_rt()
 
 		peer_a.register_services( Arc::new( pubsub ) );
 
-		let  peer_a_handle = peer_mb_a.start_handle( peer_a, &exec ).expect( "spawn mb" );
-		let _peer_c_handle = peer_mb_c.start_handle( peer_c, &exec ).expect( "spawn mb" );
-		let _peer_d_handle = peer_mb_d.start_handle( peer_d, &exec ).expect( "spawn mb" );
-		let _peer_e_handle = peer_mb_e.start_handle( peer_e, &exec ).expect( "spawn mb" );
 
+
+		let  peer_a_handle = AsyncStd.spawn_handle( peer_mb_a.start(peer_a) ).expect( "Start mb" );
+		let _peer_c_handle = AsyncStd.spawn_handle( peer_mb_c.start(peer_c) ).expect( "Start mb" );
+		let _peer_d_handle = AsyncStd.spawn_handle( peer_mb_d.start(peer_d) ).expect( "Start mb" );
+		let _peer_e_handle = AsyncStd.spawn_handle( peer_mb_e.start(peer_e) ).expect( "Start mb" );
 
 			let peer_addr_c2 = peer_addr_c.clone_box();
 			subscriber.send( peer_addr_c2 ).await.expect( "send on channel" );
