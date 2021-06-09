@@ -800,7 +800,7 @@ impl<S> Sink<S> for RemoteAddr
 			{
 				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid(), None, "Send on RemoteAddr".to_string() );
 
-				PeerErr::ThesErr{ ctx, source }
+				PeerErr::ThesErr{ ctx, source: Arc::new(source) }
 			})
 	}
 
@@ -813,7 +813,7 @@ impl<S> Sink<S> for RemoteAddr
 			{
 				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid(), None, "Send on RemoteAddr".to_string() );
 
-				PeerErr::ThesErr{ ctx, source }
+				PeerErr::ThesErr{ ctx, source: Arc::new(source) }
 			})
 	}
 
@@ -826,7 +826,7 @@ impl<S> Sink<S> for RemoteAddr
 			{
 				let ctx = Peer::err_ctx( &self.peer, <S as Service>::sid(), None, "Send on RemoteAddr".to_string() );
 
-				PeerErr::ThesErr{ ctx, source }
+				PeerErr::ThesErr{ ctx, source: Arc::new(source) }
 			})
 	}
 

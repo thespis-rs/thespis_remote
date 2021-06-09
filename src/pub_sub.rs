@@ -2,8 +2,8 @@ use crate::{ *, import::* };
 
 type Subscriber<Wf> = Box<dyn Address<Wf, Error=ThesErr>>;
 
-/// PubSub allows a publish-subscribe workflow using for relayed messages.
-/// That is you can relay messages to several connected peers.
+/// PubSub allows a publish-subscribe workflow for relayed messages.
+/// You can relay messages to several connected peers.
 ///
 /// This only works for `Sink::send`, not for `Address::call` as we can't
 /// decide which subscriber would formulate the response and we could only
@@ -75,7 +75,7 @@ impl<Wf: WireFormat> PubSub<Wf>
 	//
 	pub fn rt_subscribe( &mut self, exec: &impl SpawnHandle<()> )
 
-		-> Result< futUnboundSender< Subscriber<Wf> >, ThesErr >
+		-> Result< futUnboundSender< Subscriber<Wf> >, PeerErr >
 	{
 		assert!( self.rt_sub.is_none(), "Can only call rt_subscribe once. Clone the Sender if you need it in several places." );
 
@@ -95,7 +95,7 @@ impl<Wf: WireFormat> PubSub<Wf>
 		self.rt_sub = Some
 		(
 			exec.spawn_handle(task)
-			.map_err( |_| ThesErr::Spawn{ actor: "PubSub".to_string() } )?
+			.map_err( |_| PeerErr::Spawn{ ctx: PeerErrCtx::default().context( "PubSub".to_string() ) } )?
 		);
 
 		Ok(tx)
@@ -109,7 +109,7 @@ impl<Wf: WireFormat> PubSub<Wf>
 	//
 	pub fn rt_unsubscribe( &mut self, exec: &impl SpawnHandle<()> )
 
-		-> Result< futUnboundSender< usize >, ThesErr >
+		-> Result< futUnboundSender< usize >, PeerErr >
 	{
 		assert!( self.rt_unsub.is_none(), "Can only call rt_subscribe once. Clone the Sender if you need it in several places." );
 
@@ -129,7 +129,7 @@ impl<Wf: WireFormat> PubSub<Wf>
 		self.rt_unsub = Some
 		(
 			exec.spawn_handle(task)
-			.map_err( |_| ThesErr::Spawn{ actor: "PubSub".to_string() } )?
+			.map_err( |_| PeerErr::Spawn{ ctx: PeerErrCtx::default().context( "PubSub".to_string() ) } )?
 		);
 
 		Ok(tx)

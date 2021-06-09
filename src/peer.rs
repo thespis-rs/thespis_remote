@@ -470,7 +470,7 @@ impl<Wf: WireFormat> Peer<Wf>
 					Response::CallResponse(x) => addr.send( x ).await ,
 				}
 
-				Err(err) => addr.send( RequestError::from( err.clone() ) ).await
+				Err(err) => addr.send( RequestError::from( err ) ).await
 			};
 
 			// As we hold an address, the only way the mailbox can already be shut

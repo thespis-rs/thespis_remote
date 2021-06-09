@@ -102,8 +102,8 @@ pub enum PeerErr
 	//
 	ThesErr
 	{
-		ctx   : PeerErrCtx ,
-		source: ThesErr    ,
+		ctx   : PeerErrCtx   ,
+		source: Arc<ThesErr> , // it does not implement clone.
 	},
 
 	/// An operation timed out. Currently used for outgoing calls.
