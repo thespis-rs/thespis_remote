@@ -96,9 +96,9 @@ async fn backpressure_basic()
 	{
 		// Create mailbox for our handler
 		//
-		let slow  = Addr::builder().start( Slow , &AsyncStd ).expect( "spawn actor mailbox" );
-		let slow2 = Addr::builder().start( Slow , &AsyncStd ).expect( "spawn actor mailbox" );
-		let after = Addr::builder().start( After, &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow  = Addr::builder().spawn( Slow , &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow2 = Addr::builder().spawn( Slow , &AsyncStd ).expect( "spawn actor mailbox" );
+		let after = Addr::builder().spawn( After, &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//

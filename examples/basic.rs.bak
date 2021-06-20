@@ -84,7 +84,7 @@ async fn main() -> Result<(), DynError >
 
 	// Create mailbox for our handler
 	//
-	let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
+	let addr_handler = Addr::builder().spawn( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 	// Create a service map
 	//
@@ -95,7 +95,7 @@ async fn main() -> Result<(), DynError >
 	sm.register_handler::<Add >( addr_handler.clone_box() );
 	sm.register_handler::<Show>( addr_handler.clone_box() );
 
-	let addr_sm = Addr::builder().start( sm, &AsyncStd )?;
+	let addr_sm = Addr::builder().spawn( sm, &AsyncStd )?;
 
 
 	// Create mailbox for peer

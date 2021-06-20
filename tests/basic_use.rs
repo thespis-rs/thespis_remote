@@ -116,7 +116,7 @@ async fn parallel()
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Parallel{ sum: Box::new( addr ) }, &AsyncStd ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().spawn( Parallel{ sum: Box::new( addr ) }, &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// register Sum with peer as handler for Add and Show
 		//
@@ -141,7 +141,7 @@ async fn parallel()
 
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().start( Sum(19), &AsyncStd ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder().spawn( Sum(19), &AsyncStd ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show

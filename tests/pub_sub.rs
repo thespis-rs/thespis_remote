@@ -140,7 +140,7 @@ async fn consumer( name: &str, endpoint: Endpoint, expect: i64, exec: tracing_fu
 	// Create mailbox for our handler
 	//
 	debug!( "start mailbox for handler on {}", name );
-	let mut addr_handler = Addr::builder().start( Sum(0), &exec ).expect( "spawn actor mailbox" );
+	let mut addr_handler = Addr::builder().spawn( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
 
 	// register Sum with peer as handler for Add and Show

@@ -12,7 +12,7 @@ async fn main()
 	// Create mailbox for our handler
 	//
 	debug!( "start mailbox for handler" );
-	let addr_handler = Addr::builder().start( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
+	let addr_handler = Addr::builder().spawn( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 	// Get a TCP connection.
 	//
