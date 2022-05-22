@@ -2,9 +2,9 @@ use crate :: { import::*, * };
 
 
 
-/// Convenience trait specifying that some address can deliver both ThesWF and peer::Call messages.
+/// Convenience trait specifying that some address can deliver both the wire format and peer::Call messages.
 //
-pub trait Relay<Wf = ThesWF>
+pub trait Relay<Wf>
 
 	where Wf  : WireFormat,
 	      Self: Address<Wf, Error=ThesErr> + Address<Call<Wf>, Error=ThesErr> + Send,
@@ -17,7 +17,7 @@ impl<T, Wf> Relay<Wf> for T
 {}
 
 
-pub type RelayClosure<Wf = ThesWF> = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay<Wf>> + Send>;
+pub type RelayClosure<Wf> = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay<Wf>> + Send>;
 
 
 /// A wrapper type to be able to pass both an BoxAddress or a closure to RelayMap.
@@ -35,7 +35,7 @@ pub type RelayClosure<Wf = ThesWF> = Box< dyn Fn( &ServiceID ) -> Box<dyn Relay<
 ///       an elegant solution. I don't consider it a priority because for local actors it's possible to
 ///       implement load balancing by having a proxy actor be the handler and letting that dispatch.
 //
-pub enum ServiceHandler<Wf = ThesWF>
+pub enum ServiceHandler<Wf>
 {
 	/// A Box<dyn Address<Relay>>
 	//

@@ -11,7 +11,7 @@ pub mod import
 		futures_ringbuf :: { Endpoint                          } ,
 		thespis         :: { *                                 } ,
 		thespis_impl    :: { *                                 } ,
-		thespis_remote  :: { *, service_map, peer              } ,
+		thespis_remote  :: { * } ,
 		log             :: { *                                 } ,
 		pharos          :: { Observable, ObserveConfig, Events } ,
 
@@ -37,9 +37,8 @@ pub mod import
 			executor:: { block_on, LocalPool, ThreadPool                                         } ,
 		},
 
-		pretty_assertions :: { assert_eq, assert_ne } ,
-		assert_matches    :: { assert_matches       } ,
-		tokio             :: { sync::mpsc           } ,
+		pretty_assertions   :: { assert_eq, assert_ne } ,
+		tokio               :: { sync::mpsc           } ,
 	};
 }
 
@@ -80,13 +79,12 @@ pub async fn peer_listen
 {
 	// Create mailbox for peer
 	//
-	let (peer_addr, peer_mb) = Addr::builder().name( name.into() ).build();
+	let (peer_addr, peer_mb) = Addr::builder().name( name ).build();
 
 	// create peer
 	//
-	let delay = Some( Duration::from_millis(10) );
-	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, Arc::new( exec.clone() ), None, delay ).expect( "spawn peer" );
-
+	let     delay = Some( Duration::from_millis(10) );
+	let mut  peer = ThesWF::create_peer( peer_addr.clone(), socket, 1024, 1024, Arc::new( exec.clone() ), None, delay ).expect( "spawn peer" );
 	let peer_evts = peer.observe( ObserveConfig::default() ).await.expect( "pharos not closed" );
 
 	// register service map with peer
@@ -112,14 +110,14 @@ pub async fn peer_connect
 {
 	// Create mailbox for peer
 	//
-	let (peer_addr, peer_mb) = Addr::builder().name( name.into() ).build();
+	let (peer_addr, peer_mb) = Addr::builder().name( name ).build();
 
 
 	// create peer with stream/sink + service map
 	//
 	let delay = Some( Duration::from_millis(10) );
 
-	let mut peer = Peer::from_async_read( peer_addr.clone(), socket, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
+	let mut peer = ThesWF::create_peer( peer_addr.clone(), socket, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).await.expect( "pharos not closed" );
 
@@ -192,18 +190,18 @@ pub async fn relay
 	{
 		// Create mailbox for peer
 		//
-		let (peer_addr, peer_mb) = Addr::builder().name( "relay_to_consumer".into() ).build();
+		let (peer_addr, peer_mb) = Addr::builder().name( "relay_to_consumer" ).build();
 
 		// create peer with stream/sink + service map
 		//
 		let delay = Some( Duration::from_millis(10) );
 
-		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1, None, delay ).expect( "spawn peer" );
+		let mut peer = ThesWF::create_peer( peer_addr, listen, 1024, 1024, ex1, None, delay ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
 
-		let handler: Box<dyn Relay> = Box::new( provider_addr2 );
+		let handler: Box<dyn Relay<ThesWF>> = Box::new( provider_addr2 );
 
 		let mut relayed = vec![ add ];
 
@@ -271,19 +269,19 @@ pub async fn relay_closure
 	{
 		// Create mailbox for peer
 		//
-		let (peer_addr, peer_mb) = Addr::builder().name( "relay_to_consumer".into() ).build();
+		let (peer_addr, peer_mb) = Addr::builder().name( "relay_to_consumer" ).build();
 
 		// create peer with stream/sink + service map
 		//
 		let delay = Some( Duration::from_millis(10) );
 
-		let mut peer = Peer::from_async_read( peer_addr, listen, 1024, ex1, None, delay ).expect( "spawn peer" );
+		let mut peer = ThesWF::create_peer( peer_addr, listen, 1024, 1024, ex1, None, delay ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
 
 
-		let handler = Box::new( move |_: &ServiceID| -> Box<dyn Relay>
+		let handler = Box::new( move |_: &ServiceID| -> Box<dyn Relay<ThesWF>>
 		{
 			static IDX: AtomicUsize = AtomicUsize::new( 0 );
 
@@ -330,7 +328,6 @@ pub async fn relay_closure
 		addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to provider" );
 	}
 }
-
 
 
 

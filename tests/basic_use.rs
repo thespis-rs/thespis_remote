@@ -104,11 +104,11 @@ async fn parallel()
 	{
 		// Create mailbox for peer
 		//
-		let (peer_addr, peer_mb) = Addr::builder().name( "peer_a".into() ).build();
+		let (peer_addr, peer_mb) = Addr::builder().name( "peer_a" ).build();
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr.clone(), server, 1024, AsyncStd, None, None ).expect( "spawn peer" );
+		let mut peer = ThesWF::create_peer( peer_addr.clone(), server, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -133,11 +133,11 @@ async fn parallel()
 	{
 		// Create mailbox for peer
 		//
-		let (mut peer_addr, peer_mb) = Addr::builder().name( "peer_b".into() ).build();
+		let (mut peer_addr, peer_mb) = Addr::builder().name( "peer_b" ).build();
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read( peer_addr.clone(), client, 1024, AsyncStd, None, None ).expect( "spawn peer" );
+		let mut peer = ThesWF::create_peer( peer_addr.clone(), client, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//

@@ -1,4 +1,4 @@
-use crate::{ *, import::*, peer::Response } ;
+use crate::{ import::*, PeerErr, PeerErrCtx, ServiceID, ThesWF, peer::Response } ;
 
 
 /// This interface is what the Peer type uses to deliver messages. An implementation is provided

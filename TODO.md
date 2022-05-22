@@ -1,5 +1,7 @@
 # thespis_remote TODO
 
+- user story: Imagine a frontend with several tabs openend from the same logged in user. Can we associate easily different connections to the same user so pages can dynamically update when a change to data is made in another tab?
+
 - test grace_period
 
 - can incoming messages provide unfair competition for Peer mailbox which will prevent outgoing? eg. can it continuously fill the mailbox preventing outgoing messages from getting out? With default back pressure?

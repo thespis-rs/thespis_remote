@@ -20,24 +20,23 @@
 )]
 
 
+    mod cbor_wf           ;
 pub mod peer              ;
     mod relay_map         ;
     mod pub_sub           ;
     mod service_handler   ;
     mod service_map       ;
     mod service_map_macro ;
-pub mod thes_wf           ;
 pub mod wire_format       ;
 
 pub use
 {
-	thes_wf           :: * ,
+	cbor_wf           :: * ,
 	peer              :: * ,
 	pub_sub           :: * ,
 	relay_map         :: * ,
 	service_handler   :: * ,
 	service_map       :: * ,
-	service_map_macro :: * ,
 	wire_format       :: * ,
 };
 
@@ -71,6 +70,7 @@ mod import
 	{
 		async_executors :: { SpawnHandle, SpawnHandleExt, JoinHandle             } ,
 		async_nursery   :: { NurseExt, Nursery, NurseryStream                    } ,
+		byteorder       :: { ReadBytesExt, WriteBytesExt, LittleEndian           } ,
 		futures_timer   :: { Delay                                               } ,
 		log             :: { *                                                   } ,
 		once_cell       :: { sync::Lazy as SyncLazy                              } ,
@@ -104,14 +104,13 @@ mod import
 		futures ::
 		{
 			channel :: { oneshot, mpsc::{ self, UnboundedSender as futUnboundSender } } ,
-			future  :: { FutureExt         } ,
-			lock    :: { Mutex as FutMutex } ,
-			prelude :: { Stream, Sink      } ,
-			sink    :: { SinkExt           } ,
-			stream  :: { StreamExt, FuturesUnordered         } ,
-			io      :: { AsyncReadExt      } ,
-			AsyncRead  as FutAsyncRead  ,
-			AsyncWrite as FutAsyncWrite ,
+			future  :: { FutureExt                                                    } ,
+			lock    :: { Mutex as FutMutex                                            } ,
+			prelude :: { Stream, Sink                                                 } ,
+			sink    :: { SinkExt                                                      } ,
+			stream  :: { StreamExt, FuturesUnordered                                  } ,
+			AsyncRead, AsyncReadExt,
+			AsyncWrite,
 			pin_mut,
 		},
 	};

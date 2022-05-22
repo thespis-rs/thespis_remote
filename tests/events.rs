@@ -222,7 +222,7 @@ async fn call_deserialize()
 
 		wf.set_sid( sid );
 		wf.set_cid( cid );
-		wf.write( &cod ).expect( "write to wf" );
+		wf.write_all( &cod ).expect( "write to wf" );
 		serde_cbor::to_writer( &mut wf, &Add(5) ).unwrap();
 
 		peera.call( wf ).await.expect( "send ms to peera" ).expect( "no network error" );
@@ -231,8 +231,8 @@ async fn call_deserialize()
 		(
 			PeerEvent::RemoteError(ConnectionError::Deserialize
 			{
-				sid: <Add as remotes::Service>::sid().clone().into() ,
-				cid: ConnID::from( cid ).into()                      ,
+				sid: <Add as remotes::Service>::sid().into() ,
+				cid: cid.into()                      ,
 			}),
 
 			peera_evts.next().await.unwrap()
@@ -296,7 +296,7 @@ async fn sm_deserialize_error()
 		let mut wf = ThesWF::with_capacity( 2 );
 		wf.set_sid( sid );
 		wf.set_cid( cid );
-		wf.write( &[3,3] ).unwrap();
+		wf.write_all( &[3,3] ).unwrap();
 
 		peera.call( wf ).await.expect( "call peera" ).expect( "call peera" );
 
@@ -304,8 +304,8 @@ async fn sm_deserialize_error()
 		(
 			PeerEvent::RemoteError(ConnectionError::Deserialize
 			{
-				sid: <Add as remotes::Service>::sid().clone().into() ,
-				cid: cid.into()                                      ,
+				sid: <Add as remotes::Service>::sid().into() ,
+				cid: cid.into()                              ,
 			}),
 
 			peera_evts.next().await.unwrap()

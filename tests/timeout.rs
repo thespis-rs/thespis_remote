@@ -82,7 +82,7 @@ async fn timeout()
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = Peer::from_async_read( peera.clone(), client, 1024, AsyncStd, None, None ).expect( "spawn peer" );
+		let mut peer = ThesWF::create_peer( peera.clone(), client, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 
 		// This is the relevant line for this test!
@@ -100,8 +100,8 @@ async fn timeout()
 
 		let resp = remote_addr.call( Add(1) ).await;
 
-		crate::assert_matches!( resp, Err( PeerErr::Timeout{..} ) );
-		assert_eq!     ( COUNTER.load( Ordering::SeqCst ), 0 );
+		assert!(matches!( resp, Err(PeerErr::Timeout{..}) ));
+		assert_eq!( COUNTER.load( Ordering::SeqCst ), 0 );
 
 		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
 	};

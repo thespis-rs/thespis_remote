@@ -100,14 +100,13 @@ impl ServiceID
 }
 
 
-
-/// Internally is also represented as u64, so you just get a copy.
+/// Internally is also represented as Bytes, so you just get a copy.
 //
-impl Into< u64 > for ServiceID
+impl From< ServiceID > for u64
 {
-	fn into( self ) -> u64
+	fn from( sid: ServiceID ) -> u64
 	{
-		self.inner.into()
+		sid.inner.into()
 	}
 }
 

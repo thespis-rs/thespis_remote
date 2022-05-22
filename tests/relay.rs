@@ -184,10 +184,10 @@ async fn relay_unknown_service()
 
 		// Create some random data that shouldn't deserialize
 		//
-		let sid  = ServiceID::from( 1 );
+		let     sid1 = ServiceID::from( 1 );
+		let mut wf   = ThesWF::with_capacity( std::mem::size_of::<Add>() );
 
-		let mut wf = ThesWF::with_capacity( std::mem::size_of::<Add>() );
-		wf.set_sid( sid );
+		wf.set_sid( sid1 );
 		serde_cbor::to_writer( &mut wf, &Add(5) ).unwrap();
 
 		let call = Call::new( wf );
@@ -201,7 +201,7 @@ async fn relay_unknown_service()
 		assert!(matches!
 		(
 			rx.await.expect( "return error, don't drop connection" ).unwrap_err(),
-			ConnectionError::UnknownService{ sid, .. } if sid == sid.into()
+			ConnectionError::UnknownService{ sid, .. } if sid == sid1.into()
 		));
 
 

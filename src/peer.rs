@@ -223,47 +223,7 @@ impl<T, Wf: WireFormat> PeerExec<Wf> for T
 {}
 
 
-impl Peer<ThesWF>
-{
-	/// Create a Peer directly from an asynchronous stream. This is a convenience wrapper around Peer::new so
-	/// you don't have to bother with framing the connection.
-	///
-	/// *addr*: This peers own address.
-	///
-	/// *socket*: The async stream to frame.
-	///
-	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
-	/// stream if it exceeds this size. Also used for encoding outgoing messages.
-	/// **Set the same max_size in the remote!**.
-	///
-	/// *grace_period*: When the remote closes the connection, we could immediately drop all outstanding tasks related to
-	/// this peer. This makes sense for a request-response type connection, as it doesn't make sense to
-	/// continue using resources processing requests for which we can no longer send the response. However
-	/// it is not always desirable. For one way information flow, we might want to finish processing all the
-	/// outstanding packets before closing down. This also applies when you send a `CloseConnection` message to
-	/// this peer locally.
-	//
-	pub fn from_async_read
-	(
-		addr        : Addr<Self>                                                 ,
-		socket      : impl FutAsyncRead + FutAsyncWrite + Unpin + Send + 'static ,
-		max_size    : usize                                                      ,
-		exec        : impl PeerExec<ThesWF>                                      ,
-		bp          : Option<Arc<BackPressure>>                                  ,
-		grace_period: Option<Duration>                                           ,
-	)
 
-		-> Result< Self, PeerErr >
-
-	{
-		let (reader, writer) = socket.split();
-
-		let stream = thes_wf::Decoder::new( reader, max_size );
-		let sink   = thes_wf::Encoder::new( writer, max_size );
-
-		Peer::new( addr, stream, sink, Arc::new(exec), bp, grace_period )
-	}
-}
 
 
 
@@ -405,8 +365,12 @@ impl<Wf: WireFormat> Peer<Wf>
 
 			.map_err( |_| -> PeerErr
 			{
-				let mut ctx = PeerErrCtx::default();
-				ctx.context = "Incoming stream for peer".to_string().into();
+				let ctx = PeerErrCtx
+				{
+					context: "Incoming stream for peer".to_string().into(),
+					..Default::default()
+				};
+
 				PeerErr::Spawn{ ctx }
 			})?
 		;
@@ -553,7 +517,7 @@ impl<Wf: WireFormat> Peer<Wf>
 
 			debug_assert!
 			(
-				!self.services.contains_key( &sid ),
+				!self.services.contains_key( sid ),
 				"{}: Register Service: Can't register same service twice. sid: {}", self.identify(), &sid ,
 			);
 
@@ -624,7 +588,7 @@ impl<Wf: WireFormat> Peer<Wf>
 
 		// sid null is the marker that this is an error message.
 		//
-		let msg = Self::prep_error( cid, &err );
+		let msg = Self::prep_error( cid, err );
 
 
 		// We are already trying to report an error. If we can't send, just give up.
@@ -715,3 +679,5 @@ impl<Wf: WireFormat> Drop for Peer<Wf>
 		trace!( "Drop {}", self.identify() );
 	}
 }
+
+

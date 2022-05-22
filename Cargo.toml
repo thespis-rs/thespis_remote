@@ -10,6 +10,9 @@ repository = "thespis-rs/thespis_remote"
 harness = false
 name = "ring"
 
+[build-dependencies]
+rustc_version = "^0.4"
+
 [dependencies]
 async_nursery = "^0.3"
 byteorder = "^1"
@@ -45,11 +48,20 @@ optional = true
 package = "futures_codec"
 version = "^0.4"
 
+[dependencies.futures_ringbuf]
+features = ["sketchy"]
+optional = true
+version = "^0.3"
+
 [dependencies.parking_lot]
 version = "^0.11"
 
 [dependencies.pharos]
 version = "^0.5"
+
+[dependencies.pretty_assertions]
+optional = true
+version = "^0.7"
 
 [dependencies.rand]
 default-features = false
@@ -68,7 +80,8 @@ version = "^0.11"
 version = "^0.11"
 
 [dependencies.thespis]
-version = "0.1.0-alpha"
+path = "../thespis"
+version = "^0.1"
 
 [dependencies.thespis_impl]
 path = "../thespis_impl"
@@ -81,7 +94,6 @@ version = "^0.6"
 version = "^1"
 
 [dev-dependencies]
-assert_matches = "^1"
 async_progress = "^0.1"
 criterion = "^0.3"
 futures-test = "^0.3"
@@ -131,8 +143,8 @@ version = "^0.2"
 
 [features]
 default = []
-external_doc = []
 wasm = ["futures-timer/wasm-bindgen"]
+wf_test = ["futures_ringbuf", "pretty_assertions"]
 
 [lib]
 bench = false

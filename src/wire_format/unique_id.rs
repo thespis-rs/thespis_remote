@@ -82,11 +82,11 @@ impl UniqueID
 
 /// Internally is also represented as Bytes, so you just get a copy.
 //
-impl Into< u64 > for UniqueID
+impl From< UniqueID > for u64
 {
-	fn into( self ) -> u64
+	fn from( uid: UniqueID ) -> u64
 	{
-		self.id
+		uid.id
 	}
 }
 

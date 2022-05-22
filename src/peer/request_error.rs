@@ -167,7 +167,7 @@ impl<Wf: WireFormat> Handler<RequestError> for Peer<Wf>
 			// Especially we log the error above the match, so if there is other
 			// error types, we really need to add the variant to the match.
 			//
-			e => { unreachable!(e) }
+			e => { unreachable!( "{}", e ) }
 		}
 
 	}.boxed() }

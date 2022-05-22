@@ -14,7 +14,7 @@ type Subscriber<Wf> = Box<dyn Address<Wf, Error=ThesErr>>;
 /// Just like [`RelayMap`] this is a [`ServiceMap`] you can register with a [`Peer`].
 /// TODO
 //
-pub struct PubSub<Wf: 'static = ThesWF>
+pub struct PubSub<Wf: 'static>
 {
 	services   : Vec<ServiceID>,
 

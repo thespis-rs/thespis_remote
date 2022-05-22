@@ -11,6 +11,7 @@ use common::import::{ *, assert_eq };
 use tracing_futures::Instrument;
 
 
+
 // Test relaying messages
 //
 #[async_std::test]
@@ -74,21 +75,21 @@ async fn pubsub()
 
 		// Create mailbox for peer to consumer_c
 		//
-		let (peer_addr_a, peer_mb_a) = Addr::builder().name( "relay_to_provider".into() ).build();
+		let (peer_addr_a, peer_mb_a) = Addr::builder().name( "relay_to_provider" ).build();
 
-		let (mut peer_addr_c, peer_mb_c) = Addr::builder().name( "relay_to_consumer_c".into() ).build();
-		let (mut peer_addr_d, peer_mb_d) = Addr::builder().name( "relay_to_consumer_d".into() ).build();
-		let (mut peer_addr_e, peer_mb_e) = Addr::builder().name( "relay_to_consumer_e".into() ).build();
+		let (mut peer_addr_c, peer_mb_c) = Addr::builder().name( "relay_to_consumer_c" ).build();
+		let (mut peer_addr_d, peer_mb_d) = Addr::builder().name( "relay_to_consumer_d" ).build();
+		let (mut peer_addr_e, peer_mb_e) = Addr::builder().name( "relay_to_consumer_e" ).build();
 
 		let delay = Some( Duration::from_millis(10) );
 
 		// create peer with stream/sink
 		//
-		let peer_c = Peer::from_async_read( peer_addr_c.clone(), bc, 1024, exec.clone(), None, delay.clone() ).expect( "spawn peer_c" );
-		let peer_d = Peer::from_async_read( peer_addr_d.clone(), bd, 1024, exec.clone(), None, delay.clone() ).expect( "spawn peer_d" );
-		let peer_e = Peer::from_async_read( peer_addr_e.clone(), be, 1024, exec.clone(), None, delay.clone() ).expect( "spawn peer_e" );
+		let peer_c = ThesWF::create_peer( peer_addr_c.clone(), bc, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_c" );
+		let peer_d = ThesWF::create_peer( peer_addr_d.clone(), bd, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_d" );
+		let peer_e = ThesWF::create_peer( peer_addr_e.clone(), be, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_e" );
 
-		let mut peer_a = Peer::from_async_read( peer_addr_a, ba, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
+		let mut peer_a = ThesWF::create_peer( peer_addr_a, ba, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
 
 		let mut pubsub = PubSub::new( services );
 
@@ -131,7 +132,7 @@ async fn pubsub()
 	futs.push( AsyncStd.spawn_handle( relays     ).unwrap() );
 	futs.push( AsyncStd.spawn_handle( provider   ).unwrap() );
 
-	while let Some(_) = futs.next().await {}
+	while futs.next().await.is_some() {}
 }
 
 
@@ -214,7 +215,7 @@ async fn pubsub_rt()
 	let (bd, db) = Endpoint::pair( 64, 64 );
 	let (be, eb) = Endpoint::pair( 64, 64 );
 
-	let steps = async_progress::Progress::new( Step::Start );
+	let steps  = async_progress::Progress::new( Step::Start );
 	let steps2 = steps.clone();
 
 	let send1 = steps.once( Step::Send1 );
@@ -270,21 +271,21 @@ async fn pubsub_rt()
 
 		// Create mailbox for peer to consumer_c
 		//
-		let (peer_addr_a, peer_mb_a) = Addr::builder().name( "relay_to_provider".into() ).build();
+		let (peer_addr_a, peer_mb_a) = Addr::builder().name( "relay_to_provider" ).build();
 
-		let (mut peer_addr_c, peer_mb_c) = Addr::builder().name( "relay_to_consumer_c".into() ).build();
-		let (mut peer_addr_d, peer_mb_d) = Addr::builder().name( "relay_to_consumer_d".into() ).build();
-		let (mut peer_addr_e, peer_mb_e) = Addr::builder().name( "relay_to_consumer_e".into() ).build();
+		let (mut peer_addr_c, peer_mb_c) = Addr::builder().name( "relay_to_consumer_c" ).build();
+		let (mut peer_addr_d, peer_mb_d) = Addr::builder().name( "relay_to_consumer_d" ).build();
+		let (mut peer_addr_e, peer_mb_e) = Addr::builder().name( "relay_to_consumer_e" ).build();
 
 		let delay = Some( Duration::from_millis(10) );
 
 		// create peer with stream/sink
 		//
-		let peer_c = Peer::from_async_read( peer_addr_c.clone(), bc, 1024, exec.clone(), None, delay.clone() ).expect( "spawn peer_c" );
-		let peer_d = Peer::from_async_read( peer_addr_d.clone(), bd, 1024, exec.clone(), None, delay.clone() ).expect( "spawn peer_d" );
-		let peer_e = Peer::from_async_read( peer_addr_e.clone(), be, 1024, exec.clone(), None, delay.clone() ).expect( "spawn peer_e" );
+		let peer_c = ThesWF::create_peer( peer_addr_c.clone(), bc, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_c" );
+		let peer_d = ThesWF::create_peer( peer_addr_d.clone(), bd, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_d" );
+		let peer_e = ThesWF::create_peer( peer_addr_e.clone(), be, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_e" );
 
-		let mut peer_a = Peer::from_async_read( peer_addr_a, ba, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
+		let mut peer_a = ThesWF::create_peer( peer_addr_a, ba, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
 
 		let mut pubsub       = PubSub::new( services );
 		let mut subscriber   = pubsub.rt_subscribe  ( &exec ).expect( "get subsriber"   );
@@ -350,7 +351,7 @@ async fn pubsub_rt()
 	futs.push( AsyncStd.spawn_handle( relays     ).unwrap() );
 	futs.push( AsyncStd.spawn_handle( provider   ).unwrap() );
 
-	while let Some(_) = futs.next().await {}
+	while futs.next().await.is_some() {}
 }
 
 

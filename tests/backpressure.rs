@@ -11,7 +11,7 @@ mod common;
 
 use
 {
-	common        :: { *, import::{ * }                                        } ,
+	common        :: { *, import::*                                            } ,
 	std           :: { time::Duration, sync::atomic::{ AtomicUsize, Ordering } } ,
 	futures_timer :: { Delay                                                   } ,
 	serde         :: { Serialize, Deserialize                                  } ,
@@ -72,7 +72,7 @@ impl Handler<Show> for After
 service_map!
 (
 	namespace  : bpsm            ;
-	wire_format: ThesWF     ;
+	wire_format: ThesWF          ;
 	services   : Add, Add2, Show ;
 );
 
@@ -112,14 +112,15 @@ async fn backpressure_basic()
 
 		// Create mailbox for peer
 		//
-		let(peer_addr, peer_mb) = Addr::builder().name( "server".into() ).build();
+		let(peer_addr, peer_mb) = Addr::builder().name( "server" ).build();
 
 		// create peer with stream/sink
 		//
-		let mut peer = Peer::from_async_read
+		let mut peer = ThesWF::create_peer
 		(
 			peer_addr,
 			server,
+			1024,
 			1024,
 			AsyncStd,
 			Some(Arc::new( BackPressure::new(2) )),

@@ -51,12 +51,9 @@ badges:
 features:
 
   default: []
+  wasm   : [ futures-timer/wasm-bindgen ]
+  wf_test: [ futures_ringbuf, pretty_assertions ]
 
-  wasm: [ futures-timer/wasm-bindgen ]
-
-  # only used internally, don't use
-  #
-  external_doc: []
 
 
 lib:
@@ -79,13 +76,14 @@ dependencies:
   futures-macro       : { version: ^0.3                                                     }
   futures_codec_crate : { version: ^0.4, optional: true, package: futures_codec             }
   futures_cbor_codec  : { version: ^0.3, optional: true                                     }
+  futures_ringbuf     : { version: ^0.3, optional: true, features: [ sketchy ]              }
   async_executors     : { version: ^0.4                                                     }
   thespis_impl        : { path: ../thespis_impl   }
 
   # Pharos events are public on Peer
   #
-  pharos              : { version: ^0.5        }
-  thespis             : { version: 0.1.0-alpha }
+  pharos              : { version: ^0.5 }
+  thespis             : { version: ^0.1, path: ../thespis }
   byteorder           : ^1
 
 
@@ -99,30 +97,39 @@ dependencies:
   futures-timer       : { version: ^3 }
   num_cpus            : ^1
   async_nursery       : ^0.3
-
+  pretty_assertions   : { version: ^0.7, optional: true }
   paste               : ^1
   log-derive          : ^0.4
 
 
 dev-dependencies:
 
-  assert_matches    : ^1
-  pretty_assertions : ^0.7
-  flexi_logger      : { version: ^0.17, default-features: false }
+  pretty_assertions  : ^0.7
+  flexi_logger       : { version: ^0.17, default-features: false }
 
-  async_executors   : { version: ^0.4, features: [ async_std, threadpool, tracing ] }
-  async_progress    : ^0.1
-  futures_ringbuf   : { version: ^0.3.0, features: [ sketchy ] }
-  futures-test      : ^0.3
-  futures           : { version: ^0.3, features: [ thread-pool ] }
-  tokio             : { version: ^1, features: [ sync ] }
-  async-std         : { version: ^1.6.0-beta, features: [ attributes ] }
-  rand              : { version: ^0.8 }
-  rand_chacha       : { version: ^0.3 }
-  criterion         : ^0.3
-  tracing           : { version: ^0.1 }
-  tracing-futures   : { version: ^0.2, features: [ futures-03 ] }
-  tracing-subscriber: { version: ^0.2, default-features: false, features: [ fmt, json, tracing-log, chrono ] }
+  async_executors    : { version: ^0.4, features: [ async_std, threadpool, tracing ] }
+  async_progress     : ^0.1
+  futures_ringbuf    : { version: ^0.3.0, features: [ sketchy ] }
+  futures-test       : ^0.3
+  futures            : { version: ^0.3, features: [ thread-pool ] }
+  tokio              : { version: ^1, features: [ sync ] }
+  async-std          : { version: ^1.6.0-beta, features: [ attributes ] }
+  rand               : { version: ^0.8 }
+  rand_chacha        : { version: ^0.3 }
+  criterion          : ^0.3
+  tracing            : { version: ^0.1 }
+  tracing-futures    : { version: ^0.2, features: [ futures-03 ] }
+  tracing-subscriber : { version: ^0.2, default-features: false, features: [ fmt, json, tracing-log, chrono ] }
+
+
+
+
+build-dependencies:
+
+  rustc_version: ^0.4
+
+
+
 
 bench:
 

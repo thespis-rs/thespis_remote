@@ -107,7 +107,7 @@ async fn debug()
 {
 	// Create mailbox for peer
 	//
-	let (sum_addr, _) = Addr::<Sum>::builder().name( "for_debug".into() ).build();
+	let (sum_addr, _) = Addr::<Sum>::builder().name( "for_debug" ).build();
 
 	let mut sm = remotes::Services::new();
 

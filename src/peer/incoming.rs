@@ -62,7 +62,7 @@ impl<Wf: WireFormat + Send + 'static> Handler<Incoming<Wf>> for Peer<Wf>
 		//
 		match kind
 		{
-			WireType::ConnectionError => self.remote_conn_err( frame, cid        ).await,
+			WireType::ConnectionError => self.remote_conn_err( frame, cid      ).await,
 			WireType::IncomingSend    => self.incoming_send  ( sid, frame      ).await,
 			WireType::IncomingCall    => self.incoming_call  ( cid, sid, frame ).await,
 

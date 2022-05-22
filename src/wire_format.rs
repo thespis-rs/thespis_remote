@@ -6,8 +6,8 @@ mod service_id ;
 mod wire_err   ;
 mod wire_type  ;
 
-#[ cfg(test) ] mod tests;
-#[ cfg(test) ] pub use tests::*;
+#[ cfg(any( test, feature="wf_test" )) ] mod testsuite;
+#[ cfg(any( test, feature="wf_test" )) ] pub use testsuite::*;
 
 pub use
 {

@@ -48,13 +48,14 @@ impl ConnID
 
 
 
+
 /// Internally is also represented as Bytes, so you just get a copy.
 //
-impl Into< u64 > for ConnID
+impl From< ConnID > for u64
 {
-	fn into( self ) -> u64
+	fn from( cid: ConnID ) -> u64
 	{
-		self.inner.into()
+		cid.inner.into()
 	}
 }
 
