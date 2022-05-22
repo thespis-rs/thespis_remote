@@ -1,21 +1,24 @@
-//! # Thespis reference implementation
-//!
-#![ doc    ( html_root_url = "https://docs.rs/thespis_remote_impl"       ) ]
-#![ deny   ( /*missing_docs,*/ bare_trait_objects                        ) ]
+#![ cfg_attr( nightly, feature(doc_cfg) ) ]
+#![ doc = include_str!("../README.md") ]
+
+#![ doc    ( html_root_url = "https://docs.rs/thespis_remote"            ) ]
 #![ forbid ( unsafe_code                                                 ) ]
+#![ deny   ( /*missing_docs,*/ bare_trait_objects                        ) ]
 #![ allow  ( clippy::suspicious_else_formatting, clippy::type_complexity ) ]
 
 #![ warn
 (
+	anonymous_parameters          ,
+	missing_copy_implementations  ,
 	missing_debug_implementations ,
 	nonstandard_style             ,
 	rust_2018_idioms              ,
+	single_use_lifetimes          ,
 	trivial_casts                 ,
 	trivial_numeric_casts         ,
+	unreachable_pub               ,
 	unused_extern_crates          ,
 	unused_qualifications         ,
-	single_use_lifetimes          ,
-	unreachable_pub               ,
 	variant_size_differences      ,
 )]
 

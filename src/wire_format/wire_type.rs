@@ -1,6 +1,6 @@
 /// Type of message.
 //
-#[ derive(Debug) ]
+#[ derive(Debug, Copy, Clone) ]
 //
 pub enum WireType
 {
