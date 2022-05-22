@@ -1,13 +1,14 @@
 use
 {
-	crate     :: { ThesWF                      } ,
-	super     :: { *                           } ,
+	crate     :: { import::*, ThesWF, WireErr, cbor_wf::{ LEN_LEN, LEN_HEADER }  } ,
 	byteorder :: { ReadBytesExt, LittleEndian  } ,
 	std       :: { io::{ Write, Cursor }       } ,
 };
 
 
 
+/// Decoder that does not heap allocate.
+//
 #[ derive(Debug) ]
 //
 pub struct DecoderNoHeap<T>
@@ -21,6 +22,8 @@ pub struct DecoderNoHeap<T>
 
 impl<T> DecoderNoHeap<T>
 {
+	/// Create a new decoder.
+	//
 	pub fn new( byte_stream: T, max_size: usize ) -> Self
 	{
 		Self
@@ -37,7 +40,7 @@ impl<T> DecoderNoHeap<T>
 
 impl<T> Stream for DecoderNoHeap<T>
 
-	where T: FutAsyncRead + Unpin
+	where T: AsyncRead + Unpin
 {
 	type Item = Result<ThesWF, WireErr>;
 
@@ -60,7 +63,7 @@ impl<T> Stream for DecoderNoHeap<T>
 			// Order of the patterns matters.
 			// TODO: conversion needs to be checked. It may be best to limit to usize::MAX.
 			//
-			match TryInto::<usize>::try_into( in_progress.position() ).unwrap()
+			match usize::try_from( in_progress.position() ).unwrap()
 			{
 				// We don't yet have the length, that is less than one u64. Continue trying to read just the length.
 				//
@@ -129,7 +132,7 @@ impl<T> Stream for DecoderNoHeap<T>
 
 					// put the length in the new buffer.
 					//
-					tmp.write( &in_progress.get_ref()[0..LEN_LEN] )?;
+					tmp.write_all( &in_progress.get_ref()[0..LEN_LEN] )?;
 
 					in_progress = tmp;
 

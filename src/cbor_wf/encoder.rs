@@ -1,6 +1,8 @@
-use crate::{ import::*, ThesWF, WireErr };
+use crate::{ import::*, ThesWF, WireErr, WireFormat };
 
 
+/// Serializes the ThesWf format onto a stream of bytes.
+//
 #[ derive(Debug) ]
 //
 pub struct Encoder<T>
@@ -13,6 +15,8 @@ pub struct Encoder<T>
 
 impl<T> Encoder<T>
 {
+	/// Create a new encoder.
+	//
 	pub fn new( out_bytes: T, max_size: usize ) -> Self
 	{
 		Self
@@ -27,7 +31,7 @@ impl<T> Encoder<T>
 
 impl<T> Sink<ThesWF> for Encoder<T>
 
-	where T: FutAsyncWrite + Unpin
+	where T: AsyncWrite + Unpin
 
 {
 	type Error = WireErr;
@@ -44,6 +48,18 @@ impl<T> Sink<ThesWF> for Encoder<T>
 		if self.buffer.is_some()
 		{
 			panic!( "call `poll_ready` before start_send" )
+		}
+
+		let len = msg.len() as usize;
+
+		if len > self.max_size
+		{
+			return Err( WireErr::MessageSizeExceeded
+			{
+				context: "encoder start_send".to_string(),
+				size   : len,
+				max_size: self.max_size,
+			});
 		}
 
 		self.buffer = Some( (msg, 0) );

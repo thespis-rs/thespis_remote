@@ -14,22 +14,28 @@
 //!
 use
 {
-	super           :: { *, assert_eq          } ,
-	futures_ringbuf :: { Endpoint, Sketchy, Dictator } ,
-	async_executors :: { AsyncStd              } ,
-	futures         :: { task::LocalSpawnExt, join   } ,
+	pretty_assertions :: { assert_eq                                 } ,
+	crate             :: { import::*, *                              } ,
+	futures           :: { join, task::{ LocalSpawn, LocalSpawnExt } } ,
+	futures_ringbuf   :: { Endpoint, Dictator, Sketchy               } ,
 };
 
 
-pub trait MockConnection : FutAsyncRead + FutAsyncWrite + Send + Unpin {}
+
+/// Represents something that behaves like a TCP connection.
+//
+pub trait MockConnection : AsyncRead + AsyncWrite + Send + Unpin {}
 
 impl<T> MockConnection for T
 
-	where T: FutAsyncRead + FutAsyncWrite + Send + Unpin
+	where T: AsyncRead + AsyncWrite + Send + Unpin
 
 {}
 
 
+
+/// This suite holds a set of tests you can run on your wire format implementation to verify compliance.
+//
 #[ derive( Debug) ]
 //
 pub struct TestSuite<Wf, Si, St>
@@ -39,8 +45,8 @@ pub struct TestSuite<Wf, Si, St>
 	      St: Stream<Item=Result<Wf, WireErr>> ,
 
 {
-	factory: fn( transport: Box<dyn MockConnection>, max_size: usize ) -> (Si, St),
-	_phantom: PhantomData<Wf> ,
+	 factory: fn( transport: Box<dyn MockConnection>, max_size: usize ) -> (Si, St) ,
+	_phantom: PhantomData<Wf>                                                       ,
 }
 
 
@@ -52,6 +58,12 @@ impl<Wf, Si, St> TestSuite<Wf, Si, St>
 
 {
 	/// Create a new test suite with the given function pointer that will frame the connection.
+	///
+	/// The factory is a callback that takes a transport and returns a Sink and Stream over the WireFormat message type.
+	/// This is where you apply your codec.
+	///
+	/// The max_size is the maximum allowed size per message that your codec should accept, anything bigger should return
+	/// [WireErr::MessageSizeExceeded].
 	//
 	pub fn new( factory: fn( transport: Box<dyn MockConnection>, max_size: usize ) -> (Si, St) ) -> Self
 	{
@@ -60,14 +72,16 @@ impl<Wf, Si, St> TestSuite<Wf, Si, St>
 
 	/// Run all tests.
 	//
-	pub async fn run( &self )
+	pub async fn run( &self, exec: impl LocalSpawn )
 	{
 		self.send_all().await;
-		self.send_chunked().await;
+		self.send_chunked( exec ).await;
 		self.read_pending().await;
 	}
 
 
+	/// Send an entire message at once.
+	//
 	pub async fn send_all( &self )
 	{
 		let (trans_a, trans_b) = Endpoint::pair( 64, 64 );
@@ -81,7 +95,7 @@ impl<Wf, Si, St> TestSuite<Wf, Si, St>
 		let mut wf = Wf::default();
 		wf.set_sid( sid );
 		wf.set_cid( cid );
-		wf.write( msg ).expect( "be able to write serialized message" );
+		wf.write_all( msg ).expect( "be able to write serialized message" );
 
 		let wf2 = wf.clone();
 
@@ -99,7 +113,10 @@ impl<Wf, Si, St> TestSuite<Wf, Si, St>
 	}
 
 
-	pub async fn send_chunked( &self )
+	/// This is a transport layer that can only send 4 bytes at a time, causing messages
+	/// to be sent in chunks.
+	//
+	pub async fn send_chunked( &self, exec: impl LocalSpawn )
 	{
 		// let _ = flexi_logger::Logger::with_str( "trace, thespis_remote=trace" ).start();
 
@@ -115,13 +132,13 @@ impl<Wf, Si, St> TestSuite<Wf, Si, St>
 		let mut wf = Wf::default();
 		wf.set_sid( sid );
 		wf.set_cid( cid );
-		wf.write( msg ).expect( "be able to write serialized message" );
+		wf.write_all( msg ).expect( "be able to write serialized message" );
 
 		let wf2 = wf.clone();
 
 		debug!( "send_chunked: spawning sender" );
 
-		AsyncStd.spawn_local( async move
+		exec.spawn_local( async move
 		{
 			sink_a.send( wf2 ).await.expect( "send on sink" );
 
@@ -141,6 +158,8 @@ impl<Wf, Si, St> TestSuite<Wf, Si, St>
 	}
 
 
+	/// Create a flaky connection that will sometimes return pending.
+	//
 	pub async fn read_pending( &self )
 	{
 		// let _ = flexi_logger::Logger::with_str( "trace, thespis_remote=trace" ).start();
@@ -163,7 +182,7 @@ impl<Wf, Si, St> TestSuite<Wf, Si, St>
 			let mut wf = Wf::default();
 			wf.set_sid( sid );
 			wf.set_cid( cid );
-			wf.write( msg ).expect( "be able to write serialized message" );
+			wf.write_all( msg ).expect( "be able to write serialized message" );
 
 			let wf2 = wf.clone();
 

@@ -9,10 +9,21 @@ use
 
 
 
+/// Decodes a stream of bytes into a stream of ThesWf messages.
+/// T = Transport layer type.
+//
+#[ allow( clippy::type_complexity ) ]
+//
 pub struct Decoder<T>
 {
-	byte_stream: Option<T>                                                                     ,
+	byte_stream: Option<T> ,
+
+	/// Future for the first phase of getting the length of the wire.
+	//
 	get_len    : Option< Pin<Box< dyn Future<Output=(T, io::Result<[u8;LEN_LEN]>)> + Send >> > ,
+
+	/// Future for the second phase of getting the actual message of the wire.
+	//
 	get_msg    : Option< Pin<Box< dyn Future<Output=(T, io::Result<Vec<u8>     >)> + Send >> > ,
 	closed     : bool                                                                          ,
 	max_size   : usize                                                                         ,
@@ -21,6 +32,8 @@ pub struct Decoder<T>
 
 impl<T> Decoder<T>
 {
+	/// Create a new decoder.
+	//
 	pub fn new( byte_stream: T, max_size: usize ) -> Self
 	{
 		Self
@@ -54,11 +67,21 @@ impl<T: fmt::Debug> fmt::Debug for Decoder<T>
 
 impl<T> Stream for Decoder<T>
 
-	where T: FutAsyncRead + Unpin + Send + 'static
+	where T: AsyncRead + Unpin + Send + 'static
 {
 	type Item = Result<ThesWF, WireErr>;
 
 
+	/// There is 2 steps to this operation. First we read the length header which tells us how big
+	/// the rest of the message is. Next we read the amount of bytes speficied in length and try to
+	/// deserialize into ThesWf.
+	///
+	/// Since each of those fases can return pending and must be resumed afterwards, we store them
+	/// as a future to resume on the next poll.
+	///
+	/// TODO: get rid of the boxed futures and just store the relevant information in an enum to
+	/// resume the operation.
+	//
 	#[log_derive::logfn(Trace)]
 	//
 	fn poll_next( mut self: Pin<&mut Self>, cx: &mut Context<'_> ) -> Poll< Option<Self::Item> >
@@ -179,7 +202,7 @@ impl<T> Stream for Decoder<T>
 				self.get_len = Some( async move
 				{
 					let mut buf = [0u8;LEN_LEN];
-					let res = transport.read_exact( &mut buf ).await.map( |_| buf );
+					let     res = transport.read_exact( &mut buf ).await.map( |_| buf );
 
 					(transport, res)
 

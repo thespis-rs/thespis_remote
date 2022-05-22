@@ -1,9 +1,8 @@
 
 use
 {
-	crate     :: { import::*, PeerErr, wire_format::*        } ,
-	byteorder :: { ReadBytesExt, WriteBytesExt, LittleEndian } ,
-	std       :: { io::{ Seek, Write as IoWrite }            } ,
+	crate::{ import::*, Peer, PeerErr, PeerExec, BackPressure, wire_format::* },
+	std::io::{ Write as _, Seek },
 };
 
 
@@ -65,7 +64,7 @@ const LEN_HEADER: usize = IDX_MSG;
 ///
 /// - a send/call for an actor we don't know -> sid unknown: respond with error
 ///
-/// - a response to a call    -> valid connID
+/// - a response to a call  -> valid connID
 ///   - when the call was made, we gave a onshot-channel receiver to the caller,
 ///     look it up in our open connections table and put the response in there.
 ///
@@ -109,6 +108,47 @@ impl ThesWF
 	{
 		self.data.get_mut()[ IDX_LEN..IDX_LEN+LEN_LEN ].as_mut().write_u64::<LittleEndian>( len ).unwrap();
 		self
+	}
+
+
+	/// Create a Peer directly from an asynchronous stream. This is a convenience wrapper around Peer::new so
+	/// you don't have to bother with framing the connection.
+	///
+	/// *addr*: This peers own address.
+	///
+	/// *socket*: The async stream to frame.
+	///
+	/// *max_size*: The maximum accepted message size in bytes. The codec will reject parsing a message from the
+	/// stream if it exceeds this size. Also used for encoding outgoing messages.
+	/// **Set the same max_size in the remote!**.
+	///
+	/// *grace_period*: When the remote closes the connection, we could immediately drop all outstanding tasks related to
+	/// this peer. This makes sense for a request-response type connection, as it doesn't make sense to
+	/// continue using resources processing requests for which we can no longer send the response. However
+	/// it is not always desirable. For one way information flow, we might want to finish processing all the
+	/// outstanding packets before closing down. This also applies when you send a `CloseConnection` message to
+	/// this peer locally.
+	//
+	pub fn create_peer
+	(
+		addr          : Addr<Peer<ThesWF> >                                  ,
+		socket        : impl AsyncRead + AsyncWrite + Unpin + Send + 'static ,
+		max_size_read : usize                                                ,
+		max_size_write: usize                                                ,
+		exec          : impl PeerExec<ThesWF>                                ,
+		bp            : Option<Arc<BackPressure>>                            ,
+		grace_period  : Option<Duration>                                     ,
+	)
+
+		-> Result< Peer<ThesWF>, PeerErr >
+
+	{
+		let (reader, writer) = socket.split();
+
+		let stream = decoder::Decoder::new( reader, max_size_read  );
+		let sink   = encoder::Encoder::new( writer, max_size_write );
+
+		Peer::new( addr, stream, sink, Arc::new(exec), bp, grace_period )
 	}
 }
 
@@ -179,7 +219,7 @@ impl WireFormat for ThesWF
 			data: io::Cursor::new( Vec::with_capacity( size + LEN_HEADER ) )
 		};
 
-		wf.data.write( &[0u8; LEN_HEADER] ).unwrap();
+		wf.data.write_all( &[0u8; LEN_HEADER] ).unwrap();
 		wf.set_len( LEN_HEADER as u64 );
 
 		wf
@@ -223,7 +263,7 @@ impl Default for ThesWF
 			data: io::Cursor::new( Vec::with_capacity( LEN_HEADER *2 ) )
 		};
 
-		wf.write( &[0u8; LEN_HEADER] ).unwrap();
+		wf.write_all( &[0u8; LEN_HEADER] ).unwrap();
 
 		wf
 	}
@@ -265,9 +305,13 @@ mod tests
 	// - set_sid/sid equality and check the actual data
 	// - set_cid/cid equality and check the actual data
 	//
-	use super::{ *, assert_eq };
-	use crate::{ wire_format::TestSuite };
-	use futures::io::{ WriteHalf, ReadHalf };
+	use
+	{
+		super           :: { *, assert_eq                      } ,
+		crate           :: { TestSuite, MockConnection         } ,
+		futures::io     :: { WriteHalf, ReadHalf, AsyncReadExt } ,
+		async_executors :: { AsyncStd                          } ,
+	};
 
 
 	#[test]
@@ -339,7 +383,12 @@ mod tests
 	}
 
 
-	fn frame( socket: Box<dyn MockConnection>, max_size: usize ) -> (Encoder<WriteHalf<Box<dyn MockConnection>>>, Decoder<ReadHalf<Box<dyn MockConnection>>>)
+
+	type Reader = ReadHalf <Box<dyn MockConnection>>;
+	type Writer = WriteHalf<Box<dyn MockConnection>>;
+
+
+	fn frame( socket: Box<dyn MockConnection>, max_size: usize ) -> (Encoder<Writer>, Decoder<Reader>)
 	{
 		let (reader, writer) = socket.split();
 
@@ -356,11 +405,11 @@ mod tests
 	{
 		let test_suite = TestSuite::new( frame );
 
-		test_suite.run().await;
+		test_suite.run( AsyncStd ).await;
 	}
 
 
-	fn frame_noheap( socket: Box<dyn MockConnection>, max_size: usize ) -> (Encoder<WriteHalf<Box<dyn MockConnection>>>, DecoderNoHeap<ReadHalf<Box<dyn MockConnection>>>)
+	fn frame_noheap( socket: Box<dyn MockConnection>, max_size: usize ) -> (Encoder<Writer>, DecoderNoHeap<Reader>)
 	{
 		let (reader, writer) = socket.split();
 
@@ -377,6 +426,8 @@ mod tests
 	{
 		let test_suite = TestSuite::new( frame_noheap );
 
-		test_suite.run().await;
+		test_suite.run( AsyncStd ).await;
 	}
 }
+
+
