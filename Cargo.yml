@@ -77,13 +77,13 @@ dependencies:
   futures_codec_crate : { version: ^0.4, optional: true, package: futures_codec             }
   futures_cbor_codec  : { version: ^0.3, optional: true                                     }
   futures_ringbuf     : { version: ^0.3, optional: true, features: [ sketchy ]              }
-  async_executors     : { version: ^0.4                                                     }
-  thespis_impl        : { path: ../thespis_impl   }
+  async_executors     : { version: ^0.6                                                     }
+  thespis_impl        : { version: ^0.2                                                     }
 
   # Pharos events are public on Peer
   #
   pharos              : { version: ^0.5 }
-  thespis             : { version: ^0.1, path: ../thespis }
+  thespis             : { version: ^0.1 }
   byteorder           : ^1
 
 
@@ -92,23 +92,23 @@ dependencies:
   log                 : ^0.4
   once_cell           : ^1
   rand                : { version: ^0.8, default-features: false, features: [std_rng, std] }
-  parking_lot         : { version: ^0.11 }
+  parking_lot         : { version: ^0.12 }
   tokio-serde-cbor    : { version: ^0.6, optional: true }
   futures-timer       : { version: ^3 }
   num_cpus            : ^1
-  async_nursery       : ^0.3
-  pretty_assertions   : { version: ^0.7, optional: true }
+  async_nursery       : ^0.5
+  pretty_assertions   : { version: ^1, optional: true }
   paste               : ^1
   log-derive          : ^0.4
 
 
 dev-dependencies:
 
-  pretty_assertions  : ^0.7
-  flexi_logger       : { version: ^0.17, default-features: false }
+  pretty_assertions  : ^1
+  flexi_logger       : { version: ^0.22, default-features: false }
 
-  async_executors    : { version: ^0.4, features: [ async_std, threadpool, tracing ] }
-  async_progress     : ^0.1
+  async_executors    : { version: ^0.6, features: [ async_std, threadpool, tracing ] }
+  async_progress     : ^0.2
   futures_ringbuf    : { version: ^0.3.0, features: [ sketchy ] }
   futures-test       : ^0.3
   futures            : { version: ^0.3, features: [ thread-pool ] }
@@ -119,7 +119,7 @@ dev-dependencies:
   criterion          : ^0.3
   tracing            : { version: ^0.1 }
   tracing-futures    : { version: ^0.2, features: [ futures-03 ] }
-  tracing-subscriber : { version: ^0.2, default-features: false, features: [ fmt, json, tracing-log, chrono ] }
+  tracing-subscriber : { version: ^0.3, default-features: false, features: [ fmt, json, tracing-log ] }
 
 
 
