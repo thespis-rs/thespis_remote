@@ -1,14 +1,14 @@
-use crate::{ import::*, ThesWF, WireErr, WireFormat };
+use crate::{ import::*, CborWF, WireErr, WireFormat };
 
 
-/// Serializes the ThesWf format onto a stream of bytes.
+/// Serializes the CborWF format onto a stream of bytes.
 //
 #[ derive(Debug) ]
 //
 pub struct Encoder<T>
 {
 	out_bytes: T                         ,
-	buffer   : Option< (ThesWF, usize) > ,
+	buffer   : Option< (CborWF, usize) > ,
 	max_size : usize                     ,
 }
 
@@ -29,7 +29,7 @@ impl<T> Encoder<T>
 }
 
 
-impl<T> Sink<ThesWF> for Encoder<T>
+impl<T> Sink<CborWF> for Encoder<T>
 
 	where T: AsyncWrite + Unpin
 
@@ -43,7 +43,7 @@ impl<T> Sink<ThesWF> for Encoder<T>
 	}
 
 
-	fn start_send( mut self: Pin<&mut Self>, msg: ThesWF ) -> Result<(), Self::Error>
+	fn start_send( mut self: Pin<&mut Self>, msg: CborWF ) -> Result<(), Self::Error>
 	{
 		if self.buffer.is_some()
 		{

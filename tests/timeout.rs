@@ -32,7 +32,7 @@ impl Handler<Add> for Slow
 service_map!
 (
 	namespace  : timeouts    ;
-	wire_format: ThesWF ;
+	wire_format: CborWF ;
 	services   : Add         ;
 );
 
@@ -82,7 +82,7 @@ async fn timeout()
 
 		// create peer with stream/sink + service map
 		//
-		let mut peer = ThesWF::create_peer( peera.clone(), client, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
+		let mut peer = CborWF::create_peer( peera.clone(), client, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 
 		// This is the relevant line for this test!

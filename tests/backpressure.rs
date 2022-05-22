@@ -72,7 +72,7 @@ impl Handler<Show> for After
 service_map!
 (
 	namespace  : bpsm            ;
-	wire_format: ThesWF          ;
+	wire_format: CborWF          ;
 	services   : Add, Add2, Show ;
 );
 
@@ -116,7 +116,7 @@ async fn backpressure_basic()
 
 		// create peer with stream/sink
 		//
-		let mut peer = ThesWF::create_peer
+		let mut peer = CborWF::create_peer
 		(
 			peer_addr,
 			server,

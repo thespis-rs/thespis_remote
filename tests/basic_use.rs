@@ -81,7 +81,7 @@ impl Handler< Show > for Parallel
 service_map!
 (
 	namespace  : parallel ;
-	wire_format: ThesWF   ;
+	wire_format: CborWF   ;
 	services   : Show     ;
 );
 
@@ -108,7 +108,7 @@ async fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = ThesWF::create_peer( peer_addr.clone(), server, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
+		let mut peer = CborWF::create_peer( peer_addr.clone(), server, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -137,7 +137,7 @@ async fn parallel()
 
 		// create peer with stream/sink
 		//
-		let mut peer = ThesWF::create_peer( peer_addr.clone(), client, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
+		let mut peer = CborWF::create_peer( peer_addr.clone(), client, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//

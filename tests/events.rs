@@ -145,7 +145,7 @@ async fn header_unknown_service_error()
 		let sid = ServiceID::from(1);
 		let cid = ConnID::random();
 
-		let mut ms = ThesWF::with_capacity( std::mem::size_of::<Add>() );
+		let mut ms = CborWF::with_capacity( std::mem::size_of::<Add>() );
 		ms.set_sid( sid );
 		ms.set_cid( cid );
 		serde_cbor::to_writer( &mut ms, &Add(5) ).unwrap();
@@ -218,7 +218,7 @@ async fn call_deserialize()
 		//
 		let cod = vec![ 1,2,3,4 ];
 
-		let mut wf = ThesWF::default();
+		let mut wf = CborWF::default();
 
 		wf.set_sid( sid );
 		wf.set_cid( cid );
@@ -293,7 +293,7 @@ async fn sm_deserialize_error()
 		let cid = ConnID::random();
 
 
-		let mut wf = ThesWF::with_capacity( 2 );
+		let mut wf = CborWF::with_capacity( 2 );
 		wf.set_sid( sid );
 		wf.set_cid( cid );
 		wf.write_all( &[3,3] ).unwrap();

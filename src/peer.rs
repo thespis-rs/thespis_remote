@@ -76,7 +76,7 @@ impl<T, Wf> BoundsOut<Wf> for T
 /// In principle you setup the peer with at least one ServiceMap before starting it, that way it
 /// is fully operational before it receives the first incoming message. `service_map!` let's you
 /// set a `dyn Address<S>` as handler, whereas `RelayMap` can accept both an address that receives
-/// both `ThesWF` (for Sends) and `peer::Call` for calls, but also a closure that let's you
+/// both `CborWF` (for Sends) and `peer::Call` for calls, but also a closure that let's you
 /// provide such address on a per message basis, which allows you to implement load balancing
 /// to several backends providing the same service. Neither of these maps allow you to "unset"
 /// a handler, only replace it with a new one. The point is a difference in error messages. It
@@ -99,7 +99,7 @@ impl<T, Wf> BoundsOut<Wf> for T
 /// ### Sending messages to remote processes.
 ///
 /// As far as the Peer type is concerned sending actor messages to a remote is relatively simple.
-/// Once you have serialized a message as `ThesWF`, sending that directly to `Peer` will be considered
+/// Once you have serialized a message as `CborWF`, sending that directly to `Peer` will be considered
 /// a Send to a remote actor and it will just be sent out. For a Call, there is the Call message type,
 /// which will resolve to a channel you can await in order to get your response from the remote process.
 /// The `service_map!` macro provides a `RemoteAddress` type which acts much the same as a local actor address
@@ -141,7 +141,7 @@ impl<T, Wf> BoundsOut<Wf> for T
 //
 #[ derive( Actor ) ]
 //
-pub struct Peer<Wf: 'static + WireFormat = ThesWF>
+pub struct Peer<Wf: 'static + WireFormat = CborWF>
 {
 	/// The sink
 	//
@@ -214,7 +214,7 @@ pub struct Peer<Wf: 'static + WireFormat = ThesWF>
 }
 
 
-pub trait PeerExec<Wf: WireFormat = ThesWF> : SpawnHandle<Result<Response<Wf>, PeerErr>> + SpawnHandle<()> + Clone + Send + Sync + 'static {}
+pub trait PeerExec<Wf: WireFormat = CborWF> : SpawnHandle<Result<Response<Wf>, PeerErr>> + SpawnHandle<()> + Clone + Send + Sync + 'static {}
 
 impl<T, Wf: WireFormat> PeerExec<Wf> for T
 

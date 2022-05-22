@@ -85,11 +85,11 @@ async fn pubsub()
 
 		// create peer with stream/sink
 		//
-		let peer_c = ThesWF::create_peer( peer_addr_c.clone(), bc, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_c" );
-		let peer_d = ThesWF::create_peer( peer_addr_d.clone(), bd, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_d" );
-		let peer_e = ThesWF::create_peer( peer_addr_e.clone(), be, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_e" );
+		let peer_c = CborWF::create_peer( peer_addr_c.clone(), bc, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_c" );
+		let peer_d = CborWF::create_peer( peer_addr_d.clone(), bd, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_d" );
+		let peer_e = CborWF::create_peer( peer_addr_e.clone(), be, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_e" );
 
-		let mut peer_a = ThesWF::create_peer( peer_addr_a, ba, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
+		let mut peer_a = CborWF::create_peer( peer_addr_a, ba, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
 
 		let mut pubsub = PubSub::new( services );
 
@@ -281,11 +281,11 @@ async fn pubsub_rt()
 
 		// create peer with stream/sink
 		//
-		let peer_c = ThesWF::create_peer( peer_addr_c.clone(), bc, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_c" );
-		let peer_d = ThesWF::create_peer( peer_addr_d.clone(), bd, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_d" );
-		let peer_e = ThesWF::create_peer( peer_addr_e.clone(), be, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_e" );
+		let peer_c = CborWF::create_peer( peer_addr_c.clone(), bc, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_c" );
+		let peer_d = CborWF::create_peer( peer_addr_d.clone(), bd, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_d" );
+		let peer_e = CborWF::create_peer( peer_addr_e.clone(), be, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_e" );
 
-		let mut peer_a = ThesWF::create_peer( peer_addr_a, ba, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
+		let mut peer_a = CborWF::create_peer( peer_addr_a, ba, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
 
 		let mut pubsub       = PubSub::new( services );
 		let mut subscriber   = pubsub.rt_subscribe  ( &exec ).expect( "get subsriber"   );

@@ -1,6 +1,6 @@
 use
 {
-	crate     :: { ThesWF                      } ,
+	crate     :: { CborWF                      } ,
 	super     :: { *                           } ,
 	byteorder :: { ReadBytesExt, LittleEndian  } ,
 	std       :: { future::Future              } ,
@@ -9,7 +9,7 @@ use
 
 
 
-/// Decodes a stream of bytes into a stream of ThesWf messages.
+/// Decodes a stream of bytes into a stream of CborWF messages.
 /// T = Transport layer type.
 //
 #[ allow( clippy::type_complexity ) ]
@@ -69,12 +69,12 @@ impl<T> Stream for Decoder<T>
 
 	where T: AsyncRead + Unpin + Send + 'static
 {
-	type Item = Result<ThesWF, WireErr>;
+	type Item = Result<CborWF, WireErr>;
 
 
 	/// There is 2 steps to this operation. First we read the length header which tells us how big
 	/// the rest of the message is. Next we read the amount of bytes speficied in length and try to
-	/// deserialize into ThesWf.
+	/// deserialize into CborWF.
 	///
 	/// Since each of those fases can return pending and must be resumed afterwards, we store them
 	/// as a future to resume on the next poll.
@@ -121,7 +121,7 @@ impl<T> Stream for Decoder<T>
 					Poll::Ready( (transport, Ok(all)) ) =>
 					{
 						self.byte_stream = Some(transport);
-						let thes_wf = ThesWF::try_from( all )?;
+						let thes_wf = CborWF::try_from( all )?;
 
 						return Poll::Ready( Some(Ok( thes_wf )) );
 					}
@@ -165,7 +165,7 @@ impl<T> Stream for Decoder<T>
 							{
 								size    : len                          ,
 								max_size: self.max_size                ,
-								context : "ThesWF Decoder".to_string() ,
+								context : "CborWF Decoder".to_string() ,
 							};
 
 							return Poll::Ready( Some(Err( err )) );

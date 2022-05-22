@@ -185,7 +185,7 @@ async fn relay_unknown_service()
 		// Create some random data that shouldn't deserialize
 		//
 		let     sid1 = ServiceID::from( 1 );
-		let mut wf   = ThesWF::with_capacity( std::mem::size_of::<Add>() );
+		let mut wf   = CborWF::with_capacity( std::mem::size_of::<Add>() );
 
 		wf.set_sid( sid1 );
 		serde_cbor::to_writer( &mut wf, &Add(5) ).unwrap();

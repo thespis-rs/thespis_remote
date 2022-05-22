@@ -22,7 +22,7 @@ mod a
 	service_map!
 	(
 		namespace  : remotes     ;
-		wire_format: ThesWF ;
+		wire_format: CborWF ;
 		services   : Add, Show   ;
 	);
 
@@ -30,7 +30,7 @@ mod a
 	service_map!
 	(
 		namespace  : others      ;
-		wire_format: ThesWF ;
+		wire_format: CborWF ;
 		services   : Add         ;
 	);
 }
@@ -42,7 +42,7 @@ mod b
 	service_map!
 	(
 		namespace  : remotes     ;
-		wire_format: ThesWF ;
+		wire_format: CborWF ;
 		services   : Add         ;
 	);
 }

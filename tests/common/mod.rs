@@ -84,7 +84,7 @@ pub async fn peer_listen
 	// create peer
 	//
 	let     delay = Some( Duration::from_millis(10) );
-	let mut  peer = ThesWF::create_peer( peer_addr.clone(), socket, 1024, 1024, Arc::new( exec.clone() ), None, delay ).expect( "spawn peer" );
+	let mut  peer = CborWF::create_peer( peer_addr.clone(), socket, 1024, 1024, Arc::new( exec.clone() ), None, delay ).expect( "spawn peer" );
 	let peer_evts = peer.observe( ObserveConfig::default() ).await.expect( "pharos not closed" );
 
 	// register service map with peer
@@ -117,7 +117,7 @@ pub async fn peer_connect
 	//
 	let delay = Some( Duration::from_millis(10) );
 
-	let mut peer = ThesWF::create_peer( peer_addr.clone(), socket, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
+	let mut peer = CborWF::create_peer( peer_addr.clone(), socket, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).await.expect( "pharos not closed" );
 
@@ -196,12 +196,12 @@ pub async fn relay
 		//
 		let delay = Some( Duration::from_millis(10) );
 
-		let mut peer = ThesWF::create_peer( peer_addr, listen, 1024, 1024, ex1, None, delay ).expect( "spawn peer" );
+		let mut peer = CborWF::create_peer( peer_addr, listen, 1024, 1024, ex1, None, delay ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
 
-		let handler: Box<dyn Relay<ThesWF>> = Box::new( provider_addr2 );
+		let handler: Box<dyn Relay<CborWF>> = Box::new( provider_addr2 );
 
 		let mut relayed = vec![ add ];
 
@@ -275,13 +275,13 @@ pub async fn relay_closure
 		//
 		let delay = Some( Duration::from_millis(10) );
 
-		let mut peer = ThesWF::create_peer( peer_addr, listen, 1024, 1024, ex1, None, delay ).expect( "spawn peer" );
+		let mut peer = CborWF::create_peer( peer_addr, listen, 1024, 1024, ex1, None, delay ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
 
 
-		let handler = Box::new( move |_: &ServiceID| -> Box<dyn Relay<ThesWF>>
+		let handler = Box::new( move |_: &ServiceID| -> Box<dyn Relay<CborWF>>
 		{
 			static IDX: AtomicUsize = AtomicUsize::new( 0 );
 
@@ -335,7 +335,7 @@ pub async fn relay_closure
 service_map!
 (
 	namespace  : remotes        ;
-	wire_format: ThesWF         ;
+	wire_format: CborWF         ;
 	services   : Add, Sub, Show ;
 );
 

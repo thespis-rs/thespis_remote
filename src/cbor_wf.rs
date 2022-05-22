@@ -82,20 +82,20 @@ const LEN_HEADER: usize = IDX_MSG;
 //
 #[ derive( Debug, Clone, PartialEq, Eq ) ]
 //
-pub struct ThesWF
+pub struct CborWF
 {
 	data: io::Cursor< Vec<u8> >,
 }
 
 
 
-impl Message for ThesWF
+impl Message for CborWF
 {
 	type Return = Result<(), PeerErr>;
 }
 
 
-impl ThesWF
+impl CborWF
 {
 	/// Get direct access to the buffer.
 	//
@@ -131,16 +131,16 @@ impl ThesWF
 	//
 	pub fn create_peer
 	(
-		addr          : Addr<Peer<ThesWF> >                                  ,
+		addr          : Addr<Peer<CborWF> >                                  ,
 		socket        : impl AsyncRead + AsyncWrite + Unpin + Send + 'static ,
 		max_size_read : usize                                                ,
 		max_size_write: usize                                                ,
-		exec          : impl PeerExec<ThesWF>                                ,
+		exec          : impl PeerExec<CborWF>                                ,
 		bp            : Option<Arc<BackPressure>>                            ,
 		grace_period  : Option<Duration>                                     ,
 	)
 
-		-> Result< Peer<ThesWF>, PeerErr >
+		-> Result< Peer<CborWF>, PeerErr >
 
 	{
 		let (reader, writer) = socket.split();
@@ -156,7 +156,7 @@ impl ThesWF
 // All the methods here can panic. We should make sure that bytes is always big enough,
 // because bytes.slice panics if it's to small. Same for bytes.put.
 //
-impl WireFormat for ThesWF
+impl WireFormat for CborWF
 {
 	/// The service id of this message. When coming in over the wire, this identifies
 	/// which service you are calling. A ServiceID should be unique for a given service.
@@ -201,7 +201,7 @@ impl WireFormat for ThesWF
 		&self.data.get_ref()[ IDX_MSG.. ]
 	}
 
-	/// The total length of the ThesWF in bytes (header+payload)
+	/// The total length of the CborWF in bytes (header+payload)
 	//
 	fn len( &self ) -> u64
 	{
@@ -228,7 +228,7 @@ impl WireFormat for ThesWF
 
 
 
-impl io::Write for ThesWF
+impl io::Write for CborWF
 {
 	fn write( &mut self, buf: &[u8] ) -> io::Result<usize>
 	{
@@ -251,9 +251,9 @@ impl io::Write for ThesWF
 
 
 
-impl Default for ThesWF
+impl Default for CborWF
 {
-	/// Will create a default ThesWF with an internal buffer with capacity of LEN_HEADER *2,
+	/// Will create a default CborWF with an internal buffer with capacity of LEN_HEADER *2,
 	/// length set to LEN_HEADER, and sid and cid are zeroed.
 	//
 	fn default() -> Self
@@ -271,7 +271,7 @@ impl Default for ThesWF
 
 
 
-impl TryFrom< Vec<u8> > for ThesWF
+impl TryFrom< Vec<u8> > for CborWF
 {
 	type Error = WireErr;
 
@@ -283,7 +283,7 @@ impl TryFrom< Vec<u8> > for ThesWF
 		//
 		if data.len() < LEN_HEADER
 		{
-			return Err( WireErr::Deserialize{ context: "ThesWF: not enough bytes even for the header.".to_string() } );
+			return Err( WireErr::Deserialize{ context: "CborWF: not enough bytes even for the header.".to_string() } );
 		}
 
 		Ok( Self { data: io::Cursor::new(data) } )
@@ -318,7 +318,7 @@ mod tests
 	//
 	fn default_impl()
 	{
-		let wf = ThesWF::default();
+		let wf = CborWF::default();
 
 		assert_eq!( LEN_HEADER * 2   , wf.data.get_ref().capacity() );
 		assert_eq!( LEN_HEADER as u64, wf.len()                     );
@@ -335,7 +335,7 @@ mod tests
 	//
 	fn with_capacity()
 	{
-		let wf = ThesWF::with_capacity( 5 );
+		let wf = CborWF::with_capacity( 5 );
 
 		assert_eq!( LEN_HEADER + 5   , wf.data.get_ref().capacity() );
 		assert_eq!( LEN_HEADER as u64, wf.len()                     );
@@ -352,7 +352,7 @@ mod tests
 	//
 	fn set_len()
 	{
-		let mut wf = ThesWF::default();
+		let mut wf = CborWF::default();
 
 		wf.set_len( 33 );
 		assert_eq!( wf.len(), 33 );
@@ -363,7 +363,7 @@ mod tests
 	//
 	fn set_sid()
 	{
-		let mut wf = ThesWF::default();
+		let mut wf = CborWF::default();
 		let sid = ServiceID::from_seed( &[ 1, 2, 3 ] );
 
 		wf.set_sid( sid );
@@ -375,7 +375,7 @@ mod tests
 	//
 	fn set_cid()
 	{
-		let mut wf = ThesWF::default();
+		let mut wf = CborWF::default();
 		let cid = ConnID::random();
 
 		wf.set_cid( cid );

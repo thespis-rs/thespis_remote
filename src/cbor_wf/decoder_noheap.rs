@@ -1,6 +1,6 @@
 use
 {
-	crate     :: { import::*, ThesWF, WireErr, cbor_wf::{ LEN_LEN, LEN_HEADER }  } ,
+	crate     :: { import::*, CborWF, WireErr, cbor_wf::{ LEN_LEN, LEN_HEADER }  } ,
 	byteorder :: { ReadBytesExt, LittleEndian  } ,
 	std       :: { io::{ Write, Cursor }       } ,
 };
@@ -42,7 +42,7 @@ impl<T> Stream for DecoderNoHeap<T>
 
 	where T: AsyncRead + Unpin
 {
-	type Item = Result<ThesWF, WireErr>;
+	type Item = Result<CborWF, WireErr>;
 
 
 	// #[log_derive::logfn(Debug)]
@@ -113,7 +113,7 @@ impl<T> Stream for DecoderNoHeap<T>
 						{
 							size    : len                          ,
 							max_size: self.max_size                ,
-							context : "ThesWF Decoder".to_string() ,
+							context : "CborWF Decoder".to_string() ,
 						};
 
 						return Poll::Ready( Some(Err( err )) );
@@ -168,7 +168,7 @@ impl<T> Stream for DecoderNoHeap<T>
 							in_progress.set_position( in_progress.position() + read as u64 );
 							debug_assert_eq!( len as u64, in_progress.position() );
 
-							let thes_wf = ThesWF::try_from( in_progress.into_inner() )?;
+							let thes_wf = CborWF::try_from( in_progress.into_inner() )?;
 
 							return Poll::Ready( Some(Ok( thes_wf )) );
 						}
