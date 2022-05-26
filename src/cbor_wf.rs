@@ -18,7 +18,6 @@ const LEN_LEN: usize = 8; // u64
 const LEN_SID: usize = 8; // u64
 const LEN_CID: usize = 8; // u64
 
-
 const IDX_LEN: usize = 0;
 const IDX_SID: usize = LEN_LEN;
 const IDX_CID: usize = IDX_SID + LEN_SID;
@@ -109,8 +108,14 @@ impl CborWF
 		self.data.get_mut()[ IDX_LEN..IDX_LEN+LEN_LEN ].as_mut().write_u64::<LittleEndian>( len ).unwrap();
 		self
 	}
+}
 
 
+// All the methods here can panic. We should make sure that bytes is always big enough,
+// because bytes.slice panics if it's to small. Same for bytes.put.
+//
+impl WireFormat for CborWF
+{
 	/// Create a Peer directly from an asynchronous stream. This is a convenience wrapper around Peer::new so
 	/// you don't have to bother with framing the connection.
 	///
@@ -129,7 +134,7 @@ impl CborWF
 	/// outstanding packets before closing down. This also applies when you send a `CloseConnection` message to
 	/// this peer locally.
 	//
-	pub fn create_peer
+	fn create_peer
 	(
 		addr          : Addr<Peer<CborWF> >                                  ,
 		socket        : impl AsyncRead + AsyncWrite + Unpin + Send + 'static ,
@@ -150,14 +155,8 @@ impl CborWF
 
 		Peer::new( addr, stream, sink, Arc::new(exec), bp, grace_period )
 	}
-}
 
 
-// All the methods here can panic. We should make sure that bytes is always big enough,
-// because bytes.slice panics if it's to small. Same for bytes.put.
-//
-impl WireFormat for CborWF
-{
 	/// The service id of this message. When coming in over the wire, this identifies
 	/// which service you are calling. A ServiceID should be unique for a given service.
 	/// The reference implementation combines a unique type id with a namespace so that

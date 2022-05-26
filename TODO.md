@@ -1,6 +1,6 @@
 # thespis_remote TODO
 
-- user story: Imagine a frontend with several tabs openend from the same logged in user. Can we associate easily different connections to the same user so pages can dynamically update when a change to data is made in another tab?
+- test talking to a specific actor by using const generics on the service type.
 
 - test grace_period
 
@@ -8,7 +8,6 @@
 
   - It will depend on the fairness of the channel. When the outgoing blocks, it should get a slot.
 
-- Include codec like functionality in the WireFormat trait, so Peer::from_async_read is always implemented and not only for ThesWf?
 - PeerErr is now also thrown by other objects, notably PubSub and RelayMap. Verify consistency,
   as these do not have a peer_id.
 - in general verify and test all error handling.
@@ -31,13 +30,10 @@
   - fuzz testing
 
   - WASM in tests
-  - use futures 0.3 codecs instead of tokio
   - Peer should probably be able to tell the remote which services it provides.
   - we don't close the connection when errors happen in the spawned tasks in send_service and call_service in the macro... bad! It also won't emit events for them...bad again!
-  - client code for remote actors is not generic, it will only work on MultiServiceImpl
   - remote should store and resend messages for call if we don't get an acknowledgement? If ever you receive twice, you should drop it? Does tcp not guarantee arrival here? What with connection loss? The concept is best efforts to deliver a message at most once.
   - write benchmarks for remote actors
-  - remote Addr? if the actor is known compile time?
 
   ## Remote design
 

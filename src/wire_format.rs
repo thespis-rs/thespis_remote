@@ -1,4 +1,4 @@
-use crate::{ import::*, PeerErr } ;
+use crate::{ import::*, PeerErr, Peer, PeerExec, BackPressure } ;
 
 mod unique_id  ;
 mod conn_id    ;
@@ -24,6 +24,32 @@ pub(crate) use wire_type::WireType;
 //
 pub trait WireFormat : Message< Return = Result<(), PeerErr> > + Default + Clone + io::Write
 {
+	// Create a Peer from a connection that implements [AsyncRead]/[AsyncWrite]. Most of the parameters
+	// here can be passed on to [Peer::new]. However you must turn the turn the [AsyncRead]/[AsyncWrite]
+	// into a [Stream]/[Sink] over your message type.
+	//
+	// Your codec must also respect the max size for reading and writing messages. That is if the user
+	// attempts to write a message that is too big, your codec should return [WireErr::MessageSizeExceeded].
+	// The same in case your reader detects a message on the network that is too big.
+	//
+	fn create_peer
+	(
+		addr          : Addr<Peer<Self> >                                  ,
+		socket        : impl AsyncRead + AsyncWrite + Unpin + Send + 'static ,
+		max_size_read : usize                                                ,
+		max_size_write: usize                                                ,
+		exec          : impl PeerExec<Self>                                ,
+		bp            : Option<Arc<BackPressure>>                            ,
+		grace_period  : Option<Duration>                                     ,
+	)
+
+		-> Result< Peer<Self>, PeerErr >
+
+		where Self: Sized
+	;
+
+
+
 	/// The service id of this message. When coming in over the wire, this identifies
 	/// which service you are calling. A ServiceID should be unique for a given service.
 	/// The reference implementation combines a unique type id with a namespace so that
