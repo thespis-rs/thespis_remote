@@ -1,11 +1,4 @@
 # Auto-generated from "Cargo.yml"
-[badges]
-[badges.maintenance]
-status = "actively-developed"
-
-[badges.travis-ci]
-repository = "thespis-rs/thespis_remote"
-
 [[bench]]
 harness = false
 name = "ring"

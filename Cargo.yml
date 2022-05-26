@@ -43,10 +43,6 @@ package:
       rs:
         all-features: true
 
-badges:
-
-  maintenance : { status     : actively-developed        }
-  travis-ci   : { repository : thespis-rs/thespis_remote }
 
 features:
 
