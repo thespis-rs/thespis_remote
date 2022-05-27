@@ -82,8 +82,6 @@ impl<T> Stream for Decoder<T>
 	/// TODO: get rid of the boxed futures and just store the relevant information in an enum to
 	/// resume the operation.
 	//
-	#[log_derive::logfn(Trace)]
-	//
 	fn poll_next( mut self: Pin<&mut Self>, cx: &mut Context<'_> ) -> Poll< Option<Self::Item> >
 	{
 		if self.closed

@@ -114,7 +114,7 @@ use
 		thespis_impl    :: { Addr, ThesErr, ThesRes                              } ,
 		serde_cbor      :: { self, from_slice as des                             } ,
 		serde           :: { Serialize, Deserialize, de::DeserializeOwned        } ,
-		log             :: { error                                               } ,
+		tracing         :: { error                                               } ,
 		parking_lot     :: { Mutex                                               } ,
 		paste,
 	},

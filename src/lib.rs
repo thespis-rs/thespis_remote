@@ -51,7 +51,7 @@ pub use
 pub mod external_deps
 {
 	pub use futures      ;
-	pub use log          ;
+	pub use tracing      ;
 	pub use once_cell    ;
 	pub use serde_cbor   ;
 	pub use serde        ;
@@ -75,7 +75,7 @@ mod import
 		async_nursery   :: { NurseExt, Nursery, NurseryStream                    } ,
 		byteorder       :: { ReadBytesExt, WriteBytesExt, LittleEndian           } ,
 		futures_timer   :: { Delay                                               } ,
-		log             :: { *                                                   } ,
+		tracing         :: { *                                                   } ,
 		once_cell       :: { sync::Lazy as SyncLazy                              } ,
 		parking_lot     :: { Mutex                                               } ,
 		pharos          :: { Pharos, Observe, Observable, ObserveConfig, PharErr } ,

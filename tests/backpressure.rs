@@ -27,7 +27,7 @@ impl Handler<Add> for Slow
 {
 	fn handle( &mut self, _msg: Add ) -> Return<'_, ()> { async move
 	{
-		log::warn!( "handle Add" );
+		warn!( "handle Add" );
 
 		Delay::new( Duration::from_millis(100) ).await;
 
@@ -43,7 +43,7 @@ impl Handler<Add2> for Slow
 {
 	fn handle( &mut self, _msg: Add2 ) -> Return<'_, ()> { async move
 	{
-		log::warn!( "handle Add" );
+		warn!( "handle Add" );
 
 		Delay::new( Duration::from_millis(50) ).await;
 
@@ -60,7 +60,7 @@ impl Handler<Show> for After
 {
 	fn handle( &mut self, _msg: Show ) -> Return<'_, i64> { async move
 	{
-		log::warn!( "handle Show" );
+		warn!( "handle Show" );
 
 		COUNTER.load( Ordering::SeqCst ) as i64
 

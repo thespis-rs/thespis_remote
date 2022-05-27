@@ -12,7 +12,7 @@ pub mod import
 		thespis         :: { *                                 } ,
 		thespis_impl    :: { *                                 } ,
 		thespis_remote  :: { * } ,
-		log             :: { *                                 } ,
+		tracing         :: { *                                 } ,
 		pharos          :: { Observable, ObserveConfig, Events } ,
 
 		std::
