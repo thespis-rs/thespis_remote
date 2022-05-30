@@ -159,7 +159,7 @@ pub struct Peer<Wf: 'static + WireFormat = CborWF>
 	// better error messages.
 	//
 	id  : usize,
-	name: Option<Arc<str>>,
+	name: Arc<str>,
 
 	/// Information required to process incoming messages. The first element is a boxed Receiver, and the second is
 	/// the service map that takes care of this service type.
@@ -225,20 +225,20 @@ impl<Wf: WireFormat> Peer<Wf>
 {
 	pub fn identify( &self ) -> String
 	{
-		match self.name
+		match self.name.is_empty()
 		{
-			None           => format!( "Peer: id: {}"          , self.id       ),
-			Some(ref name) => format!( "Peer: id: {}, name: {}", self.id, name ),
+			true  => format!( "Peer: id: {}"          , self.id            ),
+			false => format!( "Peer: id: {}, name: {}", self.id, self.name ),
 		}
 	}
 
 
 	pub fn identify_addr( addr: &Addr<Peer<Wf>> ) -> String
 	{
-		match addr.name()
+		match addr.name().is_empty()
 		{
-			None           => format!( "Peer: id: {}"          , addr.id()       ),
-			Some(ref name) => format!( "Peer: id: {}, name: {}", addr.id(), name ),
+			true  => format!( "Peer: id: {}"          , addr.id()              ),
+			false => format!( "Peer: id: {}, name: {}", addr.id(), addr.name() ),
 		}
 	}
 
@@ -258,11 +258,11 @@ impl<Wf: WireFormat> Peer<Wf>
 	{
 		PeerErrCtx
 		{
-			peer_id  : self.id.into()                      ,
-			peer_name: self.name.clone()                   ,
-			context  : context.as_ref().to_string().into() ,
-			sid      : sid.into()                          ,
-			cid      : cid.into()                          ,
+			peer_id  : self.id                      .into() ,
+			peer_name: self.name.clone()            .into() ,
+			context  : context.as_ref().to_string() .into() ,
+			sid      : sid                          .into() ,
+			cid      : cid                          .into() ,
 		}
 	}
 
@@ -288,11 +288,11 @@ impl<Wf: WireFormat> Peer<Wf>
 	{
 		PeerErrCtx
 		{
-			peer_id  : addr.id().into() ,
-			peer_name: addr.name()      ,
-			context  : context.into()   ,
-			sid      : sid.into()       ,
-			cid      : cid.into()       ,
+			peer_id  : addr.id()   .into() ,
+			peer_name: addr.name() .into() ,
+			context  : context     .into() ,
+			sid      : sid         .into() ,
+			cid      : cid         .into() ,
 		}
 	}
 

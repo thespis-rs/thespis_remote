@@ -62,9 +62,9 @@ pub enum PeerErr
 	//
 	RelayGone
 	{
-		ctx       : PeerErrCtx     ,
-		relay_id  : usize            ,
-		relay_name: Option<Arc<str>> ,
+		ctx       : PeerErrCtx ,
+		relay_id  : usize      ,
+		relay_name: Arc<str>   ,
 	},
 
 	/// An error happened when a remote tried to process your message.

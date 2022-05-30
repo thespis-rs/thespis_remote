@@ -231,10 +231,10 @@ impl fmt::Debug for Services
 				//
 				let handler: &BoxAddress<$services, ThesErr> = h.downcast_ref().expect( "downcast receiver in Debug for Services" );
 
-				match handler.name()
+				match handler.name().is_empty()
 				{
-					Some(n) => write!( f, "id({}), name({})", &handler.id(), &n )?,
-					None    => write!( f, "id({})", &handler.id() )?,
+					true  => write!( f, "id({})", &handler.id() )?,
+					false => write!( f, "id({}), name({})", &handler.id(), &handler.name() )?,
 				};
 			}
 
@@ -692,7 +692,7 @@ impl<S> Address<S> for RemoteAddr
 				{
 					context  : Some( "Peer stopped before receiving response from remote call".to_string() ) ,
 					peer_id  : self.peer.id().into()                                                         ,
-					peer_name: self.peer.name()                                                              ,
+					peer_name: self.peer.name().into()                                                       ,
 					sid      : <S as Service>::sid().into()                                                  ,
 					cid      : None                                                                          ,
 				};
@@ -718,7 +718,7 @@ impl<S> Address<S> for RemoteAddr
 						{
 							context  : Some( "Response to call from remote actor".to_string() ) ,
 							peer_id  : self.peer.id().into()                                    ,
-							peer_name: self.peer.name()                                         ,
+							peer_name: self.peer.name().into()                                  ,
 							sid      : <S as Service>::sid().into()                             ,
 							cid      : resp.cid().into()                                        ,
 						};
@@ -737,7 +737,7 @@ impl<S> Address<S> for RemoteAddr
 				{
 					context  : Some( "Remote could not process our message".to_string() ) ,
 					peer_id  : self.peer.id().into()                                      ,
-					peer_name: self.peer.name()                                           ,
+					peer_name: self.peer.name().into()                                    ,
 					sid      : <S as Service>::sid().into()                               ,
 					cid      : None                                                       ,
 				};
@@ -851,7 +851,7 @@ impl Identify for RemoteAddr
 
 	/// Unique id of the peer this sends over
 	//
-	fn name( &self ) -> Option<Arc<str>>
+	fn name( &self ) -> Arc<str>
 	{
 		self.peer.name()
 	}

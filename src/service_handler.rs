@@ -82,10 +82,10 @@ impl<Wf> fmt::Debug for ServiceHandler<Wf>
 
 			Self::Address(a) =>
 			{
-				match a.name()
+				match a.name().is_empty()
 				{
-					Some(n) => write!( f, "Address: id: {}, name: {:?}", a.id(), n )? ,
-					None    => write!( f, "Address: id: {}", a.id()                )? ,
+					true  => write!( f, "Address: id: {}", a.id()                       )? ,
+					false => write!( f, "Address: id: {}, name: {:?}", a.id(), a.name() )? ,
 				}
 			}
 		};

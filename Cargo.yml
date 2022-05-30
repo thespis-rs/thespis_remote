@@ -74,12 +74,12 @@ dependencies:
   futures_cbor_codec  : { version: ^0.3, optional: true                                     }
   futures_ringbuf     : { version: ^0.3, optional: true, features: [ sketchy ]              }
   async_executors     : { version: ^0.6                                                     }
-  thespis_impl        : { version: ^0.2                                                     }
+  thespis_impl        : { version: ^0.3, path: ../thespis_impl                              }
 
   # Pharos events are public on Peer
   #
   pharos              : { version: ^0.5 }
-  thespis             : { version: ^0.1 }
+  thespis             : { version: ^0.2 }
   byteorder           : ^1
 
 

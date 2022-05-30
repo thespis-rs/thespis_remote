@@ -171,7 +171,7 @@ impl WireFormat for CborWF
 		let low_tx  = low_tx .sink_map_err( |e| -> DynError { Box::new(e) } );
 		let high_tx = high_tx.sink_map_err( |e| -> DynError { Box::new(e) } );
 
-		let mb       = Mailbox::new( Some(name), rx );
+		let mb       = Mailbox::new( name, rx );
 		let addr_in  = mb.addr( Box::new( low_tx  ) );
 		let addr_out = mb.addr( Box::new( high_tx ) );
 		let weak_out = addr_out.weak();
