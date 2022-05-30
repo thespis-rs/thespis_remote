@@ -82,24 +82,22 @@ mod import
 		rand            :: { Rng                                                 } ,
 		serde           :: { Serialize, Deserialize                              } ,
 		thespis         :: { *                                                   } ,
-		thespis_impl    :: { Addr, ThesErr                                       } ,
+		thespis_impl    :: { Addr, WeakAddr, ThesErr, Mailbox, DynError          } ,
 		twox_hash       :: { XxHash64                                            } ,
 
 		std ::
 		{
-			collections  :: { HashMap, VecDeque                 } ,
+			collections  :: { HashMap                           } ,
 			convert      :: { TryFrom, TryInto                  } ,
 			fmt                                                   ,
 			io                                                    ,
 			future       :: { Future                            } ,
 			hash         :: { Hasher                            } ,
 			marker       :: { PhantomData                       } ,
-			num          :: { NonZeroUsize                      } ,
-			ops          :: { DerefMut                          } ,
 			pin          :: { Pin                               } ,
 			sync         :: { Arc                               } ,
-			sync::atomic :: { AtomicI64, AtomicU64, Ordering::* } ,
-			task         :: { Poll, Context, Waker              } ,
+			sync::atomic :: { AtomicU64, Ordering::*            } ,
+			task         :: { Poll, Context                     } ,
 			time         :: { Duration                          } ,
 		},
 
@@ -108,7 +106,6 @@ mod import
 		{
 			channel :: { oneshot, mpsc::{ self, UnboundedSender as futUnboundSender } } ,
 			future  :: { FutureExt                                                    } ,
-			lock    :: { Mutex as FutMutex                                            } ,
 			prelude :: { Stream, Sink                                                 } ,
 			sink    :: { SinkExt                                                      } ,
 			stream  :: { StreamExt, FuturesUnordered                                  } ,
@@ -123,8 +120,6 @@ mod import
 	//
 	pub(crate) use
 	{
-		pretty_assertions :: { assert_eq             } ,
-		futures           :: { executor::block_on    } ,
-		futures_test      :: { task::new_count_waker } ,
+		pretty_assertions :: { assert_eq } ,
 	};
 }

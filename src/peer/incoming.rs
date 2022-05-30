@@ -232,11 +232,6 @@ impl<Wf: WireFormat> Peer<Wf>
 	{
 		if self.closed { return }
 
-		if let Some( ref bp ) = self.backpressure
-		{
-			bp.remove_slots( NonZeroUsize::new(1).unwrap() );
-		}
-
 		trace!( "{}: Incoming Call, sid: {}, cid: {}", self.identify(), sid, cid );
 
 		let ctx = self.ctx( sid, cid, "Peer: Handle incoming call" );

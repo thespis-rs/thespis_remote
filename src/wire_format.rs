@@ -1,4 +1,4 @@
-use crate::{ import::*, PeerErr, Peer, PeerExec, BackPressure } ;
+use crate::{ import::*, PeerErr, Peer, PeerExec } ;
 
 mod unique_id  ;
 mod conn_id    ;
@@ -22,7 +22,7 @@ pub(crate) use wire_type::WireType;
 //
 #[ allow(clippy::len_without_is_empty) ]
 //
-pub trait WireFormat : Message< Return = Result<(), PeerErr> > + Default + Clone + io::Write
+pub trait WireFormat: Message< Return = Result<(), PeerErr> > + Default + Clone + io::Write
 {
 	/// Create a Peer from a connection that implements [AsyncRead]/[AsyncWrite]. Most of the parameters
 	/// here can be passed on to [Peer::new]. However you must turn the turn the [AsyncRead]/[AsyncWrite]
@@ -41,16 +41,15 @@ pub trait WireFormat : Message< Return = Result<(), PeerErr> > + Default + Clone
 	//
 	fn create_peer
 	(
-		addr          : Addr<Peer<Self> >                                    ,
+		name          : impl AsRef<str>                                      ,
 		socket        : impl AsyncRead + AsyncWrite + Unpin + Send + 'static ,
 		max_size_read : usize                                                ,
 		max_size_write: usize                                                ,
 		exec          : impl PeerExec<Self>                                  ,
-		bp            : Option<Arc<BackPressure>>                            ,
 		grace_period  : Option<Duration>                                     ,
 	)
 
-		-> Result< Peer<Self>, PeerErr >
+	-> Result< (Peer<Self>, Mailbox<Peer<Self>>, WeakAddr<Peer<Self>>), PeerErr >
 
 		where Self: Sized
 	;

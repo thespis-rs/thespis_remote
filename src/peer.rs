@@ -4,7 +4,6 @@
 use crate :: { import::*, * };
 
 
-    mod backpressure      ;
     mod call              ;
     mod call_response     ;
     mod close_connection  ;
@@ -16,7 +15,6 @@ pub mod request_error     ;
     mod response          ;
     mod timeout           ;
 
-pub use backpressure      :: { BackPressure        } ;
 pub use call              :: { Call                } ;
 pub use call_response     :: { CallResponse        } ;
 pub use close_connection  :: { CloseConnection     } ;
@@ -180,10 +178,6 @@ pub struct Peer<Wf: 'static + WireFormat = CborWF>
 	//
 	timeout: Duration,
 
-	// How long to wait for responses to outgoing requests before timing out.
-	//
-	backpressure: Option<Arc< BackPressure >>,
-
 	// All spawned requests will be collected here.
 	//
 	nursery_stream: Option<JoinHandle<Result<Response<Wf>, PeerErr>>>,
@@ -284,7 +278,7 @@ impl<Wf: WireFormat> Peer<Wf>
 	//
 	pub fn err_ctx
 	(
-		addr   : &Addr<Self>                  ,
+		addr   : &WeakAddr<Self>              ,
 		sid    : impl Into<Option<ServiceID>> ,
 		cid    : impl Into<Option<ConnID>>    ,
 		context: impl Into<Option<String>>    ,
@@ -316,7 +310,17 @@ impl<Wf: WireFormat> Peer<Wf>
 
 
 	/// Create a new peer to represent a connection to some remote.
-	/// `addr` is the actor address for this actor.
+	///
+	/// Ideally you don't have to call this method directly. Wire formats need to have a convenience function
+	/// to create your peer from an `AsyncRead`/`AsyncWrite`. They make some assumptions about default values and
+	/// if you need more control, you might have to call this directly.
+	///
+	/// In any case have a look at [`CborWF::create_peer`] to see how this is called.
+	///
+	/// `addr_in` and `addr_out`: These are addresses to this very actor (Peer). Since this actor sits at the
+	/// gate of both incoming and outgoing messages, we need to double up it's mailbox with a priority queue
+	/// in order to avoid a deadlock. See the [guide level docs](https://thespis-rs.github.io/thespis_guide/pitfalls.html#1deadlocks)
+	/// for some background information about this problem.
 	///
 	/// *grace_period*: When the remote closes the connection, we could immediately drop all outstanding tasks related to
 	/// this peer. This makes sense for a request-response type connection, as it doesn't make sense to
@@ -327,32 +331,32 @@ impl<Wf: WireFormat> Peer<Wf>
 	//
 	pub fn new
 	(
-		addr        : Addr<Self>                                                                ,
+		addr_in     : Addr<Self>                                                                ,
+		addr_out    : Addr<Self>                                                                ,
 		incoming    : impl BoundsIn<Wf>                                                         ,
 		outgoing    : impl BoundsOut<Wf>                                                        ,
 		exec        : impl SpawnHandle<Result<Response<Wf>, PeerErr>> + Send + Sync + 'static   ,
-		bp          : Option<Arc<BackPressure>>                                                 ,
 		grace_period: Option<Duration>                                                          ,
 	)
 
 		-> Result< Self, PeerErr >
 
 	{
-		trace!( "{}: Create peer", &addr );
+		trace!( "{}: Create peer", &addr_in );
 
 
 		let exec: Arc< dyn SpawnHandle<Result<Response<Wf>, PeerErr>> + Send + Sync + 'static > = Arc::new(exec);
 		let (nursery, nursery_stream) = Nursery::new( exec.clone() );
 
 
-		let nursery_handle = exec.spawn_handle( Self::listen_request_results( nursery_stream, addr.clone() ) )
+		let nursery_handle = exec.spawn_handle( Self::listen_request_results( nursery_stream, addr_out ) )
 
 			.map_err( |_| -> PeerErr
 			{
 				let ctx = PeerErrCtx::default()
 
-					.peer_id  ( addr.id()                                             )
-					.peer_name( addr.name()                                           )
+					.peer_id  ( addr_in.id()                                          )
+					.peer_name( addr_in.name()                                        )
 					.context  ( Some( "Request results stream for peer".to_string() ) )
 				;
 
@@ -361,7 +365,7 @@ impl<Wf: WireFormat> Peer<Wf>
 		;
 
 
-		nursery.nurse( Self::listen_incoming( incoming, addr.clone(), bp.clone() ) )
+		nursery.nurse( Self::listen_incoming( incoming, addr_in.clone() ) )
 
 			.map_err( |_| -> PeerErr
 			{
@@ -378,17 +382,16 @@ impl<Wf: WireFormat> Peer<Wf>
 
 		Ok( Self
 		{
-			id             : addr.id()                  ,
-			name           : addr.name()                ,
+			id             : addr_in.id()               ,
+			name           : addr_in.name()             ,
 			outgoing       : Some( Box::new(outgoing) ) ,
-			addr           : Some( addr )               ,
 			responses      : HashMap::new()             ,
 			services       : HashMap::new()             ,
 			pharos         : Pharos::default()          ,
 			timeout        : Duration::from_secs(60)    ,
-			backpressure   : bp                         ,
 			closed         : false                      ,
 			nursery_stream : Some( nursery_handle )     ,
+			addr           : Some( addr_in )            ,
 			nursery                                     ,
 			grace_period                                ,
 
@@ -416,7 +419,7 @@ impl<Wf: WireFormat> Peer<Wf>
 	async fn listen_request_results
 	(
 		mut stream: NurseryStream<Result<Response<Wf>, PeerErr>> ,
-		mut addr  : Addr<Peer<Wf>>                               ,
+		mut addr  : Addr<Peer<Wf>>                           ,
 	)
 		-> Result<Response<Wf>, PeerErr>
 
@@ -455,9 +458,8 @@ impl<Wf: WireFormat> Peer<Wf>
 	//
 	async fn listen_incoming
 	(
-		mut incoming: impl BoundsIn<Wf>         ,
-		mut addr    : Addr<Peer<Wf>>            ,
-		    bp      : Option<Arc<BackPressure>> ,
+		mut incoming: impl BoundsIn<Wf>  ,
+		mut addr    : Addr<Peer<Wf>> ,
 	)
 		-> Result<Response<Wf>, PeerErr>
 
@@ -469,20 +471,11 @@ impl<Wf: WireFormat> Peer<Wf>
 		//
 		while let Some(msg) = incoming.next().await
 		{
-			if let Some( ref bp ) = bp
-			{
-				trace!( "check for backpressure" );
-
-				bp.wait().await;
-
-				trace!( "backpressure allows progress now." );
-			}
-
 			trace!( "{}: incoming message.", &addr );
 
 			if addr.send( Incoming{ msg } ).await.is_err()
 			{
-				error!( "{} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
+				error!( "Peer::listen_incoming: {} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
 			}
 		}
 

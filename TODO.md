@@ -6,6 +6,8 @@
 
 - examples for all feature, backpressure, pubsub, ...
 
+- verify: Runtime modification is provided. You can tell the ServiceMap to start delivering to another actor/connection, and you can tell the peer to start/stop exposing a certain service. Once the mailbox for the peer has been started, you can only communicate to it by means of messages, so the messages AddServices and RemoveServices can be used to convey runtime instructions.
+
 - can incoming messages provide unfair competition for Peer mailbox which will prevent outgoing? eg. can it continuously fill the mailbox preventing outgoing messages from getting out? With default back pressure?
 
   - It will depend on the fairness of the channel. When the outgoing blocks, it should get a slot.

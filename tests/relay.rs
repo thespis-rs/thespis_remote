@@ -46,9 +46,7 @@ async fn relay_once()
 		// get a framed connection
 		//
 		debug!( "start mailbox for provider" );
-		let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), AsyncStd, "provider" ).await;
-
-		drop( peer_addr );
+		let (_, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), AsyncStd, "provider" ).await;
 
 		handle.await;
 

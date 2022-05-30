@@ -131,15 +131,9 @@ async fn server( to_relay: Endpoint )
 
 	let addr_handler = Addr::builder().name( "sum_handler" ).spawn( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
-	// Create mailbox for peer
-	//
-	let (peer_addr, peer_mb) = Addr::builder().name( "server" ).build();
-
-
 	// Create peer with stream/sink
 	//
-	let mut peer = CborWF::create_peer( peer_addr, to_relay, 1024, 1024, Arc::new( exec.clone() ), None, None ).expect( "create peer" );
-
+	let (mut peer, peer_mb, _) = CborWF::create_peer( "server", to_relay, 1024, 1024, Arc::new( exec.clone() ), None ).expect( "create peer" );
 
 	// Register Sum with peer as handler for Add and Show
 	//
@@ -177,13 +171,9 @@ async fn relay( to_server: Endpoint, to_client: Endpoint )
 
 	debug!( "Actor for relay_to_provider is {}", server_addr.id() );
 
-	// Create mailbox for client peer
-	//
-	let (client_addr, client_mb) = Addr::builder().name( "relay_to_consumer" ).build();
-
 	// create peer with stream/sink + service map
 	//
-	let mut client_peer = CborWF::create_peer( client_addr, to_client, 1024, 1024, exec.clone(), None, None ).expect( "spawn peer" );
+	let (mut client_peer, client_mb, _) = CborWF::create_peer( "relay_to_consumer", to_client, 1024, 1024, exec.clone(), None ).expect( "spawn peer" );
 
 	let add  = <Add  as remotes::Service>::sid();
 	let show = <Show as remotes::Service>::sid();
@@ -201,8 +191,6 @@ async fn relay( to_server: Endpoint, to_client: Endpoint )
 	server_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await
 
 		.expect( "close connection to provider" );
-
-	drop( server_addr );
 
 	server_handle.await;
 
@@ -249,9 +237,6 @@ async fn client( client_relay: Endpoint )
 	info!( "Close Connection" );
 	to_relay.call( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to relay" );
 
-	drop( addr     );
-	drop( to_relay );
-
 	relay_handle.await;
 }
 
@@ -265,16 +250,11 @@ async fn peer_connect
 	exec  : impl PeerExec ,
 	name  : &str          ,
 )
-	-> (Addr<Peer>, Events<PeerEvent>, JoinHandle<()>)
+	-> (WeakAddr<Peer>, Events<PeerEvent>, JoinHandle<()>)
 {
-	// Create mailbox for peer
-	//
-	let (peer_addr, peer_mb) = Addr::builder().name( name ).build();
-
-
 	// create peer with stream/sink + service map
 	//
-	let mut peer = CborWF::create_peer( peer_addr.clone(), socket, 1024, 1024, exec.clone(), None, None ).expect( "spawn peer" );
+	let (mut peer, peer_mb, peer_addr) = CborWF::create_peer( name, socket, 1024, 1024, exec.clone(), None ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).await.expect( "pharos not closed" );
 

@@ -111,7 +111,7 @@ use
 		once_cell       :: { sync::Lazy                                          } ,
 		futures         :: { future::FutureExt, task::{ Context, Poll }, SinkExt } ,
 		thespis         :: { *                                                   } ,
-		thespis_impl    :: { Addr, ThesErr, ThesRes                              } ,
+		thespis_impl    :: { Addr, WeakAddr, ThesErr, ThesRes                    } ,
 		serde_cbor      :: { self, from_slice as des                             } ,
 		serde           :: { Serialize, Deserialize, de::DeserializeOwned        } ,
 		tracing         :: { error                                               } ,
@@ -560,7 +560,7 @@ pub struct RemoteAddr
 	//       type of this message. It would have to be an enum as well, and every caller would have to
 	//       match on it. For now we will keep our dependency on Peer and Addr.
 	//
-	peer: Addr<Peer<$wf>>
+	peer: WeakAddr<Peer<$wf>>
 }
 
 
@@ -568,7 +568,7 @@ impl RemoteAddr
 {
 	/// Create an RemoteAddr which implements Addr<M> for all the services in this service_map.
 	//
-	pub fn new( peer: Addr<Peer<$wf>> ) -> Self
+	pub fn new( peer: WeakAddr<Peer<$wf>> ) -> Self
 	{
 		Self { peer }
 	}

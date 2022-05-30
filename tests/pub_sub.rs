@@ -68,28 +68,17 @@ async fn pubsub()
 
 	let relays = async move
 	{
-		let exec = AsyncStd.instrument( span_relay );
-
-
+		let exec     = AsyncStd.instrument( span_relay );
 		let services = vec![<Add as remotes::Service>::sid()];
-
-		// Create mailbox for peer to consumer_c
-		//
-		let (peer_addr_a, peer_mb_a) = Addr::builder().name( "relay_to_provider" ).build();
-
-		let (mut peer_addr_c, peer_mb_c) = Addr::builder().name( "relay_to_consumer_c" ).build();
-		let (mut peer_addr_d, peer_mb_d) = Addr::builder().name( "relay_to_consumer_d" ).build();
-		let (mut peer_addr_e, peer_mb_e) = Addr::builder().name( "relay_to_consumer_e" ).build();
-
-		let delay = Some( Duration::from_millis(10) );
+		let delay    = Some( Duration::from_millis(10) );
 
 		// create peer with stream/sink
 		//
-		let peer_c = CborWF::create_peer( peer_addr_c.clone(), bc, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_c" );
-		let peer_d = CborWF::create_peer( peer_addr_d.clone(), bd, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_d" );
-		let peer_e = CborWF::create_peer( peer_addr_e.clone(), be, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_e" );
+		let (peer_c, peer_mb_c, mut peer_addr_c) = CborWF::create_peer( "relay_to_consumer_c", bc, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_c" );
+		let (peer_d, peer_mb_d, mut peer_addr_d) = CborWF::create_peer( "relay_to_consumer_d", bd, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_d" );
+		let (peer_e, peer_mb_e, mut peer_addr_e) = CborWF::create_peer( "relay_to_consumer_e", be, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_e" );
 
-		let mut peer_a = CborWF::create_peer( peer_addr_a, ba, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
+		let (mut peer_a, peer_mb_a, _) = CborWF::create_peer( "relay_to_provider", ba, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_a" );
 
 		let mut pubsub = PubSub::new( services );
 
@@ -154,11 +143,7 @@ async fn consumer( name: &str, endpoint: Endpoint, expect: i64, exec: tracing_fu
 	// get a framed connection
 	//
 	debug!( "start mailbox for consumer" );
-	let (peer_addr, _peer_evts, handle) = peer_listen( endpoint, Arc::new( sm ), exec, name ).await;
-
-	// this way the only peer address is in the peer itself, so we don't keep it alive after the connection ends.
-	//
-	drop( peer_addr );
+	let (_, _peer_evts, handle) = peer_listen( endpoint, Arc::new( sm ), exec, name ).await;
 
 	handle.await;
 
@@ -166,8 +151,6 @@ async fn consumer( name: &str, endpoint: Endpoint, expect: i64, exec: tracing_fu
 
 	trace!( "End of consumer {}", name );
 }
-
-
 
 
 
@@ -264,28 +247,18 @@ async fn pubsub_rt()
 
 	let relays = async move
 	{
-		let exec = AsyncStd.instrument( span_relay );
-
-
+		let exec     = AsyncStd.instrument( span_relay );
 		let services = vec![<Add as remotes::Service>::sid()];
-
-		// Create mailbox for peer to consumer_c
-		//
-		let (peer_addr_a, peer_mb_a) = Addr::builder().name( "relay_to_provider" ).build();
-
-		let (mut peer_addr_c, peer_mb_c) = Addr::builder().name( "relay_to_consumer_c" ).build();
-		let (mut peer_addr_d, peer_mb_d) = Addr::builder().name( "relay_to_consumer_d" ).build();
-		let (mut peer_addr_e, peer_mb_e) = Addr::builder().name( "relay_to_consumer_e" ).build();
-
-		let delay = Some( Duration::from_millis(10) );
+		let delay    = Some( Duration::from_millis(10) );
 
 		// create peer with stream/sink
 		//
-		let peer_c = CborWF::create_peer( peer_addr_c.clone(), bc, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_c" );
-		let peer_d = CborWF::create_peer( peer_addr_d.clone(), bd, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_d" );
-		let peer_e = CborWF::create_peer( peer_addr_e.clone(), be, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_e" );
+		let (peer_c, peer_mb_c, mut peer_addr_c) = CborWF::create_peer( "relay_to_consumer_c", bc, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_c" );
+		let (peer_d, peer_mb_d, mut peer_addr_d) = CborWF::create_peer( "relay_to_consumer_d", bd, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_d" );
+		let (peer_e, peer_mb_e, mut peer_addr_e) = CborWF::create_peer( "relay_to_consumer_e", be, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_e" );
 
-		let mut peer_a = CborWF::create_peer( peer_addr_a, ba, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
+		let (mut peer_a, peer_mb_a, _) = CborWF::create_peer( "relay_to_provider", ba, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_a" );
+
 
 		let mut pubsub       = PubSub::new( services );
 		let mut subscriber   = pubsub.rt_subscribe  ( &exec ).expect( "get subsriber"   );
@@ -293,7 +266,6 @@ async fn pubsub_rt()
 
 
 		peer_a.register_services( Arc::new( pubsub ) );
-
 
 
 		let  peer_a_handle = AsyncStd.spawn_handle( peer_mb_a.start(peer_a) ).expect( "Start mb" );

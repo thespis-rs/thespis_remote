@@ -70,11 +70,8 @@ impl<Wf: WireFormat + Send + 'static> Handler<Call<Wf>> for Peer<Wf>
 		};
 
 
-		// If self.closed is false, there should always be an address.
-		//
-		let mut self_addr = self.addr.as_ref().unwrap().clone();
-		let mut cid       = ConnID::from( self.conn_id_counter.fetch_add(1, Relaxed ) );
-		let     sid       = call.wf.sid();
+		let mut cid = ConnID::from( self.conn_id_counter.fetch_add(1, Relaxed) );
+		let     sid = call.wf.sid();
 
 		// We wrapped round.
 		// It must not be 0 otherwise the remote will consider it a send, and it's reserved.
@@ -97,6 +94,9 @@ impl<Wf: WireFormat + Send + 'static> Handler<Call<Wf>> for Peer<Wf>
 		//
 		let delay = self.timeout;
 
+		// If self.closed is false, there should always be an address.
+		//
+		let mut self_addr = self.addr.as_ref().unwrap().clone();
 
 		let task = async move
 		{

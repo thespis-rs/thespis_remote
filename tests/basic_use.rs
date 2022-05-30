@@ -16,8 +16,6 @@ use common::import::{ *, assert_eq };
 //
 async fn basic_remote()
 {
-	// flexi_logger::Logger::with_str( "info, thespis_remote=trace" ).start().unwrap();
-
 	let (server, client) = Endpoint::pair( 64, 64 );
 
 
@@ -29,17 +27,17 @@ async fn basic_remote()
 
 		handle.await;
 
-		trace!( "end of peera" );
+		debug!( "end of peera" );
 	};
 
 
 	let peerb = async move
 	{
-		let (mut peera, _)  = peer_connect( client, AsyncStd, "peer_b_to_peera" ).await;
+		let (mut peer_addr, _) = peer_connect( client, AsyncStd, "peer_b_to_peera" ).await;
 
 		// Call the service and receive the response
 		//
-		let mut addr = remotes::RemoteAddr::new( peera.clone() );
+		let mut addr = remotes::RemoteAddr::new( peer_addr.clone() );
 
 		// The receiving end doesn't guarantee order of processing with send, so we only
 		// use call here.
@@ -48,7 +46,9 @@ async fn basic_remote()
 		assert_eq!( Ok(()), addr.call( Add(5) ).await );
 		assert_eq!( Ok(10), addr.call( Show   ).await );
 
-		peera.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
+		peer_addr.send( CloseConnection{ remote: false, reason: "Program end.".to_string() } ).await.expect( "close connection to peera" );
+
+		debug!( "end of peerb" );
 	};
 
 
@@ -102,13 +102,9 @@ async fn parallel()
 
 	let peera = async move
 	{
-		// Create mailbox for peer
-		//
-		let (peer_addr, peer_mb) = Addr::builder().name( "peer_a" ).build();
-
 		// create peer with stream/sink
 		//
-		let mut peer = CborWF::create_peer( peer_addr.clone(), server, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
+		let (mut peer, peer_mb, peer_addr) = CborWF::create_peer( "peer_a", server, 1024, 1024, AsyncStd, None ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -131,13 +127,9 @@ async fn parallel()
 
 	let peerb = async move
 	{
-		// Create mailbox for peer
-		//
-		let (mut peer_addr, peer_mb) = Addr::builder().name( "peer_b" ).build();
-
 		// create peer with stream/sink
 		//
-		let mut peer = CborWF::create_peer( peer_addr.clone(), client, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
+		let (mut peer, peer_mb, mut peer_addr) = CborWF::create_peer( "peer_b", client, 1024, 1024, AsyncStd, None ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//

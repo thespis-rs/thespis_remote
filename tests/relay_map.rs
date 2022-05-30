@@ -93,10 +93,8 @@ async fn debug()
 
 	// Create mailbox for peer
 	//
-	let (peer_addr, mb) = Addr::builder().name( "relay_to_consumer" ).build();
-	let id              = peer_addr.id()                                            ;
-
-	let peer = CborWF::create_peer( peer_addr.clone(), cx, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
+	let (peer, mb, peer_addr) = CborWF::create_peer( "relay_to_consumer", cx, 1024, 1024, AsyncStd, None ).expect( "spawn peer" );
+	let id = peer_addr.id()                                            ;
 
 	AsyncStd.spawn( mb.start(peer).map(|_|()) ).expect( "Start mailbox of Peer" );
 

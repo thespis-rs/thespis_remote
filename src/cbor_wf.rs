@@ -1,8 +1,9 @@
 
 use
 {
-	crate::{ import::*, Peer, PeerErr, PeerExec, BackPressure, wire_format::* },
-	std::io::{ Write as _, Seek },
+	crate   :: { import::*, Peer, PeerErr, PeerExec, wire_format::* } ,
+	std::io :: { Write as _, Seek                                   } ,
+	futures :: { stream::{ select_with_strategy, PollNext }         } ,
 };
 
 
@@ -24,6 +25,7 @@ const IDX_CID: usize = IDX_SID + LEN_SID;
 const IDX_MSG: usize = IDX_CID + LEN_CID;
 
 const LEN_HEADER: usize = IDX_MSG;
+const BOUNDED   : usize = 5;
 
 
 
@@ -136,16 +138,15 @@ impl WireFormat for CborWF
 	//
 	fn create_peer
 	(
-		addr          : Addr<Peer<CborWF> >                                  ,
+		name          : impl AsRef<str>                                      ,
 		socket        : impl AsyncRead + AsyncWrite + Unpin + Send + 'static ,
 		max_size_read : usize                                                ,
 		max_size_write: usize                                                ,
 		exec          : impl PeerExec<CborWF>                                ,
-		bp            : Option<Arc<BackPressure>>                            ,
 		grace_period  : Option<Duration>                                     ,
 	)
 
-		-> Result< Peer<CborWF>, PeerErr >
+		-> Result< (Peer<CborWF>, Mailbox<Peer<CborWF>>, WeakAddr<Peer<CborWF>>), PeerErr >
 
 	{
 		let (reader, writer) = socket.split();
@@ -153,7 +154,31 @@ impl WireFormat for CborWF
 		let stream = decoder::Decoder::new( reader, max_size_read  );
 		let sink   = encoder::Encoder::new( writer, max_size_write );
 
-		Peer::new( addr, stream, sink, Arc::new(exec), bp, grace_period )
+		// We will create 2 separate channels to the same mailbox.
+		// One for high priority (outbound) and one for low priority
+		// (inbound).
+		//
+		// Both will be bounded, but delivering outbound work is always
+		// prioritized over taking more inbound work. This will keep the
+		// system from congesting.
+		//
+		let ( low_tx,  low_rx) = futures::channel::mpsc::channel( BOUNDED );
+		let (high_tx, high_rx) = futures::channel::mpsc::channel( BOUNDED );
+
+		let strategy = |_: &mut ()| PollNext::Left;
+		let rx = Box::new( select_with_strategy( high_rx, low_rx, strategy ) );
+
+		let low_tx  = low_tx .sink_map_err( |e| -> DynError { Box::new(e) } );
+		let high_tx = high_tx.sink_map_err( |e| -> DynError { Box::new(e) } );
+
+		let mb       = Mailbox::new( Some(name), rx );
+		let addr_in  = mb.addr( Box::new( low_tx  ) );
+		let addr_out = mb.addr( Box::new( high_tx ) );
+		let weak_out = addr_out.weak();
+
+		let peer = Peer::new( addr_in, addr_out, stream, sink, Arc::new(exec), grace_period )?;
+
+		Ok( (peer, mb, weak_out) )
 	}
 
 

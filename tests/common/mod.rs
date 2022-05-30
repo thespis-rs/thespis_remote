@@ -69,22 +69,19 @@ pub fn add_show_sum() -> remotes::Services
 
 pub async fn peer_listen
 (
-	socket: Endpoint                                                                                                                   ,
-	sm    : Arc<impl ServiceMap + Send + Sync + 'static>                                                                               ,
+	socket: Endpoint                                              ,
+	sm    : Arc<impl ServiceMap + Send + Sync + 'static>          ,
 	exec  : impl Spawn + SpawnHandle<MailboxEnd<Peer>> + PeerExec ,
-	name  : &str                                                                                                                       ,
+	name  : &str                                                  ,
 )
 
-	-> (Addr<Peer>, Events<PeerEvent>, JoinHandle< MailboxEnd<Peer> >)
+	-> (WeakAddr<Peer>, Events<PeerEvent>, JoinHandle< MailboxEnd<Peer> >)
 {
-	// Create mailbox for peer
-	//
-	let (peer_addr, peer_mb) = Addr::builder().name( name ).build();
-
 	// create peer
 	//
-	let     delay = Some( Duration::from_millis(10) );
-	let mut  peer = CborWF::create_peer( peer_addr.clone(), socket, 1024, 1024, Arc::new( exec.clone() ), None, delay ).expect( "spawn peer" );
+	let delay = Some( Duration::from_millis(10) );
+	let (mut peer, peer_mb, peer_addr) = CborWF::create_peer( name, socket, 1024, 1024, Arc::new( exec.clone() ), delay ).expect( "spawn peer" );
+
 	let peer_evts = peer.observe( ObserveConfig::default() ).await.expect( "pharos not closed" );
 
 	// register service map with peer
@@ -105,19 +102,14 @@ pub async fn peer_connect
 	exec  : impl Spawn + SpawnHandle<MailboxEnd<Peer>> + PeerExec ,
 	name  : &str                                       ,
 )
-	-> (Addr<Peer>, Events<PeerEvent>)
+	-> (WeakAddr<Peer>, Events<PeerEvent>)
 
 {
-	// Create mailbox for peer
-	//
-	let (peer_addr, peer_mb) = Addr::builder().name( name ).build();
-
-
 	// create peer with stream/sink + service map
 	//
 	let delay = Some( Duration::from_millis(10) );
 
-	let mut peer = CborWF::create_peer( peer_addr.clone(), socket, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer" );
+	let (mut peer, peer_mb, peer_addr) = CborWF::create_peer( name, socket, 1024, 1024, exec.clone(), delay ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).await.expect( "pharos not closed" );
 
@@ -157,9 +149,8 @@ pub async fn provider
 	let (ab, ba) = Endpoint::pair( 128, 128 );
 
 	debug!( "start mailbox for provider" );
-	let (peer_addr, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), exec, "provider" ).await;
+	let (_, _peer_evts, handle) = peer_listen( ab, Arc::new( sm ), exec, "provider" ).await;
 
-	drop( peer_addr );
 	trace!( "End of provider" );
 
 	(ba, handle)
@@ -188,15 +179,11 @@ pub async fn relay
 
 	let relay = async move
 	{
-		// Create mailbox for peer
-		//
-		let (peer_addr, peer_mb) = Addr::builder().name( "relay_to_consumer" ).build();
-
 		// create peer with stream/sink + service map
 		//
 		let delay = Some( Duration::from_millis(10) );
 
-		let mut peer = CborWF::create_peer( peer_addr, listen, 1024, 1024, ex1, None, delay ).expect( "spawn peer" );
+		let (mut peer, peer_mb, _) = CborWF::create_peer( "relay_to_consumer", listen, 1024, 1024, ex1, delay ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
@@ -250,7 +237,7 @@ pub async fn relay_closure
 {
 	debug!( "start mailbox for relay_to_provider" );
 
-	let mut providers: Vec<Addr<Peer>> = Vec::new();
+	let mut providers: Vec<WeakAddr<Peer>> = Vec::new();
 
 	for (idx, endpoint) in connect.into_iter().enumerate()
 	{
@@ -267,15 +254,11 @@ pub async fn relay_closure
 
 	let relay = async move
 	{
-		// Create mailbox for peer
-		//
-		let (peer_addr, peer_mb) = Addr::builder().name( "relay_to_consumer" ).build();
-
 		// create peer with stream/sink + service map
 		//
 		let delay = Some( Duration::from_millis(10) );
 
-		let mut peer = CborWF::create_peer( peer_addr, listen, 1024, 1024, ex1, None, delay ).expect( "spawn peer" );
+		let (mut peer, peer_mb, _) = CborWF::create_peer( "relay_to_consumer", listen, 1024, 1024, ex1, delay ).expect( "spawn peer" );
 
 		let add  = <Add  as remotes::Service>::sid();
 		let show = <Show as remotes::Service>::sid();
