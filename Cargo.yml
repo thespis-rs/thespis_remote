@@ -106,7 +106,7 @@ dev-dependencies:
   futures-test       : ^0.3
   futures            : { version: ^0.3, features: [ thread-pool ] }
   tokio              : { version: ^1, features: [ sync ] }
-  async-std          : { version: ^1.6.0-beta, features: [ attributes ] }
+  async-std          : { version: ^1, features: [ attributes ] }
   rand               : { version: ^0.8 }
   rand_chacha        : { version: ^0.3 }
   criterion          : ^0.3
