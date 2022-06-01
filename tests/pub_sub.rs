@@ -74,11 +74,11 @@ async fn pubsub()
 
 		// create peer with stream/sink
 		//
-		let (peer_c, peer_mb_c, mut peer_addr_c) = CborWF::create_peer( "relay_to_consumer_c", bc, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_c" );
-		let (peer_d, peer_mb_d, mut peer_addr_d) = CborWF::create_peer( "relay_to_consumer_d", bd, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_d" );
-		let (peer_e, peer_mb_e, mut peer_addr_e) = CborWF::create_peer( "relay_to_consumer_e", be, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_e" );
+		let (peer_c, peer_mb_c, mut peer_addr_c) = CborWF::create_peer( "relay_to_consumer_c", bc, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_c" );
+		let (peer_d, peer_mb_d, mut peer_addr_d) = CborWF::create_peer( "relay_to_consumer_d", bd, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_d" );
+		let (peer_e, peer_mb_e, mut peer_addr_e) = CborWF::create_peer( "relay_to_consumer_e", be, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_e" );
 
-		let (mut peer_a, peer_mb_a, _) = CborWF::create_peer( "relay_to_provider", ba, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_a" );
+		let (mut peer_a, peer_mb_a, _) = CborWF::create_peer( "relay_to_provider", ba, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_a" );
 
 		let mut pubsub = PubSub::new( services );
 
@@ -253,11 +253,11 @@ async fn pubsub_rt()
 
 		// create peer with stream/sink
 		//
-		let (peer_c, peer_mb_c, mut peer_addr_c) = CborWF::create_peer( "relay_to_consumer_c", bc, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_c" );
-		let (peer_d, peer_mb_d, mut peer_addr_d) = CborWF::create_peer( "relay_to_consumer_d", bd, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_d" );
-		let (peer_e, peer_mb_e, mut peer_addr_e) = CborWF::create_peer( "relay_to_consumer_e", be, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_e" );
+		let (peer_c, peer_mb_c, mut peer_addr_c) = CborWF::create_peer( "relay_to_consumer_c", bc, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_c" );
+		let (peer_d, peer_mb_d, mut peer_addr_d) = CborWF::create_peer( "relay_to_consumer_d", bd, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_d" );
+		let (peer_e, peer_mb_e, mut peer_addr_e) = CborWF::create_peer( "relay_to_consumer_e", be, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_e" );
 
-		let (mut peer_a, peer_mb_a, _) = CborWF::create_peer( "relay_to_provider", ba, 1024, 1024, exec.clone(), delay ).expect( "spawn peer_a" );
+		let (mut peer_a, peer_mb_a, _) = CborWF::create_peer( "relay_to_provider", ba, 1024, 1024, exec.clone(), None, delay ).expect( "spawn peer_a" );
 
 
 		let mut pubsub       = PubSub::new( services );

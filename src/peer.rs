@@ -4,6 +4,7 @@
 use crate :: { import::*, * };
 
 
+    mod backpressure      ;
     mod call              ;
     mod call_response     ;
     mod close_connection  ;
@@ -15,6 +16,7 @@ pub mod request_error     ;
     mod response          ;
     mod timeout           ;
 
+pub use backpressure      :: { BackPressure        } ;
 pub use call              :: { Call                } ;
 pub use call_response     :: { CallResponse        } ;
 pub use close_connection  :: { CloseConnection     } ;
@@ -178,6 +180,10 @@ pub struct Peer<Wf: 'static + WireFormat = CborWF>
 	//
 	timeout: Duration,
 
+	// How long to wait for responses to outgoing requests before timing out.
+	//
+	backpressure: Option<Arc< BackPressure >>,
+
 	// All spawned requests will be collected here.
 	//
 	nursery_stream: Option<JoinHandle<Result<Response<Wf>, PeerErr>>>,
@@ -336,6 +342,7 @@ impl<Wf: WireFormat> Peer<Wf>
 		incoming    : impl BoundsIn<Wf>                                                         ,
 		outgoing    : impl BoundsOut<Wf>                                                        ,
 		exec        : impl SpawnHandle<Result<Response<Wf>, PeerErr>> + Send + Sync + 'static   ,
+		bp          : Option<Arc<BackPressure>>                                                 ,
 		grace_period: Option<Duration>                                                          ,
 	)
 
@@ -365,7 +372,7 @@ impl<Wf: WireFormat> Peer<Wf>
 		;
 
 
-		nursery.nurse( Self::listen_incoming( incoming, addr_in.clone() ) )
+		nursery.nurse( Self::listen_incoming( incoming, addr_in.clone(), bp.clone() ) )
 
 			.map_err( |_| -> PeerErr
 			{
@@ -389,6 +396,7 @@ impl<Wf: WireFormat> Peer<Wf>
 			services       : HashMap::new()             ,
 			pharos         : Pharos::default()          ,
 			timeout        : Duration::from_secs(60)    ,
+			backpressure   : bp                         ,
 			closed         : false                      ,
 			nursery_stream : Some( nursery_handle )     ,
 			addr           : Some( addr_in )            ,
@@ -419,7 +427,7 @@ impl<Wf: WireFormat> Peer<Wf>
 	async fn listen_request_results
 	(
 		mut stream: NurseryStream<Result<Response<Wf>, PeerErr>> ,
-		mut addr  : Addr<Peer<Wf>>                           ,
+		mut addr  : Addr<Peer<Wf>>                               ,
 	)
 		-> Result<Response<Wf>, PeerErr>
 
@@ -458,8 +466,9 @@ impl<Wf: WireFormat> Peer<Wf>
 	//
 	async fn listen_incoming
 	(
-		mut incoming: impl BoundsIn<Wf>  ,
-		mut addr    : Addr<Peer<Wf>> ,
+		mut incoming: impl BoundsIn<Wf>         ,
+		mut addr    : Addr<Peer<Wf>>            ,
+		    bp      : Option<Arc<BackPressure>> ,
 	)
 		-> Result<Response<Wf>, PeerErr>
 
@@ -471,11 +480,20 @@ impl<Wf: WireFormat> Peer<Wf>
 		//
 		while let Some(msg) = incoming.next().await
 		{
+			if let Some( ref bp ) = bp
+			{
+				trace!( "check for backpressure" );
+
+				bp.wait().await;
+
+				trace!( "backpressure allows progress now." );
+			}
+
 			trace!( "{}: incoming message.", &addr );
 
 			if addr.send( Incoming{ msg } ).await.is_err()
 			{
-				error!( "Peer::listen_incoming: {} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
+				error!( "{} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
 			}
 		}
 

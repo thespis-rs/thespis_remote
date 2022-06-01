@@ -104,7 +104,7 @@ async fn parallel()
 	{
 		// create peer with stream/sink
 		//
-		let (mut peer, peer_mb, peer_addr) = CborWF::create_peer( "peer_a", server, 1024, 1024, AsyncStd, None ).expect( "spawn peer" );
+		let (mut peer, peer_mb, peer_addr) = CborWF::create_peer( "peer_a", server, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 		// Create recipients
 		//
@@ -129,7 +129,7 @@ async fn parallel()
 	{
 		// create peer with stream/sink
 		//
-		let (mut peer, peer_mb, mut peer_addr) = CborWF::create_peer( "peer_b", client, 1024, 1024, AsyncStd, None ).expect( "spawn peer" );
+		let (mut peer, peer_mb, mut peer_addr) = CborWF::create_peer( "peer_b", client, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 		// Create mailbox for our handler
 		//

@@ -78,7 +78,7 @@ async fn timeout()
 
 		// create peer with stream/sink + service map
 		//
-		let (mut peer, peer_mb, mut peera) = CborWF::create_peer( name, client, 1024, 1024, AsyncStd, None ).expect( "spawn peer" );
+		let (mut peer, peer_mb, mut peera) = CborWF::create_peer( name, client, 1024, 1024, AsyncStd, None, None ).expect( "spawn peer" );
 
 
 		// This is the relevant line for this test!

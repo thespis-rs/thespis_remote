@@ -110,15 +110,11 @@ async fn backpressure_basic()
 		sm.register_handler::<Add2>( slow2.clone_box() );
 		sm.register_handler::<Show>( after.clone_box() );
 
-		// Create mailbox for peer
-		//
-		let(peer_addr, peer_mb) = Addr::builder().name( "server" ).build();
-
 		// create peer with stream/sink
 		//
-		let mut peer = CborWF::create_peer
+		let (mut peer, peer_mb, _peer_addr) = CborWF::create_peer
 		(
-			peer_addr,
+			"server",
 			server,
 			1024,
 			1024,

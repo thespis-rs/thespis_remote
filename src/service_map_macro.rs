@@ -111,7 +111,7 @@ use
 		once_cell       :: { sync::Lazy                                          } ,
 		futures         :: { future::FutureExt, task::{ Context, Poll }, SinkExt } ,
 		thespis         :: { *                                                   } ,
-		thespis_impl    :: { Addr, WeakAddr, ThesErr, ThesRes                    } ,
+		thespis_impl    :: { WeakAddr, ThesErr, ThesRes                          } ,
 		serde_cbor      :: { self, from_slice as des                             } ,
 		serde           :: { Serialize, Deserialize, de::DeserializeOwned        } ,
 		tracing         :: { error                                               } ,

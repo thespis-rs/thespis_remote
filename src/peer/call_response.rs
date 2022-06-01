@@ -42,6 +42,15 @@ impl<Wf: WireFormat + Send + 'static> Handler<CallResponse<Wf>> for Peer<Wf>
 	{
 		trace!( "{}: sending OUT CallResponse", self.identify() );
 
-		self.send_msg( wrap.msg ).await
+		let res = self.send_msg( wrap.msg ).await;
+
+		if let Some( ref bp ) = self.backpressure
+		{
+			trace!( "Liberate slot for backpressure." );
+
+			bp.add_slots( NonZeroUsize::new( 1 ).expect( "1 > 0" ) );
+		}
+
+		res
 	}
 }

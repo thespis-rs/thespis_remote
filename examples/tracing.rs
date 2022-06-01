@@ -133,7 +133,7 @@ async fn server( to_relay: Endpoint )
 
 	// Create peer with stream/sink
 	//
-	let (mut peer, peer_mb, _) = CborWF::create_peer( "server", to_relay, 1024, 1024, Arc::new( exec.clone() ), None ).expect( "create peer" );
+	let (mut peer, peer_mb, _) = CborWF::create_peer( "server", to_relay, 1024, 1024, Arc::new( exec.clone() ), None, None ).expect( "create peer" );
 
 	// Register Sum with peer as handler for Add and Show
 	//
@@ -173,7 +173,7 @@ async fn relay( to_server: Endpoint, to_client: Endpoint )
 
 	// create peer with stream/sink + service map
 	//
-	let (mut client_peer, client_mb, _) = CborWF::create_peer( "relay_to_consumer", to_client, 1024, 1024, exec.clone(), None ).expect( "spawn peer" );
+	let (mut client_peer, client_mb, _) = CborWF::create_peer( "relay_to_consumer", to_client, 1024, 1024, exec.clone(), None, None ).expect( "spawn peer" );
 
 	let add  = <Add  as remotes::Service>::sid();
 	let show = <Show as remotes::Service>::sid();
@@ -254,7 +254,7 @@ async fn peer_connect
 {
 	// create peer with stream/sink + service map
 	//
-	let (mut peer, peer_mb, peer_addr) = CborWF::create_peer( name, socket, 1024, 1024, exec.clone(), None ).expect( "spawn peer" );
+	let (mut peer, peer_mb, peer_addr) = CborWF::create_peer( name, socket, 1024, 1024, exec.clone(), None, None ).expect( "spawn peer" );
 
 	let evts = peer.observe( ObserveConfig::default() ).await.expect( "pharos not closed" );
 
