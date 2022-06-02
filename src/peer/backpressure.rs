@@ -16,7 +16,7 @@ pub struct BackPressure
 {
 	// The total number of available slots.
 	//
-	available: Arc<AtomicI64>              ,
+	available: Arc<AtomicU64>              ,
 	wakers   : Arc<Mutex<VecDeque<Waker>>> ,
 	future   : FutMutex<BPInner>           ,
 }
@@ -24,10 +24,10 @@ pub struct BackPressure
 
 impl BackPressure
 {
-	pub fn new( slots: i64 ) -> Self
+	pub fn new( slots: u64 ) -> Self
 	{
 		let wakers    = Arc::new( Mutex::new( VecDeque::new() ) );
-		let available = Arc::new( AtomicI64::from( slots )      );
+		let available = Arc::new( AtomicU64::from( slots )      );
 
 		let w = wakers.clone();
 		let a = available.clone();
@@ -43,12 +43,11 @@ impl BackPressure
 
 	pub fn add_slots( &self, num: NonZeroUsize )
 	{
-		let num = num.get() as i64;
+		let num = num.get() as u64;
 
 		let old = self.available.fetch_add( num, SeqCst );
 
-		if old     <= 0
-		&& old+num >  0
+		if old == 0
 		{
 			if let Some(w) = self.wakers.lock().pop_front()
 			{
@@ -58,15 +57,7 @@ impl BackPressure
 	}
 
 
-	pub fn remove_slots( &self, num: NonZeroUsize )
-	{
-		let num = num.get() as i64;
-
-		self.available.fetch_sub( num, SeqCst );
-	}
-
-
-	pub fn available( &self ) -> i64
+	pub fn available( &self ) -> u64
 	{
 		self.available.load( SeqCst )
 	}
@@ -84,7 +75,7 @@ impl BackPressure
 
 struct BPInner
 {
-	available: Arc<AtomicI64>,
+	available: Arc<AtomicU64>,
 	wakers   : Arc<Mutex<VecDeque<Waker>>> ,
 }
 
@@ -96,32 +87,33 @@ impl Future for BPInner
 
 	fn poll( self: Pin<&mut Self>, cx: &mut Context<'_> ) -> Poll<()>
 	{
-		let old = self.available.load( SeqCst );
+		let mut woke = false;
 
-		if old > 0
+		if self.available.load( SeqCst ) > 0
 		{
-			// There was more than one free slot.
-			//
-			if old > 1
-			{
-				// And there were already wakers in the queue.
-				//
-				if let Some(w) = self.wakers.lock().pop_front()
-				{
-					// Wake an extra one up.
-					//
-					w.wake();
-				}
-			}
-
-			Poll::Ready(())
+			self.available.fetch_sub( 1, SeqCst );
+			woke = true;
 		}
 
-
-		else
+		while self.available.load( SeqCst ) > 0
 		{
-			self.wakers.lock().push_back( cx.waker().clone() );
-			Poll::Pending
+			if let Some(w) = self.wakers.lock().pop_front()
+			{
+				woke = true;
+				w.wake();
+				self.available.fetch_sub( 1, SeqCst );
+			}
+		}
+
+		match woke
+		{
+			true  => Poll::Ready(()),
+
+			false =>
+			{
+				self.wakers.lock().push_back( cx.waker().clone() );
+				Poll::Pending
+			}
 		}
 	}
 }

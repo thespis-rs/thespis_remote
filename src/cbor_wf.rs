@@ -1,8 +1,8 @@
 use
 {
-	crate   :: { import::*, Peer, PeerErr, PeerExec, wire_format::*, BackPressure } ,
-	std::io :: { Write as _, Seek                                                 } ,
-	futures :: { stream::{ select_with_strategy, PollNext }                       } ,
+	crate   :: { import::*, Peer, PeerErr, PeerExec, wire_format::* } ,
+	std::io :: { Write as _, Seek                                   } ,
+	futures :: { stream::{ select_with_strategy, PollNext }         } ,
 };
 
 
@@ -142,8 +142,8 @@ impl WireFormat for CborWF
 		max_size_read : usize                                                ,
 		max_size_write: usize                                                ,
 		exec          : impl PeerExec<CborWF>                                ,
-		bp            : Option<Arc<BackPressure>>                            ,
-		grace_period  : Option<Duration>                                     ,
+		bp            : Option< Arc<Semaphore> >                             ,
+		grace_period  : Option< Duration       >                             ,
 	)
 
 		-> Result< (Peer<CborWF>, Mailbox<Peer<CborWF>>, WeakAddr<Peer<CborWF>>), PeerErr >

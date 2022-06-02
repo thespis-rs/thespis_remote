@@ -9,7 +9,8 @@ use
 //
 pub(super) struct Incoming<Wf>
 {
-	pub(crate) msg: Result<Wf, WireErr>
+	pub(crate) msg   : Result< Wf, WireErr >       ,
+	pub(crate) permit: Option< SemaphoreGuardArc > ,
 }
 
 impl<Wf: WireFormat> Message for Incoming<Wf>
@@ -28,7 +29,7 @@ impl<Wf: WireFormat> Message for Incoming<Wf>
 //
 impl<Wf: WireFormat + Send + 'static> Handler<Incoming<Wf>> for Peer<Wf>
 {
-	#[async_fn] fn handle( &mut self, incoming: Incoming<Wf> )
+	#[async_fn] fn handle( &mut self, mut incoming: Incoming<Wf> )
 	{
 		// We're shut down. we can't really do anything useful.
 		//
@@ -62,12 +63,24 @@ impl<Wf: WireFormat + Send + 'static> Handler<Incoming<Wf>> for Peer<Wf>
 		//
 		match kind
 		{
-			WireType::ConnectionError => self.remote_conn_err( frame, cid      ).await,
-			WireType::IncomingSend    => self.incoming_send  ( sid, frame      ).await,
-			WireType::IncomingCall    => self.incoming_call  ( cid, sid, frame ).await,
+			WireType::ConnectionError =>
+			{
+				drop( incoming.permit.take() );
+				self.remote_conn_err( frame, cid ).await;
+			}
+
+			WireType::IncomingSend =>
+			{
+				drop( incoming.permit.take() );
+				self.incoming_send( sid, frame ).await;
+			}
+
+			WireType::IncomingCall => self.incoming_call( cid, sid, frame, incoming.permit ).await,
 
 			WireType::CallResponse =>
 			{
+				drop( incoming.permit.take() );
+
 				// it's a succesful response to a (relayed) call
 				//
 				if let Some( channel ) = self.responses.remove( &cid )
@@ -224,17 +237,18 @@ impl<Wf: WireFormat> Peer<Wf>
 
 	async fn incoming_call
 	(
-		&mut self           ,
-		cid     : ConnID    ,
-		sid     : ServiceID ,
-		frame   : Wf        ,
+		&mut self                            ,
+		cid     : ConnID                     ,
+		sid     : ServiceID                  ,
+		frame   : Wf                         ,
+		permit  : Option< SemaphoreGuardArc >,
 	)
 	{
 		if self.closed { return }
 
-		if let Some( ref bp ) = self.backpressure
+		if let Some( p ) = permit
 		{
-			bp.remove_slots( NonZeroUsize::new(1).unwrap() );
+			self.permits.push(p);
 		}
 
 		trace!( "{}: Incoming Call, sid: {}, cid: {}", self.identify(), sid, cid );

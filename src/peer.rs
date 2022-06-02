@@ -4,7 +4,6 @@
 use crate :: { import::*, * };
 
 
-    mod backpressure      ;
     mod call              ;
     mod call_response     ;
     mod close_connection  ;
@@ -16,7 +15,6 @@ pub mod request_error     ;
     mod response          ;
     mod timeout           ;
 
-pub use backpressure      :: { BackPressure        } ;
 pub use call              :: { Call                } ;
 pub use call_response     :: { CallResponse        } ;
 pub use close_connection  :: { CloseConnection     } ;
@@ -180,9 +178,13 @@ pub struct Peer<Wf: 'static + WireFormat = CborWF>
 	//
 	timeout: Duration,
 
-	// How long to wait for responses to outgoing requests before timing out.
+	// Respect a maximum of in flight requests.
 	//
-	backpressure: Option<Arc< BackPressure >>,
+	backpressure: Option<Arc< Semaphore >>,
+
+	// Store the permits, release on drop.
+	//
+	permits: Vec<SemaphoreGuardArc>,
 
 	// All spawned requests will be collected here.
 	//
@@ -337,13 +339,13 @@ impl<Wf: WireFormat> Peer<Wf>
 	//
 	pub fn new
 	(
-		addr_in     : Addr<Self>                                                                ,
-		addr_out    : Addr<Self>                                                                ,
-		incoming    : impl BoundsIn<Wf>                                                         ,
-		outgoing    : impl BoundsOut<Wf>                                                        ,
-		exec        : impl SpawnHandle<Result<Response<Wf>, PeerErr>> + Send + Sync + 'static   ,
-		bp          : Option<Arc<BackPressure>>                                                 ,
-		grace_period: Option<Duration>                                                          ,
+		addr_in     : Addr<Self>                                                              ,
+		addr_out    : Addr<Self>                                                              ,
+		incoming    : impl BoundsIn<Wf>                                                       ,
+		outgoing    : impl BoundsOut<Wf>                                                      ,
+		exec        : impl SpawnHandle<Result<Response<Wf>, PeerErr>> + Send + Sync + 'static ,
+		bp          : Option< Arc<Semaphore> >                                                ,
+		grace_period: Option< Duration >                                                      ,
 	)
 
 		-> Result< Self, PeerErr >
@@ -397,6 +399,7 @@ impl<Wf: WireFormat> Peer<Wf>
 			pharos         : Pharos::default()          ,
 			timeout        : Duration::from_secs(60)    ,
 			backpressure   : bp                         ,
+			permits        : Vec::new()                 ,
 			closed         : false                      ,
 			nursery_stream : Some( nursery_handle )     ,
 			addr           : Some( addr_in )            ,
@@ -468,7 +471,7 @@ impl<Wf: WireFormat> Peer<Wf>
 	(
 		mut incoming: impl BoundsIn<Wf>         ,
 		mut addr    : Addr<Peer<Wf>>            ,
-		    bp      : Option<Arc<BackPressure>> ,
+		    bp      : Option< Arc<Semaphore> >  ,
 	)
 		-> Result<Response<Wf>, PeerErr>
 
@@ -480,18 +483,27 @@ impl<Wf: WireFormat> Peer<Wf>
 		//
 		while let Some(msg) = incoming.next().await
 		{
-			if let Some( ref bp ) = bp
+
+			let permit = match &bp
 			{
-				trace!( "check for backpressure" );
+				None => None,
 
-				bp.wait().await;
+				Some(b) =>
+				{
+					trace!( "check for backpressure" );
 
-				trace!( "backpressure allows progress now." );
-			}
+					let p = b.acquire_arc().await;
+
+					trace!( "backpressure allows progress now." );
+
+					Some(p)
+				}
+			};
+
 
 			trace!( "{}: incoming message.", &addr );
 
-			if addr.send( Incoming{ msg } ).await.is_err()
+			if addr.send( Incoming{ msg, permit } ).await.is_err()
 			{
 				error!( "{} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
 			}

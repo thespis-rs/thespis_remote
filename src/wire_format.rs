@@ -1,4 +1,4 @@
-use crate::{ import::*, PeerErr, Peer, PeerExec, BackPressure } ;
+use crate::{ import::*, PeerErr, Peer, PeerExec } ;
 
 mod unique_id  ;
 mod conn_id    ;
@@ -46,8 +46,8 @@ pub trait WireFormat: Message< Return = Result<(), PeerErr> > + Default + Clone 
 		max_size_read : usize                                                ,
 		max_size_write: usize                                                ,
 		exec          : impl PeerExec<Self>                                  ,
-		bp            : Option<Arc<BackPressure>>                            ,
-		grace_period  : Option<Duration>                                     ,
+		bp            : Option< Arc<Semaphore> >                             ,
+		grace_period  : Option< Duration >                                   ,
 	)
 
 	-> Result< (Peer<Self>, Mailbox<Peer<Self>>, WeakAddr<Peer<Self>>), PeerErr >

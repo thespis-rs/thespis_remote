@@ -72,6 +72,7 @@ mod import
 	pub(crate) use
 	{
 		async_executors :: { SpawnHandle, SpawnHandleExt, JoinHandle             } ,
+		async_lock      :: { Semaphore, SemaphoreGuardArc                        } ,
 		async_nursery   :: { NurseExt, Nursery, NurseryStream                    } ,
 		byteorder       :: { ReadBytesExt, WriteBytesExt, LittleEndian           } ,
 		futures_timer   :: { Delay                                               } ,

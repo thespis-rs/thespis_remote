@@ -3,6 +3,9 @@ use crate::{ import::*, * };
 
 /// Type representing the response to a remote request. It is simply a wrapped BytesFormat, but we
 /// need to mark it with a type to keep track of the backpressure.
+///
+/// Do not confuse with WireType::CallResponse which is a response from the remote, this is a
+/// response to the remote.
 //
 #[ derive( Debug ) ]
 //
@@ -44,11 +47,11 @@ impl<Wf: WireFormat + Send + 'static> Handler<CallResponse<Wf>> for Peer<Wf>
 
 		let res = self.send_msg( wrap.msg ).await;
 
-		if let Some( ref bp ) = self.backpressure
+		if self.backpressure.is_some()
 		{
 			trace!( "Liberate slot for backpressure." );
 
-			bp.add_slots( NonZeroUsize::new( 1 ).expect( "1 > 0" ) );
+			drop( self.permits.pop() );
 		}
 
 		res

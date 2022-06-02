@@ -7,6 +7,7 @@ pub mod import
 {
 	pub use
 	{
+		async_progress  :: { Progress } ,
 		async_executors :: { *                                 } ,
 		futures_ringbuf :: { Endpoint                          } ,
 		thespis         :: { *                                 } ,
