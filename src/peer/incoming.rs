@@ -9,8 +9,8 @@ use
 //
 pub(super) struct Incoming<Wf>
 {
-	pub(crate) msg   : Result< Wf, WireErr >       ,
-	pub(crate) permit: Option< SemaphoreGuardArc > ,
+	pub(crate) msg   : Result< Wf, WireErr >          ,
+	pub(crate) permit: Option< OwnedSemaphorePermit > ,
 }
 
 impl<Wf: WireFormat> Message for Incoming<Wf>
@@ -54,9 +54,9 @@ impl<Wf: WireFormat + Send + 'static> Handler<Incoming<Wf>> for Peer<Wf>
 		};
 
 
-		let sid    = frame.sid();
-		let cid    = frame.cid();
-		let kind   = frame.kind();
+		let sid  = frame.sid();
+		let cid  = frame.cid();
+		let kind = frame.kind();
 
 		// TODO: when we have benchmarks, verify if it's better to return boxed submethods here
 		// rather than awaiting. Implies the rest of this method can run sync.
@@ -152,8 +152,8 @@ impl<Wf: WireFormat> Peer<Wf>
 		//
 		else
 		{
-			let ctx = self.ctx( None, cid, "We received an error message from a remote peer, but couldn't deserialize it" );
-			let err = PeerErr::Deserialize{ ctx };
+			let ctx   = self.ctx( None, cid, "We received an error message from a remote peer, but couldn't deserialize it" );
+			let err   = PeerErr::Deserialize{ ctx };
 			let shine = PeerEvent::Error(err);
 
 			// If pharos is closed, we already panicked... so except is fine.
@@ -237,19 +237,14 @@ impl<Wf: WireFormat> Peer<Wf>
 
 	async fn incoming_call
 	(
-		&mut self                            ,
-		cid     : ConnID                     ,
-		sid     : ServiceID                  ,
-		frame   : Wf                         ,
-		permit  : Option< SemaphoreGuardArc >,
+		&mut self                               ,
+		cid     : ConnID                        ,
+		sid     : ServiceID                     ,
+		frame   : Wf                            ,
+		permit  : Option< OwnedSemaphorePermit >,
 	)
 	{
 		if self.closed { return }
-
-		if let Some( p ) = permit
-		{
-			self.permits.push(p);
-		}
 
 		trace!( "{}: Incoming Call, sid: {}, cid: {}", self.identify(), sid, cid );
 
@@ -271,6 +266,15 @@ impl<Wf: WireFormat> Peer<Wf>
 				return self.handle( RequestError::from( err ) ).await;
 			}
 		};
+
+
+		if sm.apply_backpressure() {
+		if let Some( p ) = permit
+		{
+			self.permits.push(p);
+		}}
+
+		else { drop( permit ); }
 
 
 		// Get future from service map.

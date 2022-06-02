@@ -72,7 +72,7 @@ mod import
 	pub(crate) use
 	{
 		async_executors :: { SpawnHandle, SpawnHandleExt, JoinHandle             } ,
-		async_lock      :: { Semaphore, SemaphoreGuardArc                        } ,
+		tokio::sync     :: { Semaphore, OwnedSemaphorePermit                     } ,
 		async_nursery   :: { NurseExt, Nursery, NurseryStream                    } ,
 		byteorder       :: { ReadBytesExt, WriteBytesExt, LittleEndian           } ,
 		futures_timer   :: { Delay                                               } ,
@@ -88,20 +88,18 @@ mod import
 
 		std ::
 		{
-			collections  :: { HashMap, VecDeque                 } ,
-			convert      :: { TryFrom, TryInto                  } ,
-			fmt                                                   ,
-			io                                                    ,
-			future       :: { Future                            } ,
-			hash         :: { Hasher                            } ,
-			marker       :: { PhantomData                       } ,
-			num          :: { NonZeroUsize                      } ,
-			ops          :: { DerefMut                          } ,
-			pin          :: { Pin                               } ,
-			sync         :: { Arc                               } ,
-			sync::atomic :: { AtomicI64, AtomicU64, Ordering::* } ,
-			task         :: { Poll, Context, Waker              } ,
-			time         :: { Duration                          } ,
+			collections  :: { HashMap                } ,
+			convert      :: { TryFrom, TryInto       } ,
+			fmt                                        ,
+			io                                         ,
+			future       :: { Future                 } ,
+			hash         :: { Hasher                 } ,
+			marker       :: { PhantomData            } ,
+			pin          :: { Pin                    } ,
+			sync         :: { Arc                    } ,
+			sync::atomic :: { AtomicU64, Ordering::* } ,
+			task         :: { Poll, Context          } ,
+			time         :: { Duration               } ,
 		},
 
 
@@ -109,7 +107,6 @@ mod import
 		{
 			channel :: { oneshot, mpsc::{ self, UnboundedSender as futUnboundSender } } ,
 			future  :: { FutureExt                                                    } ,
-			lock    :: { Mutex as FutMutex                                            } ,
 			prelude :: { Stream, Sink                                                 } ,
 			sink    :: { SinkExt                                                      } ,
 			stream  :: { StreamExt, FuturesUnordered                                  } ,
@@ -124,8 +121,6 @@ mod import
 	//
 	pub(crate) use
 	{
-		pretty_assertions :: { assert_eq             } ,
-		futures           :: { executor::block_on    } ,
-		futures_test      :: { task::new_count_waker } ,
+		pretty_assertions :: { assert_eq } ,
 	};
 }

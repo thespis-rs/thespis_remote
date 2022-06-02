@@ -34,4 +34,7 @@ pub trait ServiceMap<Wf = CborWF>: fmt::Debug + Send + Sync
 	// TODO: Find a way to avoid the heap allocation.
 	//
 	fn services( &self ) -> Box<dyn Iterator<Item = &ServiceID> + '_ >;
+
+
+	fn apply_backpressure( &self ) -> bool;
 }

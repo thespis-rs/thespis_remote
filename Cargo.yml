@@ -66,7 +66,7 @@ dependencies:
   twox-hash           : { version: ^1                                                       }
 
   async_executors     : { version: ^0.6                                                     }
-  async-lock          : { version: ^2                                                       }
+  tokio               : { version: ^1, default-features: false, features: [ sync ]          }
   futures             : { version: ^0.3, features: [ std, compat ], default-features: false }
   futures-macro       : { version: ^0.3                                                     }
   futures-util        : { version: ^0.3                                                     }

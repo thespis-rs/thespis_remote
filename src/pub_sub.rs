@@ -204,6 +204,12 @@ impl<Wf: WireFormat> ServiceMap<Wf> for PubSub<Wf>
 	{
 		Box::new( self.services.iter() )
 	}
+
+
+	fn apply_backpressure( &self ) -> bool
+	{
+		false
+	}
 }
 
 

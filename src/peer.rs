@@ -184,7 +184,7 @@ pub struct Peer<Wf: 'static + WireFormat = CborWF>
 
 	// Store the permits, release on drop.
 	//
-	permits: Vec<SemaphoreGuardArc>,
+	permits: Vec<OwnedSemaphorePermit>,
 
 	// All spawned requests will be collected here.
 	//
@@ -492,7 +492,20 @@ impl<Wf: WireFormat> Peer<Wf>
 				{
 					trace!( "check for backpressure" );
 
-					let p = b.acquire_arc().await;
+					let p = match Arc::clone(b).acquire_owned().await
+					{
+						Ok(p) => p,
+
+						Err(_e) =>
+						{
+							error!( "{}: The semaphore for backpressure was closed externally.", Peer::identify_addr( &addr ) );
+
+							let ctx = Self::err_ctx( &addr.weak(), None, None, "Peer::listen_incoming: backpressure semaphore is closed.".to_string() );
+
+							let err = PeerErr::BackpressureClosed{ ctx };
+							return Err(err);
+						}
+					};
 
 					trace!( "backpressure allows progress now." );
 
@@ -503,9 +516,16 @@ impl<Wf: WireFormat> Peer<Wf>
 
 			trace!( "{}: incoming message.", &addr );
 
-			if addr.send( Incoming{ msg, permit } ).await.is_err()
+			// TODO: figure out if this can actually happen, as listen_request_results holds a strong Addr.
+			//
+			if let Err(e) = addr.send( Incoming{ msg, permit } ).await
 			{
 				error!( "{} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
+
+				let ctx = Self::err_ctx( &addr.weak(), None, None, "Peer::listen_incoming: peer mailbox no longer taking messages.".to_string() );
+
+				let err = PeerErr::ThesErr{ ctx, source: Arc::new(e) };
+				return Err(err);
 			}
 		}
 

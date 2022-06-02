@@ -148,6 +148,15 @@ pub enum PeerErr
 		//
 		ctx   : PeerErrCtx ,
 	},
+
+	/// The semaphore for the backpressure has been closed externally.
+	//
+	BackpressureClosed
+	{
+		/// The contex in which the error happened.
+		//
+		ctx   : PeerErrCtx ,
+	}
 }
 
 
@@ -216,6 +225,10 @@ impl fmt::Display for PeerErr
 			PeerErr::PubSubNoCall{ ctx } =>
 
 				write!( f, "PubSub does not support `Address::call` operation, only `Sink::send`.{}", ctx ),
+
+			PeerErr::BackpressureClosed{ ctx } =>
+
+				write!( f, "The semaphore for backpressure was closed externally.{}", ctx ),
 		}
 	}
 }
@@ -267,20 +280,21 @@ impl PeerErr
 	{
 		match self
 		{
-			PeerErr::ConnectionClosed { ctx, .. } => ctx,
-			PeerErr::Deserialize      { ctx, .. } => ctx,
-			PeerErr::HandlerDead      { ctx, .. } => ctx,
-			PeerErr::NoHandler        { ctx, .. } => ctx,
-			PeerErr::PeerGone         { ctx, .. } => ctx,
-			PeerErr::RelayGone        { ctx, .. } => ctx,
-			PeerErr::Remote           { ctx, .. } => ctx,
-			PeerErr::Serialize        { ctx, .. } => ctx,
-			PeerErr::Spawn            { ctx, .. } => ctx,
-			PeerErr::ThesErr          { ctx, .. } => ctx,
-			PeerErr::Timeout          { ctx, .. } => ctx,
-			PeerErr::UnknownService   { ctx, .. } => ctx,
-			PeerErr::WireFormat       { ctx, .. } => ctx,
-			PeerErr::PubSubNoCall     { ctx, .. } => ctx,
+			PeerErr::ConnectionClosed   { ctx, .. } => ctx,
+			PeerErr::Deserialize        { ctx, .. } => ctx,
+			PeerErr::HandlerDead        { ctx, .. } => ctx,
+			PeerErr::NoHandler          { ctx, .. } => ctx,
+			PeerErr::PeerGone           { ctx, .. } => ctx,
+			PeerErr::RelayGone          { ctx, .. } => ctx,
+			PeerErr::Remote             { ctx, .. } => ctx,
+			PeerErr::Serialize          { ctx, .. } => ctx,
+			PeerErr::Spawn              { ctx, .. } => ctx,
+			PeerErr::ThesErr            { ctx, .. } => ctx,
+			PeerErr::Timeout            { ctx, .. } => ctx,
+			PeerErr::UnknownService     { ctx, .. } => ctx,
+			PeerErr::WireFormat         { ctx, .. } => ctx,
+			PeerErr::PubSubNoCall       { ctx, .. } => ctx,
+			PeerErr::BackpressureClosed { ctx, .. } => ctx,
 		}
 	}
 }

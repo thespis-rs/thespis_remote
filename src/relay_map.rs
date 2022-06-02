@@ -108,6 +108,12 @@ impl<Wf: WireFormat> ServiceMap<Wf> for RelayMap<Wf>
 	{
 		Box::new( self.services.iter() )
 	}
+
+
+	fn apply_backpressure( &self ) -> bool
+	{
+		false
+	}
 }
 
 
