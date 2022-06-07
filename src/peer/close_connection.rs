@@ -1,4 +1,4 @@
-use { crate :: { peer::* }};
+use super::*;
 
 /// Control message for [Peer]. The peer needs it's own address for normal operation,
 /// so normally it will never drop, even if you drop all addresses you have of it.

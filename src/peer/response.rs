@@ -15,7 +15,7 @@ pub enum Response<Wf = CborWF>
 	//
 	CallResponse(CallResponse<Wf>),
 
-	/// Nothing, eg. task handles a send.
+	/// Nothing, eg. task handles a send. listen_incoming also returns this.
 	//
 	Nothing,
 }

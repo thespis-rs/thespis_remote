@@ -2,8 +2,11 @@
 //
 // ✔ do not exceed max concurrent requests
 // - do not exceed max concurrent requests over several connections
+//   -> not tested for now as we use tokio::sync::Semaphore. If it works for one connection,
+//      it really should work if we pass it to several.
 // ✔ do eventually process all requests
 // ✔ back pressure does not apply to sends
+//   Only half. once we are blocked, sends don't get through either, as we need to
 // - back pressure does not apply to relays
 // - do not deadlock
 //
