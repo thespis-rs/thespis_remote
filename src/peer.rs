@@ -9,6 +9,7 @@ use crate :: { import::*, * };
     mod close_connection  ;
     mod connection_error  ;
     mod incoming          ;
+    mod listen_incoming   ;
     mod peer_err          ;
     mod peer_event        ;
 pub mod request_error     ;
@@ -462,88 +463,6 @@ impl<Wf: WireFormat> Peer<Wf>
 		Ok(Response::Nothing)
 	}
 
-
-
-	/// The task that will listen to incoming messages on the network connection and send them to our
-	/// the peer's address.
-	//
-	async fn listen_incoming
-	(
-		mut incoming: impl BoundsIn<Wf>         ,
-		mut addr    : Addr<Peer<Wf>>            ,
-		    bp      : Option< Arc<Semaphore> >  ,
-	)
-		-> Result<Response<Wf>, PeerErr>
-
-	{
-		// This can fail if:
-		//
-		// the receiver is dropped. The receiver is our mailbox, so it should never be dropped
-		// as long as we have an address to it and this task would be dropped with it.
-		//
-		while let Some(msg) = incoming.next().await
-		{
-
-			let permit = match &bp
-			{
-				None => None,
-
-				Some(b) =>
-				{
-					trace!( "check for backpressure" );
-
-					let p = match Arc::clone(b).acquire_owned().await
-					{
-						Ok(p) => p,
-
-						Err(_e) =>
-						{
-							error!( "{}: The semaphore for backpressure was closed externally.", Peer::identify_addr( &addr ) );
-
-							let ctx = Self::err_ctx( &addr.weak(), None, None, "Peer::listen_incoming: backpressure semaphore is closed.".to_string() );
-
-							let err = PeerErr::BackpressureClosed{ ctx };
-							return Err(err);
-						}
-					};
-
-					trace!( "backpressure allows progress now." );
-
-					Some(p)
-				}
-			};
-
-
-			trace!( "{}: incoming message.", &addr );
-
-			// TODO: figure out if this can actually happen, as listen_request_results holds a strong Addr.
-			//
-			if let Err(e) = addr.send( Incoming{ msg, permit } ).await
-			{
-				error!( "{} has panicked or it's inbox has been dropped.", Peer::identify_addr( &addr ) );
-
-				let ctx = Self::err_ctx( &addr.weak(), None, None, "Peer::listen_incoming: peer mailbox no longer taking messages.".to_string() );
-
-				let err = PeerErr::ThesErr{ ctx, source: Arc::new(e) };
-				return Err(err);
-			}
-		}
-
-		trace!( "{}:  incoming stream end, closing out.", &addr );
-
-		// The connection was closed by remote, tell peer to clean up.
-		//
-		let res = addr.send( CloseConnection{ remote: true, reason: "Connection closed by remote.".to_string() } ).await;
-
-		// As we hold an address, the only way the mailbox can already be shut
-		// is if the peer panics, or the mailbox get's dropped. Since the mailbox
-		// owns the Peer, if it's dropped, this task doesn't exist anymore.
-		// Should never happen.
-		//
-		debug_assert!( res.is_ok() );
-
-		Ok(Response::Nothing)
-	}
 
 
 	/// Register a service map as the handler for service ids that come in over the network. Normally you should
