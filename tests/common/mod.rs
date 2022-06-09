@@ -30,6 +30,7 @@ pub mod import
 
 		futures::
 		{
+			channel :: { mpsc::UnboundedSender                                                   } ,
 			io      :: { AsyncWriteExt                                                           } ,
 			compat  :: { Compat01As03Sink, Stream01CompatExt, Sink01CompatExt, Future01CompatExt } ,
 			stream  :: { StreamExt, SplitSink, SplitStream                                       } ,

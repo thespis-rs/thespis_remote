@@ -1,10 +1,5 @@
 //! This is a separate async task that will loop over the incoming stream and sends the
 //! incoming messages to the mailbox of the peer.
-//!
-//!
-//!
-//!
-//!
 //
 use super::
 {
@@ -18,8 +13,6 @@ use super::
 
 impl<Wf: WireFormat> Peer<Wf>
 {
-
-
 	/// The task that will listen to incoming messages on the network connection and send them to our
 	/// the peer's address.
 	//
@@ -61,14 +54,11 @@ impl<Wf: WireFormat> Peer<Wf>
 			};
 
 
-
 			let sid  = frame.sid();
 			let cid  = frame.cid();
 			let kind = frame.kind();
 
-			// TODO: when we have benchmarks, verify if it's better to return boxed submethods here
-			// rather than awaiting. Implies the rest of this method can run sync.
-			//
+
 			match kind
 			{
 				WireType::ConnectionError =>
@@ -152,7 +142,7 @@ impl<Wf: WireFormat> Peer<Wf>
 	{
 		if let Err(e) = addr.send( msg ).await
 		{
-			error!( "{} Peer::listen_incoming: peer mailbox no longer taking messages.", Peer::identify_addr( &addr ) );
+			error!( "{} Peer::listen_incoming: peer mailbox no longer taking messages.", Peer::identify_addr( addr ) );
 
 			let ctx = Self::err_ctx( &addr.weak(), None, None, "Peer::listen_incoming: peer mailbox no longer taking messages.".to_string() );
 

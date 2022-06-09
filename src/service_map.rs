@@ -36,5 +36,13 @@ pub trait ServiceMap<Wf = CborWF>: fmt::Debug + Send + Sync
 	fn services( &self ) -> Box<dyn Iterator<Item = &ServiceID> + '_ >;
 
 
+
+	/// Whether the peer should apply backpressure for this service map. Generally true when locally processed
+	/// and false for relayed messages.
+	///
+	/// Note that we only know which service map a message is for when we already reserved a slot on the semaphore,
+	/// so if the peer is backed up, this can still stop a request for this service map from getting in.
+	/// However if this returns false, as soon as the service map is known, the slot will be released.
+	//
 	fn apply_backpressure( &self ) -> bool;
 }
