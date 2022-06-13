@@ -333,7 +333,20 @@ impl<Wf: WireFormat> Peer<Wf>
 	/// in order to avoid a deadlock. See the [guide level docs](https://thespis-rs.github.io/thespis_guide/pitfalls.html#1deadlocks)
 	/// for some background information about this problem.
 	///
-	/// *grace_period*: When the remote closes the connection, we could immediately drop all outstanding tasks related to
+	/// `bp`: An optional semaphore which is used for backpressure. Peer does not use mailboxes for backpressure. It
+	/// spawns a task for each incoming message in order to avoid blocking while thos messages are being processed.
+	/// However you might want to limit the in flight requests. Backpressure is applied only to calls, not to sends.
+	///
+	/// Service maps can further opt out of backpressure, eg. for relayed services. However since we avoid sending
+	/// messages into the Peer mailbox when there is back pressure, we cannot guarantee relayed messages will not
+	/// be held up as we can only identify the service map once handling the message in the actor's context.
+	/// What happens is that if the service map renounces to back pressure the slot is released once the peer actor
+	/// processes the message. It still has to reserve the slot temporarily in order to deliver it to the mailbox.
+	/// For normal calls that do use backpressure the slot is only released when the response is sent out.
+	///
+	/// Note that as you supply the semaphore, backpressure can be shared between multiple connections.
+	///
+	/// `grace_period`: When the remote closes the connection, we could immediately drop all outstanding tasks related to
 	/// this peer. This makes sense for a request-response type connection, as it doesn't make sense to
 	/// continue using resources processing requests for which we can no longer send the response. However
 	/// it is not always desirable. For one way information flow, we might want to finish processing all the

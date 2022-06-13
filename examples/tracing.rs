@@ -131,7 +131,8 @@ async fn server( to_relay: Endpoint )
 
 	let addr_handler = Addr::builder().name( "sum_handler" ).spawn( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
-	// Create peer with stream/sink
+	// Create peer with AsyncRead/AsyncWrite
+	//
 	//
 	let (mut peer, peer_mb, _) = CborWF::create_peer( "server", to_relay, 1024, 1024, Arc::new( exec.clone() ), None, None ).expect( "create peer" );
 
