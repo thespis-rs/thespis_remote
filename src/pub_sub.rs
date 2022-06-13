@@ -12,7 +12,8 @@ type Subscriber<Wf> = Box<dyn Address<Wf, Error=ThesErr>>;
 ///
 /// # Usage
 /// Just like [`RelayMap`] this is a [`ServiceMap`] you can register with a [`Peer`].
-/// TODO
+///
+/// Please have a look at the [example](https://github.com/thespis-rs/thespis_remote/blob/dev/examples/pubsub.rs);
 //
 pub struct PubSub<Wf: 'static>
 {
