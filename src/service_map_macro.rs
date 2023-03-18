@@ -2,18 +2,17 @@
 /// require code in the client application because thespis does not know the types of messages you will
 /// create, yet we aim at making the difference between local and remote actors seamless for user code.
 ///
-/// This macro will allow deserializing messages to the correct types, as well as creating recipients for
+/// This macro will allow deserializing messages to the correct types, as well as creating addresses for
 /// remote actors.
 ///
 /// I have named the parameters for clarity, however it's a macro, and not real named parameters so the
 /// order needs to be exact.
 ///
-/// Please open declaration section to see the parameter documentation. The module [remote] has more
-/// documentation on using remote actors and there are examples in the `examples/remote` folder to see
-/// it all in action. There are many integration tests as well testing each feature of the remote actors
-/// in the `tests/remote` folder..
+/// Please open declaration section to see the parameter documentation. There are examples in the `examples`
+/// folder to see it all in action. There are many integration tests as well testing each feature of
+/// remote actors in the `tests` folder..
 ///
-/// A unique service id is crated for each service based on the "<namespace>::<service>". It uses
+/// A unique service id is crated for each service based on the "`<namespace>::<service>`". It uses
 /// the exact strings you provide to the macro. Server and client need to provide the exact same
 /// parameters to the macro in order to be able to communicate, eg. if you refer to the service types
 /// as some path (eg. `module::Type`), both server and client need to do so.
@@ -34,33 +33,36 @@
 ///
 /// mod myns
 /// {
-///    // sid will be different for ServiceA in another service map with another namespace than myns
+///    // sid will be different for ServiceA in another service map with another namespace
+///    // than myns
 ///    //
-///    impl Service for ServiceA {...} // self being myns
+///    impl Service for ServiceA { fn sid() -> ServiceID }
 ///    impl Service for ServiceB {...}
 ///
+///    // implements Clone, Debug and ServiceMap.
+///    //
 ///    pub struct Services {}
 ///
 ///    impl Namespace for Services { const NAMESPACE: &'static str = "myns"; }
 ///
 ///    impl Services
 ///    {
-///       /// Creates a recipient to a Service type for a remote actor, which can be used in exactly the
-///       /// same way as if the actor was local. This is for the process that wants to use the services
-///       /// not the one that provides them. For it to work, they must use the same namespace.
-///       //
-///       pub fn recipient<S>( peer: Addr<Peer> ) -> impl Address<S> {...}
+///       pub fn register_handler<S>( &mut self, handler: BoxAddress<S, ThesErr> )
+///    }
 ///
-///       ...
-///     }
+///    // Service map is defined in the thespis crate. This exposes the register_handler method
+///    // so you can register actors that handle incoming services, and call register_with_peer
+///    // to tell the service map to register all services for which it has handlers with a peer.
+///    //
+///    impl ServiceMap for Services {...}
 ///
-///     // Service map is defined in the thespis crate. This exposes the register_handler method so you can
-///     // register actors that handle incoming services, and call register_with_peer to tell the
-///     // service map to register all services for which it has handlers with a peer.
-///     //
-///     impl ServiceMap for Services {...}
-///
-///     // Some types to make the impl Address<S> in Services::recipient above.
+///    // An address for remote processes exposing this service map. This is for the client
+///    // wanting to send messages. Services above is for receiving messages. Of course
+///    // a single process can do both. This functions pretty much as a [`thespis_impl::Addr`]
+///    // but it does not have a `Weak` variant, as there is no keeping the remote actors
+///    // alive by holding the address.
+///    //
+///    pub struct RemoteAddr{...}
 /// }
 /// ```
 ///
@@ -71,12 +73,13 @@ macro_rules! service_map
 {
 
 (
-	/// namespace unique to this servicemap. It allows you to use your services with several service_maps
-	/// and it also gets used in the unique ID generation of services, so different processes can expose
-	/// services based on the same type which shall be uniquely identifiable.
+	/// namespace unique to this servicemap. It allows you to use your services with
+	/// several service_maps and it also gets used in the unique ID generation of
+	/// services, so different processes can expose services based on the same type
+	/// which shall be uniquely identifiable.
 	///
-	/// A process wanting to send messages needs to create the service map with the same namespace as the
-	/// receiving process.
+	/// A process wanting to send messages needs to create the service map with the
+	/// same namespace as the receiving process.
 	//
 	namespace: $ns: ident;
 

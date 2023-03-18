@@ -3,18 +3,9 @@
 - test talking to a specific actor by using const generics on the service type.
 
 - test grace_period
+- test pubsub
 
-- examples for all feature, backpressure, pubsub, ...
-
-- docs in service_map_macro are out of date, still mention recipient...
-
-- can incoming messages provide unfair competition for Peer mailbox which will prevent outgoing? eg. can it continuously fill the mailbox preventing outgoing messages from getting out? With default back pressure?
-
-  - It will depend on the fairness of the channel. When the outgoing blocks, it should get a slot.
-
-- PeerErr is now also thrown by other objects, notably PubSub and RelayMap. Verify consistency,
-  as these do not have a peer_id.
-- in general verify and test all error handling.
+- examples for all features, backpressure, ...
 
 - figure out a way to let the user know which connection a message came from to make it easier to do authorization, as opposed to sending a secret along with every message.
 
@@ -29,13 +20,12 @@
   
 ## from readme
 
-  - switch to futures_ringbuf for testing and examples
-
-  - fuzz testing
+  - we don't close the connection when errors happen in the spawned tasks in send_service and call_service in the macro... bad! It also won't emit events for them...bad again!
+  
+  - switch to futures_ringbuf for examples
 
   - WASM in tests
   - Peer should probably be able to tell the remote which services it provides.
-  - we don't close the connection when errors happen in the spawned tasks in send_service and call_service in the macro... bad! It also won't emit events for them...bad again!
   - remote should store and resend messages for call if we don't get an acknowledgement? If ever you receive twice, you should drop it? Does tcp not guarantee arrival here? What with connection loss? The concept is best efforts to deliver a message at most once.
   - write benchmarks for remote actors
 
@@ -58,13 +48,8 @@
 
 - get rid of Send and Sync bounds where possible
 
-- bring back tokio support
-
 
 ## Implementation
-
-- further clean up service maps:
-  - can we move things out of macro?
 
 - benchmark
 - zero copy networking: https://github.com/tokio-rs/bytes/pull/371
@@ -81,7 +66,6 @@
 - encoder/decoder, add missing tests.
 - figure out the io errors. Can be returned by the decoder, eg. connection closed by remote vs connection loss... can we detect the difference?
 
-- polish testing code. Abstract out things more so actual tests have less code.
 - test all the error handling.
 	- verify and document what events actually get sent to pharos. Currently nothing that happens in spawned tasks like timeouts.
 
@@ -98,7 +82,6 @@
 - verify stability of UniqueID and generate one from a different programming language to be sure.
 
 - fuzz
-- CI, look at the futures .travis.yml for better configuration
 - single threaded testing.
 
 
@@ -118,9 +101,7 @@
 
 ## Benchmarking
 
-  - compare BytesFormat and ThesWF
-  - check whether we allocate buffers of the correct size. We allocate mem::size_of unserialized message. If CBOR where on average just a bit bigger than
-    the in memory representation, we should default to allocating bigger. and document encoder and decoder properly.
+  - check whether we allocate buffers of the correct size. We allocate mem::size_of unserialized message. If CBOR where on average just a bit bigger than the in memory representation, we should default to allocating bigger. and document encoder and decoder properly.
   - non initialized buffers?
 
 ## Examples

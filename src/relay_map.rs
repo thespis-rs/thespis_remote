@@ -7,7 +7,7 @@ use crate :: { import::*, *, peer::Response };
 /// They only have to implement `Handler<BytesFormat>` (for sends) and `Handler<peer::Call>` for calls.
 ///
 /// # Example
-/// TODO
+/// Please check out the [`tracing` example](https://github.com/thespis-rs/thespis_remote/blob/dev/examples/tracing.rs) which uses relays.
 //
 pub struct RelayMap<Wf>
 {
