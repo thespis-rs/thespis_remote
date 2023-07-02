@@ -129,7 +129,7 @@ async fn server( to_relay: Endpoint )
 	//
 	debug!( "start mailbox for handler" );
 
-	let addr_handler = Addr::builder().name( "sum_handler" ).spawn( Sum(0), &exec ).expect( "spawn actor mailbox" );
+	let addr_handler = Addr::builder( "sum_handler" ).spawn( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
 	// Create peer with AsyncRead/AsyncWrite
 	//

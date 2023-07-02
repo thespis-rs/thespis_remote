@@ -166,7 +166,7 @@ impl<Wf, Si, St> TestSuite<Wf, Si, St>
 
 		for _ in 0..2000
 		{
-			let seed = Dictator::seed();
+			let seed = Dictator::new_seed();
 			// let seed = 9493852723399469118;
 
 			let (trans_a, trans_b) = Endpoint::pair( 64, 64 );

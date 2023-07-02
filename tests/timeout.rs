@@ -52,7 +52,7 @@ async fn timeout()
 	{
 		// Create mailbox for our handler
 		//
-		let addr_handler = Addr::builder().spawn( Slow, &AsyncStd ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder( "handler" ).spawn( Slow, &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//

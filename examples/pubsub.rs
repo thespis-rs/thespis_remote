@@ -73,9 +73,8 @@ async fn alice( conn: Endpoint ) { subscriber( conn, "Alice" ).await; }
 
 async fn subscriber( conn: Endpoint, name: &'static str )
 {
-	let addr_handler = Addr::builder()
+	let addr_handler = Addr::builder( format!( "{}-Sum", name ) )
 
-		.name( format!( "{}-Sum", name ) )
 		.spawn( Sum { count: 0, name }, &AsyncStd )
 		.expect( "spawn actor mailbox" )
 	;

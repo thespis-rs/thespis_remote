@@ -54,7 +54,7 @@ pub fn add_show_sum() -> remotes::Services
 {
 	// Create mailbox for our handler
 	//
-	let addr_handler = Addr::builder().spawn( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
+	let addr_handler = Addr::builder( "handler" ).spawn( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 	// Create a service map
 	//
@@ -135,7 +135,7 @@ pub async fn provider
 	// Create mailbox for our handler
 	//
 	debug!( "start mailbox for Sum handler in provider: {}", name );
-	let addr_handler = Addr::builder().spawn( Sum(0), &exec ).expect( "spawn actor mailbox" );
+	let addr_handler = Addr::builder( "handler" ).spawn( Sum(0), &exec ).expect( "spawn actor mailbox" );
 
 
 	// register Sum with peer as handler for Add and Show

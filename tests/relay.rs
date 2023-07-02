@@ -32,7 +32,7 @@ async fn relay_once()
 		// Create mailbox for our handler
 		//
 		debug!( "start mailbox for handler" );
-		let addr_handler = Addr::builder().spawn( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
+		let addr_handler = Addr::builder( "Sum" ).spawn( Sum(0), &AsyncStd ).expect( "spawn actor mailbox" );
 
 
 		// register Sum with peer as handler for Add and Show

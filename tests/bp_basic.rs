@@ -149,9 +149,9 @@ async fn bp_respect_bp()
 	{
 		// Create mailbox for our handler
 		//
-		let slow  = Addr::builder().spawn( Slow::new( progress.clone(), tx  ).await, &AsyncStd ).expect( "spawn actor mailbox" );
-		let slow2 = Addr::builder().spawn( Slow::new( progress.clone(), tx2 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
-		let slow3 = Addr::builder().spawn( Slow::new( progress.clone(), tx3 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow  = Addr::builder( "slow"  ).spawn( Slow::new( progress.clone(), tx  ).await, &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow2 = Addr::builder( "slow2" ).spawn( Slow::new( progress.clone(), tx2 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow3 = Addr::builder( "slow3" ).spawn( Slow::new( progress.clone(), tx3 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//

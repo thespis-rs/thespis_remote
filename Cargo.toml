@@ -1,8 +1,4 @@
 # Auto-generated from "Cargo.yml"
-[[bench]]
-harness = false
-name = "ring"
-
 [build-dependencies]
 rustc_version = "^0.4"
 
@@ -33,7 +29,7 @@ version = "^0.3"
 [dependencies.futures_ringbuf]
 features = ["sketchy"]
 optional = true
-version = "^0.3"
+version = "^0.4"
 
 [dependencies.parking_lot]
 version = "^0.12"
@@ -65,7 +61,6 @@ version = "^0.11"
 version = "^0.2"
 
 [dependencies.thespis_impl]
-path = "../thespis_impl"
 version = "^0.3"
 
 [dependencies.tokio]
@@ -75,7 +70,7 @@ version = "^1"
 
 [dependencies.tokio-serde-cbor]
 optional = true
-version = "^0.6"
+version = "^0.7"
 
 [dependencies.tracing]
 version = "^0.1"
@@ -103,7 +98,7 @@ version = "^0.3"
 
 [dev-dependencies.futures_ringbuf]
 features = ["sketchy"]
-version = "^0.3.0"
+version = "^0.4.0"
 
 [dev-dependencies.rand]
 version = "^0.8"
@@ -137,14 +132,13 @@ authors = ["Naja Melan <najamelan@autistici.org>"]
 categories = ["asynchronous", "concurrency", "network-programming"]
 description = "Reference implementation for thespis remote actors"
 documentation = "https://docs.rs/thespis_remote"
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/thespis-rs/thespis_remote"
 keywords = ["async", "futures", "actor", "thespis"]
 license = "Unlicense"
 name = "thespis_remote"
 readme = "README.md"
 repository = "https://github.com/thespis-rs/thespis_remote"
-resolver = "2"
 version = "0.1.0"
 
 [package.metadata]

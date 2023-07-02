@@ -25,7 +25,7 @@ async fn no_handler()
 	{
 		// Create mailbox for our handler
 		//
-		let (addr_handler, _) = Addr::<Sum>::builder().build();
+		let (addr_handler, _) = Addr::<Sum>::builder( "handler" ).build();
 
 		// Create a service map
 		//

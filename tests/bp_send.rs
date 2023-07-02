@@ -143,9 +143,9 @@ async fn bp_send_does_not_consume_slot()
 	{
 		// Create mailbox for our handler
 		//
-		let slow  = Addr::builder().spawn( Slow::new( progress.clone(), tx  ).await, &AsyncStd ).expect( "spawn actor mailbox" );
-		let slow2 = Addr::builder().spawn( Slow::new( progress.clone(), tx2 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
-		let slow3 = Addr::builder().spawn( Slow::new( progress.clone(), tx3 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow  = Addr::builder( "slow" ).spawn( Slow::new( progress.clone(), tx  ).await, &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow2 = Addr::builder( "slow2" ).spawn( Slow::new( progress.clone(), tx2 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow3 = Addr::builder( "slow3" ).spawn( Slow::new( progress.clone(), tx3 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
@@ -242,9 +242,9 @@ async fn bp_send_gets_in_when_backed_up()
 	{
 		// Create mailbox for our handler
 		//
-		let slow  = Addr::builder().spawn_local( Slow::new( progress.clone(), tx  ).await, &AsyncStd ).expect( "spawn actor mailbox" );
-		let slow2 = Addr::builder().spawn_local( Slow::new( progress.clone(), tx2 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
-		let slow3 = Addr::builder().spawn_local( Slow::new( progress.clone(), tx3 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow  = Addr::builder( "slow"  ).spawn_local( Slow::new( progress.clone(), tx  ).await, &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow2 = Addr::builder( "slow2" ).spawn_local( Slow::new( progress.clone(), tx2 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
+		let slow3 = Addr::builder( "slow3" ).spawn_local( Slow::new( progress.clone(), tx3 ).await, &AsyncStd ).expect( "spawn actor mailbox" );
 
 		// Create a service map
 		//
