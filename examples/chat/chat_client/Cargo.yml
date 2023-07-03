@@ -1,9 +1,9 @@
 package:
 
-  name       : ws_stream_wasm_chat_client
+  name       : chat_client
   version    : 0.1.0
   authors    : [ Naja Melan <najamelan@autistici.org> ]
-  edition    : '2018'
+  edition    : '2021'
   description: An example for using websockets in rust WASM.
   repository : https::/github.com/najamelan/async_runtime
 
@@ -16,28 +16,32 @@ lib:
 
 dependencies:
 
+  async_executors         : { version: ^0.6, features: [bindgen] }
   chat_format             : { path: "../chat_format" }
   console_error_panic_hook: ^0.1
-  futures-preview         : { version: ^0.3.0-alpha, features: [async-await] }
-  futures_codec           : ^0.3
-  gloo-events             : { git: "https://github.com/rustwasm/gloo" }
+  futures                 : { version: ^0.3 }
+  gloo-events             : ^0.1
   js-sys                  : ^0.3
   log                     : ^0.4
-  naja_async_runtime      : { version: ^0.3, default-features: false }
-  pin-utils               : ^0.1.0-alpha
+  pin-utils               : ^0.1
   regex                   : ^1
+  tracing-subscriber-wasm : ^0.1
+  tracing-web             : ^0.1
+  tracing-subscriber      : { version: ^0.3, features: [std, time] }
+  tracing                 : ^0.1
   wasm-bindgen            : ^0.2
   wasm-bindgen-futures    : { version: ^0.4 }
-  wasm-logger             : ^0.1
-  ws_stream_wasm          : { version: ^0.5, path: ../../../../../ws_stream_wasm }
+  wasm-logger             : ^0.2
+  ws_stream_wasm          : { version: ^0.7 }
 
-  pharos               : ^0.4
-  thespis              : { path: ../../../../thespis                                      }
+  # time: { version: ^0.3, features = [wasm-bindgen] }
+
+  pharos               : ^0.5
+  thespis              : ^0.2
   thespis_remote       : { path: ../../../../thespis_remote                               }
-  thespis_impl         : { path: ../../../../thespis_impl                                 }
-  thespis_remote_impl  : { path: ../../../../thespis_remote_impl, default-features: false }
+  thespis_impl         : ^0.3
 
-  getrandom            : { version: ^0.1, features: [ wasm-bindgen ] }
+  getrandom            : { version: ^0.2, features: [ wasm-bindgen, js ] }
 
   web-sys:
 

@@ -6,7 +6,7 @@ pub struct User
 {
 	server   : Addr<Server>                                            ,
 	addr     : Option< Addr<Self>                                    > ,
-	peer_addr: Option< Box< dyn Recipient<ServerMsg> + Send + Sync > > ,
+	peer_addr: Option< client_map::RemoteAddr > ,
 	id       : usize                                                   ,
 }
 
@@ -14,7 +14,7 @@ pub struct User
 
 impl User
 {
-	pub fn new( server: Addr<Server>, addr: Addr<Self>, peer_addr: Box< dyn Recipient<ServerMsg> + Send + Sync > ) -> Self
+	pub fn new( server: Addr<Server>, addr: Addr<Self>, peer_addr: client_map::RemoteAddr ) -> Self
 	{
 		User
 		{

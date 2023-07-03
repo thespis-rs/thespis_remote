@@ -55,7 +55,7 @@ impl Server
 		//
 		let nickre = Regex::new( r"^\w{1,15}$" ).unwrap();
 
-		if !nickre.is_match( &new )
+		if !nickre.is_match( new )
 		{
 			error!( "Invalid nick: '{}'", new );
 			return Err( ChatErrKind::NickInvalid.into() )
@@ -74,7 +74,7 @@ pub struct UserData
 {
 	pub nick     : String                                       ,
 	pub addr     : Addr<User>                                   ,
-	pub peer_addr: Box< dyn Recipient<ServerMsg> + Send + Sync >,
+	pub peer_addr: client_map::RemoteAddr,
 
 }
 
@@ -83,9 +83,11 @@ impl Message for UserData { type Return = Result<Welcome, ChatErr>; }
 
 impl Handler< UserData > for Server
 {
-	fn handle( &mut self, new_user: UserData ) -> Return< Result<Welcome, ChatErr> > { Box::pin( async move
+	#[async_fn] fn handle( &mut self, new_user: UserData ) -> Result<Welcome, ChatErr>
 	{
-		match self.validate_nick( &new_user.nick, None )
+		let validate = self.validate_nick( &new_user.nick, None );
+
+		match validate
 		{
 			Ok(_) =>
 			{
@@ -127,8 +129,7 @@ impl Handler< UserData > for Server
 				Err( e )
 			}
 		}
-
-	})}
+	}
 }
 
 
@@ -149,8 +150,9 @@ impl Handler< ChangeNick > for Server
 	fn handle( &mut self, change_nick: ChangeNick ) -> Return< Result<(), ChatErr> > { Box::pin( async move
 	{
 		let mut user_data = self.users.remove( &change_nick.sid ).expect( "join first" );
+		let validate = self.validate_nick( &change_nick.nick, Some( &user_data.nick.clone() ) );
 
-		match self.validate_nick( &change_nick.nick, Some( &user_data.nick.clone() ) )
+		match validate
 		{
 			Ok(_) =>
 			{
@@ -161,12 +163,11 @@ impl Handler< ChangeNick > for Server
 					time: Utc::now().timestamp(),
 				};
 
-				self.broadcast( changed ).await;
-
-
 				user_data.nick = change_nick.nick;
 
 				self.users.insert( change_nick.sid, user_data );
+
+				self.broadcast( changed ).await;
 
 				Ok(())
 			}

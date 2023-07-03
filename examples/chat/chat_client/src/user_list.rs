@@ -50,14 +50,12 @@ impl Drop for UserList
 }
 
 
-
-
-
 pub struct Insert
 {
-	pub sid : usize  ,
-	pub nick: String ,
-	pub time: f64    ,
+	pub sid    : usize  ,
+	pub nick   : String ,
+	pub time   : f64    ,
+	pub is_self: bool   ,
 }
 
 
@@ -81,8 +79,8 @@ impl Handler< Insert > for UserList
 
 		else
 		{
-			let user = User::new( msg.sid, msg.nick.clone(), self.div.clone().unchecked_into() );
-			let mut addr = Addr::try_from( user ).expect_throw( "Failed to create address" );
+			let user = User::new( msg.sid, msg.nick.clone(), self.div.clone().unchecked_into(), msg.is_self );
+			let mut addr = Addr::builder("user").spawn_local( user, &Bindgen ).expect_throw( "spawn user" );
 
 			addr.send( Render{} ).await.expect_throw( "send" );
 
@@ -112,10 +110,12 @@ impl Message for Remove { type Return = (); }
 
 impl Handler< Remove > for UserList
 {
-	fn handle( &mut self, msg: Remove ) -> Return<()> { Box::pin( async move
+	#[async_fn_local] fn handle_local( &mut self, msg: Remove )
 	{
 		self.users.remove( &msg.sid );
-	})}
+	}
+
+	#[async_fn] fn handle(&mut self, _: Remove) { unreachable!("cannot be called multithreaded")}
 }
 
 

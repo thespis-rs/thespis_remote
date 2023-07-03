@@ -4,8 +4,6 @@ pub mod import
 	{
 		thespis             :: { *                      } ,
 		thespis_remote      :: { *                      } ,
-		thespis_remote_impl :: { *, service_map, peer   } ,
-		futures_codec       :: { Framed                 } ,
 		bytes               :: { Bytes, BytesMut        } ,
 		serde               :: { Serialize, Deserialize } ,
 
@@ -35,9 +33,6 @@ use import::*;
 
 pub mod error;
 pub use error::*;
-
-pub type MS = MultiServiceImpl<ServiceID, ConnID, Codecs>;
-
 
 /// Services exposed by the server
 //
@@ -82,16 +77,16 @@ impl Message for Welcome { type Return = (); }
 
 service_map!
 (
-	namespace    : client_map ;
-	multi_service: MS         ;
-	services     : ServerMsg  ;
+	namespace  : client_map ;
+	wire_format: CborWF     ;
+	services   : ServerMsg  ;
 );
 
 
 service_map!
 (
-	namespace    : server_map                ;
-	multi_service: MS                        ;
-	services     : Join, SetNick, NewChatMsg ;
+	namespace  : server_map                ;
+	wire_format: CborWF                    ;
+	services   : Join, SetNick, NewChatMsg ;
 );
 

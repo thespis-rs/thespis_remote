@@ -96,6 +96,17 @@ dependencies:
   tracing          : { version: ^0.1 }
 
 
+target:
+
+  'cfg(target_arch = "wasm32")':
+
+    dependencies:
+
+      futures-timer: { version: ^3, features: [wasm-bindgen] }
+
+
+
+
 dev-dependencies:
 
   pretty_assertions  : ^1

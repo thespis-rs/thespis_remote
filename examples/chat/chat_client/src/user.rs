@@ -5,12 +5,13 @@ use crate :: { import::*, color::*, document, user_list::Render };
 //
 pub struct User
 {
-	sid   : usize                ,
-	nick  : String               ,
-	color : Color                ,
-	p     : HtmlParagraphElement ,
-	indom : bool                 ,
-	parent: HtmlElement          ,
+	sid    : usize                ,
+	nick   : String               ,
+	color  : Color                ,
+	p      : HtmlParagraphElement ,
+	indom  : bool                 ,
+	parent : HtmlElement          ,
+	is_self: bool                 ,
 }
 
 // Unfortunately thespis requires Send right now, and HtmlElement isn't Send.
@@ -20,7 +21,7 @@ unsafe impl Send for User {}
 
 impl User
 {
-	pub fn new( sid: usize, nick: String, parent: HtmlElement ) -> Self
+	pub fn new( sid: usize, nick: String, parent: HtmlElement, is_self: bool ) -> Self
 	{
 		Self
 		{
@@ -30,6 +31,7 @@ impl User
 			color: Color::random().light(),
 			p    : document().create_element( "p" ).expect_throw( "create user p" ).unchecked_into(),
 			indom: false,
+			is_self,
 		}
 	}
 
@@ -40,6 +42,11 @@ impl User
 
 		self.p.style().set_property( "color", &self.color.to_css() ).expect_throw( "set color" );
 		self.p.set_id( &format!( "user_{}", &self.sid ) );
+
+		if self.is_self
+		{
+			self.p.style().set_property( "font-weight", "bold" ).expect_throw( "set color" );
+		}
 
 		if !self.indom
 		{
@@ -71,11 +78,10 @@ impl Message for UserInfo { type Return = (String, Color); }
 
 impl Handler< UserInfo > for User
 {
-	fn handle( &mut self, _: UserInfo ) -> Return<(String, Color)> { Box::pin( async move
+	#[async_fn] fn handle( &mut self, _: UserInfo ) -> (String, Color)
 	{
 		(self.nick.clone(), self.color)
-
-	})}
+	}
 }
 
 
@@ -88,26 +94,20 @@ impl Message for ChangeNick { type Return = (); }
 
 impl Handler< ChangeNick > for User
 {
-	fn handle( &mut self, new_nick: ChangeNick ) -> Return<()> { Box::pin( async move
+	#[async_fn] fn handle( &mut self, new_nick: ChangeNick )
 	{
 		self.nick = new_nick.0;
-
-		if self.indom
-		{
-			self.render()
-		}
-
-	})}
+		self.p.set_inner_text( &self.nick );
+	}
 }
 
 
 impl Handler< Render > for User
 {
-	fn handle( &mut self, _: Render ) -> Return<()> { Box::pin( async move
+	#[async_fn] fn handle( &mut self, _: Render )
 	{
 		self.render();
-
-	})}
+	}
 }
 
 
