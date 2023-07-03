@@ -1,63 +1,45 @@
 # Auto-generated from "Cargo.yml"
 [dependencies]
 chrono = "^0.4"
-flexi_logger = "^0.14"
-futures_cbor_codec = "^0.1"
-futures_codec = "^0.3"
+flexi_logger = "^0.25"
 log = "^0.4"
-pin-utils = "^0.1.0-alpha"
+pin-utils = "^0.1"
 regex = "^1"
-tokio-tungstenite = "^0.9"
-ws_stream_tungstenite = "^0.1.0-alpha"
+thespis = "^0.2"
+thespis_impl = "^0.3"
+ws_stream_tungstenite = "^0.10"
 
-[dependencies.async_runtime]
-package = "naja_async_runtime"
-version = "^0.3"
+[dependencies.async-tungstenite]
+features = ["tokio-runtime"]
+version = "^0.22"
+
+[dependencies.async_executors]
+features = ["tokio_tp", "tokio_io"]
+version = "^0.6"
 
 [dependencies.bytes]
-version = "^0.4"
+version = "^1"
 
 [dependencies.chat_format]
 path = "../chat_format"
 
-[dependencies.futures-preview]
-features = ["async-await"]
-version = "^0.3.0-alpha"
-
-[dependencies.futures01]
-default-features = false
-package = "futures"
-version = "^0.1"
-
-[dependencies.locks]
-package = "future-parking_lot"
-version = "^0.3.2-alpha"
+[dependencies.futures]
+version = "^0.3"
 
 [dependencies.pharos]
-version = "^0.4"
-
-[dependencies.thespis]
-path = "../../../../thespis"
-
-[dependencies.thespis_impl]
-path = "../../../../thespis_impl"
-
-[dependencies.thespis_remote_impl]
-path = "../../../../thespis_remote_impl"
+version = "^0.5"
 
 [dependencies.thespis_remote]
 path = "../../../../thespis_remote"
 
-[dependencies.tokio01]
-default-features = false
-features = ["rt-full", "codec"]
-package = "tokio"
-version = "^0.1"
+[dependencies.tokio]
+features = ["rt", "net"]
+version = "^1"
 
 [dependencies.warp]
 default-features = false
 features = ["websocket"]
-version = "^0.1"
+version = "^0.3"
 
 [package]
 authors = ["Naja Melan <najamelan@autistici.org>"]
@@ -66,8 +48,3 @@ edition = "2018"
 name = "chat_server"
 repository = "https::/github.com/najamelan/ws_stream"
 version = "0.1.0"
-
-[patch]
-[patch.crates-io]
-[patch.crates-io.futures_codec]
-path = "../../../../../futures-codec"

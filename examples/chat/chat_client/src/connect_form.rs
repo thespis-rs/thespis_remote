@@ -76,7 +76,7 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 			};
 
 
-			let (ws, wsio) = match WsStream::connect( url, None ).await
+			let (ws, wsio) = match WsMeta::connect( url, None ).await
 			{
 				Ok(conn) => conn,
 
@@ -89,19 +89,18 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 				}
 			};
 
-			let framed      = Framed::new( wsio, Codec::new( 1024 /*max_length in bytes for a message*/ ) );
-			let (out, msgs) = framed.split();
+			let (mut peer, peer_mb, peer_addr) = CborWF::create_peer
+			(
+				"server",
+				wsio.into_io(),
+				10_000_000, // 10 MB
+				10_000_000, // 10 MB
+				Bindgen,
+				None,
+				None,
+			).expect_throw( "create server peer" );
 
-			// Create mailbox for server peer
-			//
-			let mb       : Inbox<Peer<MS>> = Inbox::new()             ;
-			let peer_addr                  = Addr ::new( mb.sender() );
-
-			// create peer with stream/sink + service map
-			//
-			let mut peer = Peer::new( peer_addr.clone(), msgs, out ).expect_throw( "spawn peer" );
-
-			let mut addr_join = server_map::Services::recipient::<Join>( peer_addr.clone() );
+			let mut server_addr = server_map::RemoteAddr::new( peer_addr.clone() );
 
 			// Create a service map.
 			// A service map is a helper object created by a beefy macro included with thespis_remote_impl. It is responsible
@@ -113,40 +112,34 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 			// Register our handlers.
 			// We just let the App actor handle messages coming in from the server.
 			//
-			sm.register_handler::< ServerMsg >( Receiver::new( self.server.recipient() ) );
+			sm.register_handler::< ServerMsg >( self.server.clone_box() );
 
 			// register service map with peer
 			// This tells this peer to expose all these services over this connection.
 			//
-			sm.register_with_peer( &mut peer );
+			peer.register_services( Arc::new( sm ) );
 
 
 
-			spawn_local( mb.start_fut_local( peer ) );
+			Bindgen.spawn_local( peer_mb.start_local( peer ).map(|_|()) ).expect_throw("spawn server peer");
 
 			debug!( "Trying to join" );
 
 			// Ask the server to join
 			// TODO: fix the expect
 			//
-			match addr_join.call( Join{ nick } ).await.expect_throw( "contact server" )
+			match server_addr.call( Join{ nick } ).await.expect_throw( "contact server" )
 			{
 				Ok( welcome ) =>
 				{
 					self.form.style().set_property( "display", "none" ).expect_throw( "set cform display none" );
 
-					// Outgoing messages
-					//
-					let set_nick_addr = server_map::Services::recipient::< SetNick    >( peer_addr.clone() ).clone_box();
-					let new_msg_addr  = server_map::Services::recipient::< NewChatMsg >( peer_addr.clone() ).clone_box();
-
 					let connection = Connected
 					{
-						peer_addr       ,
-						set_nick_addr   ,
-						new_msg_addr    ,
-						welcome         ,
-						ws              ,
+						peer_addr   ,
+						server_addr ,
+						welcome     ,
+						ws          ,
 					};
 
 					self.server.call( connection ).await.expect_throw( "call" );
@@ -174,10 +167,8 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 
 						ChatErrKind::AlreadyJoined => {}
 
-						_ => unreachable!(),
+						_ => unreachable!( "Unknown ChatErrKind" ),
 					}
-
-					return;
 				}
 			};
 		})
@@ -188,9 +179,6 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 		unreachable!( "Cannot be spawned on a threadpool" );
 	}
 }
-
-
-
 
 
 
@@ -206,8 +194,9 @@ unsafe impl Send for ConnResetEvt {}
 
 impl Handler< ConnResetEvt > for ConnectForm
 {
-	fn handle( &mut self, msg: ConnResetEvt ) -> Return<()> { Box::pin( async move
+	fn handle_local( &mut self, msg: ConnResetEvt ) -> ReturnNoSend<()> { Box::pin( async move
 	{
+		let _ = &msg; // need to capture the entire struct.
 		msg.e.prevent_default();
 
 		let cnick : HtmlInputElement = get_id( "connect_nick" ).unchecked_into();
@@ -220,4 +209,9 @@ impl Handler< ConnResetEvt > for ConnectForm
 		cerror.style().set_property( "display", "none" ).expect_throw( "set display none on cerror" );
 		cerror.set_inner_text( "" );
 	})}
+
+	fn handle( &mut self, _msg: ConnResetEvt ) -> Return<()>
+	{
+		unreachable!( "Cannot be spawned on threadpool")
+	}
 }

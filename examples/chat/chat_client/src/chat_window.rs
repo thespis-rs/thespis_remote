@@ -12,7 +12,7 @@ pub struct ChatWindow
 	div      : HtmlDivElement               ,
 	users    : HashMap< usize, Addr<User> > ,
 	srv_color: Color                        ,
-	clt_color: Color                        ,
+	_clt_color: Color                        ,
 }
 
 
@@ -25,7 +25,7 @@ impl ChatWindow
 			div       : get_id( dom_id ).unchecked_into(),
 			users     : HashMap::new()                   ,
 			srv_color : Color::random().light()          ,
-			clt_color : Color::random().light()          ,
+			_clt_color : Color::random().light()          ,
 		}
 	}
 
@@ -47,7 +47,7 @@ impl ChatWindow
 
 		// Js needs milliseconds, where the server sends seconds
 		//
-		let time = Date::new( &( time * 1000 as f64 ).into() );
+		let time = Date::new( &( time * 1000.0 ).into() );
 
 		n.set_inner_text( &format!( "{}: ", nick )                                                                     );
 		m.set_inner_text( line                                                                                         );

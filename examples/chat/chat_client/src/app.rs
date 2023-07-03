@@ -19,8 +19,8 @@ impl App
 {
 	pub fn new( addr: Addr<Self> ) -> Self
 	{
-		let chat_window = Addr::try_from_local( ChatWindow ::new( "chat"                       ) ).expect_throw( "spawn cwindow"  );
-		let users       = Addr::try_from_local( UserList   ::new( "users", chat_window.clone() ) ).expect_throw( "spawn userlist" );
+		let chat_window = Addr::builder("chat_window").spawn_local( ChatWindow ::new("chat"), &Bindgen ).expect_throw( "spawn cwindow"  );
+		let users = Addr::builder("user_list").spawn_local( UserList::new( "users", chat_window.clone() ), &Bindgen ).expect_throw( "spawn userlist"  );
 
 		let app = Self
 		{
@@ -39,12 +39,12 @@ impl App
 	//
 	fn setup_forms( &self )
 	{
-		let conn_form = Addr::try_from_local( ConnectForm::new( self.addr.clone() ) )
+		let conn_form = Addr::builder("conn_form").spawn_local( ConnectForm::new( self.addr.clone() ), &Bindgen )
 
 			.expect_throw( "spawn conn_form" )
 		;
 
-		let chat_form = Addr::try_from_local( ChatForm::new( self.addr.clone(), self.chat_window.clone() ) )
+		let chat_form = Addr::builder("chat_form").spawn_local( ChatForm::new( self.addr.clone(), self.chat_window.clone() ), &Bindgen )
 
 			.expect_throw( "spawn chat_form" )
 		;
@@ -88,7 +88,7 @@ impl App
 			;
 		};
 
-		// Connect the events from the caht form to the actor handling them. (submit and disconnect).
+		// Connect the events from the chat form to the actor handling them. (submit and disconnect).
 		//
 		let chat_submit_task = async move
 		{
@@ -112,9 +112,28 @@ impl App
 
 		let chat_enter_task = async move
 		{
+			async fn predicate(e: Event) -> Option<Result<ChatSubmitEvt, thespis_impl::ThesErr>>
+			{
+				// We also trigger this if the user types Enter.
+				// Shift+Enter let's the user create a new line in the message.
+				//
+				if e.has_type::<KeyboardEvent>()
+				{
+					let evt: KeyboardEvent = e.clone().unchecked_into();
+
+					if  evt.code() != "Enter"  ||  evt.shift_key()
+					{
+						return None;
+					}
+				}
+
+				Some(Ok(ChatSubmitEvt{e}))
+			}
+
+
 			enter_evts
 
-				.map( |e| Ok(ChatSubmitEvt{e}) )
+				.filter_map( predicate )
 				.forward( chat_form3 ).await
 				.expect_throw( "forward csubmit" )
 			;
@@ -137,11 +156,10 @@ impl App
 //
 pub struct Connected
 {
-	pub peer_addr     : Addr<Peer<MS>>           ,
-	pub set_nick_addr : BoxRecipient<SetNick>    ,
-	pub new_msg_addr  : BoxRecipient<NewChatMsg> ,
-	pub welcome       : Welcome                  ,
-	pub ws            : WsStream                 ,
+	pub peer_addr   : WeakAddr<Peer>         ,
+	pub server_addr : server_map::RemoteAddr ,
+	pub welcome     : Welcome                ,
+	pub ws          : WsMeta                 ,
 }
 
 unsafe impl Send for Connected {}
@@ -155,11 +173,11 @@ impl Handler<Connected> for App
 	{
 		self.users.call( Clear{} ).await.expect_throw( "clear userlist" );
 
-		let new_users = std::mem::replace( &mut msg.welcome.users, Vec::new() );
+		let new_users = std::mem::take(&mut msg.welcome.users);
 
 		// A time of 0.0 means that the user joined before us, so we don't print an annoucnement.
 		//
-		let inserts = new_users.into_iter().map( |(sid, nick)| Insert{ time: 0.0, sid, nick } );
+		let inserts = new_users.into_iter().map( |(sid, nick)| Ok(Insert{ time: 0.0, sid, nick, is_self: sid == msg.welcome.sid }) );
 
 		warn!( "{:?}", &inserts );
 
@@ -185,7 +203,7 @@ impl Handler<Connected> for App
 
 impl Handler<ServerMsg> for App
 {
-	fn handle_local( &mut self, msg: ServerMsg ) -> ReturnNoSend<()> { Box::pin( async move
+	#[async_fn_local] fn handle_local( &mut self, msg: ServerMsg )
 	{
 		match msg
 		{
@@ -194,7 +212,8 @@ impl Handler<ServerMsg> for App
 			//
 			ServerMsg::UserJoined{ time, sid, nick } =>
 			{
-				self.users.send( Insert{ time: time as f64, sid, nick } ).await
+				debug!( "ServerMsg::UserJoined" );
+				self.users.send( Insert{ time: time as f64, sid, nick, is_self: false } ).await
 
 					.expect_throw( "add new user to user list" )
 				;
@@ -205,6 +224,8 @@ impl Handler<ServerMsg> for App
 			//
 			ServerMsg::UserLeft{ time, sid } =>
 			{
+				debug!( "ServerMsg::UserLeft" );
+
 				self.users.call( Remove{ sid } ).await.expect_throw( "remove user from user list" );
 
 				self.chat_window.send( UserLeft{ time: time as f64, sid } ).await.expect_throw( "announce new user" );
@@ -215,6 +236,8 @@ impl Handler<ServerMsg> for App
 			//
 			ServerMsg::NickChanged{ sid, time, nick }  =>
 			{
+				debug!( "ServerMsg::NickChanged" );
+
 				let mut user = self.users.call( GetUser{ sid } ).await.expect_throw( "get user info" );
 
 				let (old, _) = user.call( UserInfo {} ).await.expect_throw( "get user info" );
@@ -227,11 +250,12 @@ impl Handler<ServerMsg> for App
 			//
 			ServerMsg::ChatMsg{ time, sid, txt } =>
 			{
+				debug!( "ServerMsg::ChatMsg" );
+
 				self.chat_window.send( ChatMsg{ time: time as f64, sid, txt } ).await.expect_throw( "announce nick" );
 			}
 		}
-
-	})}
+	}
 
 
 
@@ -251,7 +275,7 @@ impl Handler<NewChatMsg> for App
 	{
 		let conn = self.connection.as_mut().expect_throw( "be connected" );
 
-		conn.new_msg_addr.send( msg ).await.expect_throw( "send new chat message" );
+		conn.server_addr.send( msg ).await.expect_throw( "send new chat message" );
 
 	})}
 
@@ -272,7 +296,7 @@ impl Handler<SetNick> for App
 	{
 		let conn = self.connection.as_mut().expect_throw( "be connected" );
 
-		conn.set_nick_addr.call( msg ).await.expect_throw( "forward SetNick" )
+		conn.server_addr.call( msg ).await.expect_throw( "forward SetNick" )
 	})}
 
 

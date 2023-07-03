@@ -5,12 +5,13 @@ use crate :: { import::*, color::*, document, user_list::Render };
 //
 pub struct User
 {
-	sid   : usize                ,
-	nick  : String               ,
-	color : Color                ,
-	p     : HtmlParagraphElement ,
-	indom : bool                 ,
-	parent: HtmlElement          ,
+	sid    : usize                ,
+	nick   : String               ,
+	color  : Color                ,
+	p      : HtmlParagraphElement ,
+	indom  : bool                 ,
+	parent : HtmlElement          ,
+	is_self: bool                 ,
 }
 
 // Unfortunately thespis requires Send right now, and HtmlElement isn't Send.
@@ -20,7 +21,7 @@ unsafe impl Send for User {}
 
 impl User
 {
-	pub fn new( sid: usize, nick: String, parent: HtmlElement ) -> Self
+	pub fn new( sid: usize, nick: String, parent: HtmlElement, is_self: bool ) -> Self
 	{
 		Self
 		{
@@ -30,6 +31,7 @@ impl User
 			color: Color::random().light(),
 			p    : document().create_element( "p" ).expect_throw( "create user p" ).unchecked_into(),
 			indom: false,
+			is_self,
 		}
 	}
 
@@ -40,6 +42,11 @@ impl User
 
 		self.p.style().set_property( "color", &self.color.to_css() ).expect_throw( "set color" );
 		self.p.set_id( &format!( "user_{}", &self.sid ) );
+
+		if self.is_self
+		{
+			self.p.style().set_property( "font-weight", "bold" ).expect_throw( "set color" );
+		}
 
 		if !self.indom
 		{

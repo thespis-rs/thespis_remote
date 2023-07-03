@@ -16,6 +16,7 @@ pub struct ChatErr
 
 /// The different kind of errors that can happen when you use the `ws_stream` API.
 //
+#[non_exhaustive]
 #[ derive( Debug, Serialize, Deserialize ) ]
 //
 pub enum ChatErrKind
@@ -35,11 +36,6 @@ pub enum ChatErrKind
 	/// Can only call join once.
 	//
 	AlreadyJoined,
-
-
-	#[ doc( hidden ) ]
-	//
-	__NonExhaustive__
 }
 
 
@@ -56,11 +52,9 @@ impl fmt::Display for ChatErrKind
 		match self
 		{
 			Self::NickInvalid   => fmt::Display::fmt( "The new nickname is invalid (must be 1-15 word characters (\\w regex class)).", f ) ,
-			Self::NickInuse     => fmt::Display::fmt( "An error happend on the tcp level when connecting.", f ) ,
+			Self::NickInuse     => fmt::Display::fmt( "The nickname is already in use.", f ) ,
 			Self::NickUnchanged => fmt::Display::fmt( "The old nickname is the same as the new one.", f ) ,
 			Self::AlreadyJoined => fmt::Display::fmt( "You can only call join once.", f ) ,
-
-			_ => unreachable!(),
 		}
 	}
 }

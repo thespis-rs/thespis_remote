@@ -152,3 +152,10 @@ codegen-units = 1
 debug = true
 lto = false
 opt-level = 3
+
+[target]
+[target."cfg(target_arch = \"wasm32\")"]
+[target."cfg(target_arch = \"wasm32\")".dependencies]
+[target."cfg(target_arch = \"wasm32\")".dependencies.futures-timer]
+features = ["wasm-bindgen"]
+version = "^3"

@@ -11,34 +11,21 @@ package:
 
 dependencies:
 
-  bytes                 : { version: ^0.4 }
+  async_executors       : { version: ^0.6, features: [tokio_tp, tokio_io] }
+  async-tungstenite     : { version: ^0.22, features: [tokio-runtime] }
+  bytes                 : { version: ^1 }
   chat_format           : { path: "../chat_format" }
   chrono                : ^0.4
-  flexi_logger          : ^0.14
-  futures-preview       : { version: ^0.3.0-alpha, features: [ async-await ] }
-  futures_cbor_codec    : ^0.1
-  futures_codec         : ^0.3
-  locks                 : { version: ^0.3.2-alpha, package: future-parking_lot }
+  flexi_logger          : ^0.25
+  futures               : { version: ^0.3 }
   log                   : ^0.4
-  pharos                : { version: ^0.4 }
-  pin-utils             : ^0.1.0-alpha
+  pharos                : { version: ^0.5 }
+  pin-utils             : ^0.1
   regex                 : ^1
-  tokio-tungstenite     : ^0.9
-  warp                  : { version: ^0.1, default-features: false, features: [ websocket] }
-  ws_stream_tungstenite : ^0.1.0-alpha
+  tokio                 : { version: ^1, features: [rt, net] }
+  warp                  : { version: ^0.3, default-features: false, features: [ websocket] }
+  ws_stream_tungstenite : ^0.10
 
-  thespis               : { path: ../../../../thespis              }
-  thespis_remote        : { path: ../../../../thespis_remote       }
-  thespis_impl          : { path: ../../../../thespis_impl         }
-  thespis_remote_impl   : { path: ../../../../thespis_remote_impl  }
-
-  tokio01               : { version: ^0.1 , default-features: false, features: [ rt-full, codec ], package: tokio }
-  futures01             : { version: ^0.1 , default-features: false, package: futures }
-
-  async_runtime         : { version: ^0.3, package: naja_async_runtime }
-
-patch:
-
-  crates-io:
-
-    futures_codec: { path: ../../../../../futures-codec }
+  thespis               : ^0.2
+  thespis_remote        : { path: ../../../../thespis_remote }
+  thespis_impl          : ^0.3

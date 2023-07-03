@@ -120,7 +120,8 @@ impl WireFormat for CborWF
 	/// Create a Peer directly from an asynchronous stream. This is a convenience wrapper around Peer::new so
 	/// you don't have to bother with framing the connection.
 	///
-	/// *addr*: This peers own address.
+	/// Returns a WeakAddr as the Peer lives as long as the connection lives. Close the connection
+	/// or send the peer a close message to end it.
 	///
 	/// *socket*: The async stream to frame.
 	///
