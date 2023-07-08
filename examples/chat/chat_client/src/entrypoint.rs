@@ -5,8 +5,9 @@ pub(crate) mod chat_window  ;
 pub(crate) mod connect_form ;
 pub(crate) mod e_handler    ;
 pub(crate) mod color        ;
-pub(crate) mod user_list    ;
 pub(crate) mod user         ;
+pub(crate) mod user_count   ;
+pub(crate) mod user_list    ;
 pub(crate) mod app          ;
 
 use
@@ -16,6 +17,7 @@ use
 	app          :: { App, Connected, Disconnect                                      } ,
 	chat_window  :: { ChatWindow, NewUser, UserLeft, AnnounceNick, ChatMsg, PrintHelp } ,
 	user         :: { ChangeNick, UserInfo, User                                      } ,
+	user_count   :: { UserCount                                                       } ,
 };
 
 mod import
@@ -102,16 +104,17 @@ pub async fn main() -> Result<(), JsValue>
 		// .with_timer(UtcTime::rfc_3339()) // std::time is not available in browsers
 		.without_time()
 		.with_writer(MakeConsoleWriter) // write events to the console
+		.with_filter(tracing::level_filters::LevelFilter::INFO)
 		;
-	let perf_layer = performance_layer()
-		.with_details_from_fields(Pretty::default());
+	// let perf_layer = performance_layer()
+	// 	.with_details_from_fields(Pretty::default());
 
 	tracing_subscriber::registry()
 		.with(fmt_layer)
-		.with(perf_layer)
+		// .with(perf_layer)
 		.init(); // Install these as subscribers to tracing events
 
-
+	trace!( "This is a trace in main" );
 
 	let (app_addr, app_mb) = Addr::builder( "App" ).build();
 	let app = App::new( app_addr);

@@ -29,6 +29,9 @@ version = "^0.3"
 features = ["wasm-bindgen", "js"]
 version = "^0.2"
 
+[dependencies.keke_dom]
+path = "../../../../../keke/keke_dom"
+
 [dependencies.thespis_remote]
 path = "../../../../thespis_remote"
 

@@ -10,6 +10,7 @@ pub struct UserList
 	indom       : bool                      ,
 	parent      : HtmlElement               ,
 	chat_window : Addr< ChatWindow >        ,
+	user_count  : Addr< UserCount  >        ,
 }
 
 // Unfortunately thespis requires Send right now, and HtmlElement isn't Send.
@@ -23,9 +24,14 @@ impl UserList
 {
 	pub fn new( parent: &str, chat_window: Addr< ChatWindow > ) -> Self
 	{
+		let count_div = get_id( "user_count" ).unchecked_into();
+		let user_count = UserCount::new( count_div );
+		let user_count = Addr::builder("user_count").spawn_local( user_count, &Bindgen ).expect_throw( "spawn userlist"  );
+
 		Self
 		{
 			chat_window,
+			user_count,
 			users: HashMap::new() ,
 			div  : document().create_element( "div" ).expect_throw( "create userlist div" ).unchecked_into() ,
 			indom: false,
@@ -96,6 +102,9 @@ impl Handler< Insert > for UserList
 
 			self.chat_window.send( new_user ).await.expect_throw( "send" );
 
+			let update = user_count::Update{ count: self.users.len() };
+			self.user_count.send( update ).await.expect_throw( "send user count update" );
+
 			addr
 		}
 	})}
@@ -113,6 +122,9 @@ impl Handler< Remove > for UserList
 	#[async_fn_local] fn handle_local( &mut self, msg: Remove )
 	{
 		self.users.remove( &msg.sid );
+
+		let update = user_count::Update{ count: self.users.len() };
+		self.user_count.send( update ).await.expect_throw( "send user count update" );
 	}
 
 	#[async_fn] fn handle(&mut self, _: Remove) { unreachable!("cannot be called multithreaded")}
@@ -134,21 +146,23 @@ impl Handler< Clear > for UserList
 }
 
 
-
-
-pub struct Render {}
+#[derive(Clone, Copy)]
+pub struct Render;
 
 impl Message for Render { type Return = (); }
 
 
 impl Handler< Render > for UserList
 {
-	fn handle( &mut self, _: Render ) -> Return<()> { Box::pin( async move
+	fn handle( &mut self, msg: Render ) -> Return<()> { Box::pin( async move
 	{
 		for user in self.users.values_mut()
 		{
-			user.send( Render{} ).await.expect_throw( "send" );
+			user.send( msg ).await.expect_throw( "send" );
 		}
+
+		self.user_count.send( msg ).await.expect_throw( "render user_count" );
+
 
 		if !self.indom
 		{
