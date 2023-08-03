@@ -39,7 +39,7 @@ dependencies:
 
   pharos               : ^0.5
   thespis              : ^0.2
-  thespis_remote       : { path: ../../../../thespis_remote                               }
+  thespis_remote       : { path: ../../../../thespis_remote }
   thespis_impl         : ^0.3
   keke_dom             : { path: ../../../../../keke/keke_dom }
   getrandom            : { version: ^0.2, features: [ wasm-bindgen, js ] }

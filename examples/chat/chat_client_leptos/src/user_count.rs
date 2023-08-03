@@ -49,10 +49,10 @@ impl Message for Update { type Return = (); }
 
 impl Handler< Update > for UserCount
 {
-	#[async_fn_local] fn handle_local( &mut self, _msg: Update )
+	#[async_fn_local] fn handle_local( &mut self, msg: Update )
 	{
 		warn!("updating set_count");
-		self.set_count.update( |n| *n+=1 );
+		self.set_count.update( |n| *n = msg.count );
 	}
 
 	#[async_fn] fn handle( &mut self, _: Update )

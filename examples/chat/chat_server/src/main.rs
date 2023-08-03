@@ -54,9 +54,9 @@ fn main()
 	exec.block_on( async {
 		// GET / -> index html
 		//
-		let index   = warp::path::end()        .and( warp::fs::file( "../chat_client/index.html" ) );
-		let style   = warp::path( "style.css" ).and( warp::fs::file( "../chat_client/style.css"  ) );
-		let statics = warp::path( "pkg"       ).and( warp::fs::dir ( "../chat_client/pkg"        ) );
+		let index   = warp::path::end()        .and( warp::fs::file( "../chat_client_leptos/index.html" ) );
+		let style   = warp::path( "style.css" ).and( warp::fs::file( "../chat_client_leptos/style.css"  ) );
+		let statics = warp::path( "pkg"       ).and( warp::fs::dir ( "../chat_client_leptos/pkg"        ) );
 
 		let routes  = index.or( style ).or( statics );
 

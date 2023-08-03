@@ -5,6 +5,19 @@ const HELP: &str = "Available commands:
 /help # Print available commands";
 
 
+
+
+
+#[component]
+pub fn ChatWindowDom( cx: Scope ) -> impl IntoView
+{
+	view! { cx,
+
+		<div id="chat"></div>
+	}
+}
+
+
 #[ derive( Debug, Actor ) ]
 //
 pub struct ChatWindow
@@ -82,15 +95,15 @@ impl ChatWindow
 
 impl Handler<Welcome> for ChatWindow
 {
-	fn handle( &mut self, msg: Welcome ) -> Return<()>
+	#[async_fn_local] fn handle_local( &mut self, msg: Welcome )
 	{
 		// TODO: srv_color get's copied here, which is a bit silly!
 		//
 		let color = self.srv_color;
 		self.append_line( msg.time as f64, "Server", &msg.txt, &color, true );
-
-		ready(()).boxed()
 	}
+
+	#[async_fn] fn handle(&mut self, _: Welcome) { unreachable!("cannot be called multithreaded")}
 }
 
 
