@@ -1,20 +1,71 @@
 use crate :: { import::*, * };
 
 #[component]
-pub fn ChatFormDom( cx: Scope ) -> impl IntoView
+pub fn ChatFormDom( cx: Scope, addr: Addr<ChatForm> ) -> impl IntoView
 {
+	let addr1 = addr.clone();
+	let addr2 = addr.clone();
+
+	let on_submit = move |e| chat_submit(e, addr1.clone());
+	let on_reset  = move |e| chat_reset (e, addr2.clone());
+	let on_enter  = move |e| chat_enter (e, addr.clone());
+
 	view! { cx,
 
 		// <!-- if we don't put the javascript link, it will still submit when programatorically triggering
 		// click on the button... -->
 
-		<form id="chat_form" action="javascript:void(0);" >
-			<textarea id="chat_input"></textarea>
+		<form id="chat_form" action="javascript:void(0);" on:submit = on_submit on:reset = on_reset >
+			<textarea id="chat_input" on:keypress = on_enter ></textarea>
 
 			<input id="chat_submit"     type = "submit" value = "Send"       />
 			<input id="chat_disconnect" type = "reset"  value = "Disconnect" />
 		</form>
 	}
+}
+
+fn chat_submit(e: web_sys::SubmitEvent, mut chat_form: Addr<ChatForm> )
+{
+	Bindgen.spawn_local( async move
+	{
+		chat_form.send( ChatSubmitEvt{e: e.into()} ).await
+			.expect_throw( "send ChatSubmitEvt")
+		;
+
+	}).expect_throw( "spawn send ChatSubmitEvt");
+}
+
+
+fn chat_reset(e: Event, mut chat_form: Addr<ChatForm> )
+{
+	Bindgen.spawn_local( async move
+	{
+		chat_form.send( ChatResetEvt{e} ).await.expect_throw( "send ChatResetEvt");
+
+	}).expect_throw( "spawn send ChatResetEvt");
+}
+
+
+fn chat_enter(e: web_sys::KeyboardEvent, mut chat_form: Addr<ChatForm> )
+{
+	Bindgen.spawn_local( async move
+	{
+		// We also trigger this if the user types Enter.
+		// Shift+Enter let's the user create a new line in the message.
+		//
+		if e.has_type::<KeyboardEvent>()
+		{
+			let evt: KeyboardEvent = e.clone().unchecked_into();
+
+			if  evt.code() != "Enter"  ||  evt.shift_key()
+			{
+				return;
+			}
+		}
+
+		chat_form.send(ChatSubmitEvt{e: e.into()}).await.expect_throw( "send ChatSubmitEvt" );
+
+	}).expect_throw( "spawn send send ChatSubmitEvt keypress" );
 }
 
 #[ derive( Actor ) ]

@@ -36,6 +36,12 @@ path = "../../../../../keke/keke_dom"
 features = ["csr"]
 version = "^0.4"
 
+[dependencies.leptos-use]
+version = "^0.6.2"
+
+[dependencies.thespis_derive]
+path = "../../../../thespis_derive"
+
 [dependencies.thespis_remote]
 path = "../../../../thespis_remote"
 

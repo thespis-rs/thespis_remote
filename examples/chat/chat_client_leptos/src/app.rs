@@ -4,14 +4,41 @@ use crate::{ *, import::* };
 #[component]
 pub fn AppDom( cx: Scope ) -> impl IntoView
 {
+	let (users, set_users) = create_signal( cx, HashMap::<usize, ReadSignal<String>>::new() );
+
+	let chat_window = Addr::builder("chat_window")
+		.spawn_local( ChatWindow::new("chat"), &Bindgen )
+		.expect_throw( "spawn chat_window"  )
+	;
+
+	let user_list = Addr::builder("user_list")
+		.spawn_local( UserList::new( chat_window.clone(), set_users, cx ), &Bindgen )
+		.expect_throw( "spawn userlist"  )
+	;
+
+	let app = Addr::builder("app")
+		.spawn_local( App::new( chat_window.clone(), user_list, cx ), &Bindgen )
+		.expect_throw( "spawn app"  )
+	;
+
+	let chat_form = Addr::builder("chat_form")
+		.spawn_local( ChatForm::new( app.clone(), chat_window.clone() ), &Bindgen )
+		.expect_throw( "spawn chat_form" )
+	;
+
+	let conn_form = Addr::builder("conn_form")
+		.spawn_local( ConnectForm::new( app.clone() ), &Bindgen )
+		.expect_throw( "spawn conn_form" )
+	;
+
 	view! { cx,
 
 		<div id="title_div"><h1 id="title">Thespis Chat Client Example</h1></div>
 
 		<ChatWindowDom />
-		<UserListDom />
-		<ChatFormDom />
-		<ConnectFormDom />
+		<UserListDom users=users/>
+		<ChatFormDom addr=chat_form />
+		<ConnectFormDom addr=conn_form />
 	}
 }
 
@@ -24,149 +51,21 @@ pub fn AppDom( cx: Scope ) -> impl IntoView
 pub struct App
 {
 	connection : Option< Connected >,
-	addr       : Addr<Self>         ,
 	chat_window: Addr< ChatWindow > ,
-	users      : Addr< UserList   > ,
+	user_list      : Addr< UserList   > ,
 }
 
 
 impl App
 {
-	pub fn new( addr: Addr<Self> ) -> Self
+	pub fn new( chat_window: Addr<ChatWindow>, user_list: Addr<UserList>, cx: Scope ) -> Self
 	{
-		let chat_window = Addr::builder("chat_window")
-			.spawn_local( ChatWindow ::new("chat"), &Bindgen )
-			.expect_throw( "spawn cwindow"  )
-		;
-
-		let users = Addr::builder("user_list")
-			.spawn_local( UserList::new( "users", chat_window.clone() ), &Bindgen )
-			.expect_throw( "spawn userlist"  )
-		;
-
-		let app = Self
+		Self
 		{
-			addr             ,
 			chat_window      ,
-			users            ,
+			user_list            ,
 			connection: None ,
-		};
-
-		app.setup_forms();
-		app
-	}
-
-
-	// Link submit and reset buttons to the Actors that will handle the events
-	//
-	fn setup_forms( &self )
-	{
-		let conn_form = Addr::builder("conn_form")
-			.spawn_local( ConnectForm::new( self.addr.clone() ), &Bindgen )
-			.expect_throw( "spawn conn_form" )
-		;
-
-		let chat_form = Addr::builder("chat_form")
-			.spawn_local( ChatForm::new( self.addr.clone(), self.chat_window.clone() ), &Bindgen )
-			.expect_throw( "spawn chat_form" )
-		;
-
-		let conn_form2 = conn_form.clone();
-		let chat_form2 = chat_form.clone();
-		let chat_form3 = chat_form.clone();
-
-		let chat_input_elem = get_id( "chat_input"   );
-		let conn_form_elem  = get_id( "connect_form" );
-		let chat_form_elem  = get_id( "chat_form"    );
-
-		let conn_submit_evts = EHandler::new( &conn_form_elem, "submit", false );
-		let conn_reset_evts  = EHandler::new( &conn_form_elem, "reset" , false );
-
-		let chat_submit_evts = EHandler::new( &chat_form_elem, "submit", false );
-		let chat_reset_evts  = EHandler::new( &chat_form_elem, "reset" , false );
-
-		let enter_evts       = EHandler::new( &chat_input_elem, "keypress", false );
-
-
-		// Connect the events from the connect form to the actor handling them. (submit and reset).
-		//
-		let conn_submit_task = async move
-		{
-			conn_submit_evts
-
-				.map( |e| Ok(ConnSubmitEvt{e}) )
-				.forward( conn_form ).await
-				.expect_throw( "forward csubmit" )
-			;
-		};
-
-		let conn_reset_task = async move
-		{
-			conn_reset_evts
-
-				.map( |e| Ok(ConnResetEvt{e}) )
-				.forward( conn_form2 ).await
-				.expect_throw( "forward csubmit" )
-			;
-		};
-
-		// Connect the events from the chat form to the actor handling them. (submit and disconnect).
-		//
-		let chat_submit_task = async move
-		{
-			chat_submit_evts
-
-				.map( |e| Ok(ChatSubmitEvt{e}) )
-				.forward( chat_form ).await
-				.expect_throw( "forward csubmit" )
-			;
-		};
-
-		let chat_reset_task = async move
-		{
-			chat_reset_evts
-
-				.map( |e| Ok(ChatResetEvt{e}) )
-				.forward( chat_form2 ).await
-				.expect_throw( "forward csubmit" )
-			;
-		};
-
-		let chat_enter_task = async move
-		{
-			async fn predicate(e: Event) -> Option<Result<ChatSubmitEvt, thespis_impl::ThesErr>>
-			{
-				// We also trigger this if the user types Enter.
-				// Shift+Enter let's the user create a new line in the message.
-				//
-				if e.has_type::<KeyboardEvent>()
-				{
-					let evt: KeyboardEvent = e.clone().unchecked_into();
-
-					if  evt.code() != "Enter"  ||  evt.shift_key()
-					{
-						return None;
-					}
-				}
-
-				Some(Ok(ChatSubmitEvt{e}))
-			}
-
-
-			enter_evts
-
-				.filter_map( predicate )
-				.forward( chat_form3 ).await
-				.expect_throw( "forward csubmit" )
-			;
-		};
-
-		spawn_local( conn_submit_task );
-		spawn_local( conn_reset_task  );
-
-		spawn_local( chat_enter_task  );
-		spawn_local( chat_submit_task );
-		spawn_local( chat_reset_task  );
+		}
 	}
 }
 
@@ -193,7 +92,7 @@ impl Handler<Connected> for App
 {
 	fn handle_local( &mut self, mut msg: Connected ) -> ReturnNoSend<()> { Box::pin( async move
 	{
-		self.users.call( Clear{} ).await.expect_throw( "clear userlist" );
+		self.user_list.call( Clear{} ).await.expect_throw( "clear userlist" );
 
 		let new_users = std::mem::take(&mut msg.welcome.users);
 
@@ -203,9 +102,9 @@ impl Handler<Connected> for App
 
 		warn!( "{:?}", &inserts );
 
-		self.users.send_all( &mut futures::stream::iter(inserts) ).await.expect_throw( "new users" );
+		self.user_list.send_all( &mut futures::stream::iter(inserts) ).await.expect_throw( "new users" );
 
-		self.users.send( Render{} ).await.expect_throw( "render userlist" );
+		self.user_list.send( Render{} ).await.expect_throw( "render userlist" );
 
 		self.chat_window.call( msg.welcome.clone() ).await.expect_throw( "call" );
 
@@ -235,7 +134,7 @@ impl Handler<ServerMsg> for App
 			ServerMsg::UserJoined{ time, sid, nick } =>
 			{
 				debug!( "ServerMsg::UserJoined" );
-				self.users.send( Insert{ time: time as f64, sid, nick, is_self: false } ).await
+				self.user_list.send( Insert{ time: time as f64, sid, nick, is_self: false } ).await
 
 					.expect_throw( "add new user to user list" )
 				;
@@ -248,7 +147,7 @@ impl Handler<ServerMsg> for App
 			{
 				debug!( "ServerMsg::UserLeft" );
 
-				self.users.call( Remove{ sid } ).await.expect_throw( "remove user from user list" );
+				self.user_list.call( Remove{ sid } ).await.expect_throw( "remove user from user list" );
 
 				self.chat_window.send( UserLeft{ time: time as f64, sid } ).await.expect_throw( "announce new user" );
 			}
@@ -260,7 +159,7 @@ impl Handler<ServerMsg> for App
 			{
 				debug!( "ServerMsg::NickChanged" );
 
-				let mut user = self.users.call( GetUser{ sid } ).await.expect_throw( "get user info" );
+				let mut user = self.user_list.call( GetUser{ sid } ).await.expect_throw( "get user info" );
 
 				let (old, _) = user.call( UserInfo {} ).await.expect_throw( "get user info" );
 				user.call( ChangeNick( nick.clone() ) ).await.expect_throw( "change nick" );
@@ -314,15 +213,15 @@ impl Handler<NewChatMsg> for App
 //
 impl Handler<SetNick> for App
 {
-	fn handle_local( &mut self, msg: SetNick ) -> ReturnNoSend< Result<(), ChatErr> > { Box::pin( async move
+	#[async_fn_local] fn handle_local( &mut self, msg: SetNick ) -> Result<(), ChatErr>
 	{
 		let conn = self.connection.as_mut().expect_throw( "be connected" );
 
 		conn.server_addr.call( msg ).await.expect_throw( "forward SetNick" )
-	})}
+	}
 
 
-	fn handle( &mut self, _: SetNick ) -> Return< Result<(), ChatErr> >
+	#[async_fn] fn handle( &mut self, _: SetNick ) -> Result<(), ChatErr>
 	{
 		unreachable!( "Cannot be spawned on a threadpool" );
 	}
@@ -337,7 +236,7 @@ impl Message for Disconnect { type Return = (); }
 //
 impl Handler<Disconnect> for App
 {
-	fn handle_local( &mut self, _: Disconnect ) -> ReturnNoSend<()> { Box::pin( async move
+	#[async_fn_nosend] fn handle_local( &mut self, _: Disconnect )
 	{
 		if let Some( conn ) = &self.connection
 		{
@@ -352,16 +251,10 @@ impl Handler<Disconnect> for App
 
 		cform.style().set_property( "display", "flex" ).expect_throw( "set cform display none" );
 
-		self.users.send( Clear {} ).await.expect_throw( "clear  userlist" );
-		self.users.send( Render{} ).await.expect_throw( "render userlist" );
+		self.user_list.send( Clear {} ).await.expect_throw( "clear  userlist" );
+		self.user_list.send( Render{} ).await.expect_throw( "render userlist" );
 
 		self.chat_window.send( Disconnect{} ).await.expect_throw( "clear  userlist" );
 
-	})}
-
-
-	fn handle( &mut self, _: Disconnect ) -> Return<()>
-	{
-		unreachable!( "Cannot be spawned on a threadpool" );
 	}
 }

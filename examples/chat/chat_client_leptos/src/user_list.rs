@@ -4,14 +4,48 @@ use crate :: { import::*, * };
 
 
 #[component]
-pub fn UserListDom( cx: Scope ) -> impl IntoView
+pub fn UserListDom( cx: Scope, users: ReadSignal<HashMap::<usize, UserData>> ) -> impl IntoView
 {
+	let count = create_memo( cx, move |_| users.get().len() );
+
+	// let add_user = move |_| {
+	// 	// let (name, set_name) = create_signal( cx, "" );
+	// 	// let color = format!( "--user-color-{}", id );
+	// 	// let (color, _set_color) = use_css_var(cx, varname.clone() );
+
+	//     // create a signal for the new counter
+	//     let user = create_signal(cx, next_counter_id + 1);
+
+	//     set_users.update(move |users| {
+	//         users.insert((next_counter_id, user));
+	//     });
+	// };
+
 	view! { cx,
 
 		<div id="users">
-			<div id="user_count"></div>
+			<p>Total users: {count}</p>
+			<For
+				each = move || users.get()
+				key  = |user| user.0
+				view = |cx, (_id, name)|
+				{
+					let (style, _set_style) = create_signal( cx, "color: red".to_string() );
+
+					view!{ cx,
+						<UserDom style=style name=name/>
+					}
+				}
+			/>
 		</div>
 	}
+}
+
+
+struct UserData
+{
+	name_read: ReadSignal<String>,
+	name_write: WriteSignal<String>,
 }
 
 
@@ -19,46 +53,21 @@ pub fn UserListDom( cx: Scope ) -> impl IntoView
 //
 pub struct UserList
 {
-	users       : HashMap<usize, Addr<User>>,
-	div         : HtmlDivElement            ,
-	indom       : bool                      ,
-	parent      : HtmlElement               ,
-	chat_window : Addr< ChatWindow >        ,
-	user_count  : Addr< UserCount  >        ,
+	users       : HashMap::<usize, Addr<User>>,
+	indom       : bool                        ,
+	chat_window : Addr< ChatWindow >          ,
 }
 
 impl UserList
 {
-	pub fn new( parent: &str, chat_window: Addr< ChatWindow > ) -> Self
+	pub fn new( chat_window: Addr< ChatWindow >, set_users: WriteSignal<HashMap::<usize, ReadSignal<String>>>, cx: Scope ) -> Self
 	{
-		let count_div = get_id( "user_count" ).unchecked_into();
-		let user_count = UserCount::new( count_div );
-		let user_count = Addr::builder("user_count").spawn_local( user_count, &Bindgen ).expect_throw( "spawn userlist"  );
-
 		Self
 		{
 			chat_window,
-			user_count,
-			users: HashMap::new() ,
-			div  : document().create_element( "div" ).expect_throw( "create userlist div" ).unchecked_into() ,
+			set_users,
 			indom: false,
-			parent: get_id( parent ).unchecked_into(),
 		}
-	}
-}
-
-
-impl Drop for UserList
-{
-	fn drop( &mut self )
-	{
-		// remove self from Dom
-		//
-		self.div.remove();
-		//
-		// Delete children
-		//
-
 	}
 }
 

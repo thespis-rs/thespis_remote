@@ -3,10 +3,8 @@
 pub(crate) mod chat_form    ;
 pub(crate) mod chat_window  ;
 pub(crate) mod connect_form ;
-pub(crate) mod e_handler    ;
 pub(crate) mod color        ;
 pub(crate) mod user         ;
-pub(crate) mod user_count   ;
 pub(crate) mod user_list    ;
 pub(crate) mod app          ;
 
@@ -16,8 +14,7 @@ use
 	chat_form    :: { ChatForm, ChatFormDom, ChatSubmitEvt, ChatResetEvt                             } ,
 	app          :: { App, AppDom, Connected, Disconnect                                             } ,
 	chat_window  :: { ChatWindow, ChatWindowDom, NewUser, UserLeft, AnnounceNick, ChatMsg, PrintHelp } ,
-	user         :: { ChangeNick, UserInfo, User                                                     } ,
-	user_count   :: { UserCount                                                                      } ,
+	user         :: { ChangeNick, UserInfo, User, UserDom                                            } ,
 	user_list    :: { UserListDom                                                                    } ,
 };
 
@@ -31,7 +28,8 @@ mod import
 		futures              :: { prelude::*, stream::SplitStream, select, future::ready, FutureExt     } ,
 		futures              :: { channel::{ mpsc::{ unbounded, UnboundedReceiver, UnboundedSender } }  } ,
 		futures              :: { task::LocalSpawnExt                                                   } ,
-		leptos               :: { create_signal, view, component, Scope, ReadSignal, IntoView, WriteSignal, SignalUpdate } ,
+		leptos               :: { create_effect, create_memo, create_signal, view, component, For, Memo, Scope, ReadSignal, IntoView, WriteSignal, SignalUpdate, SignalGet } ,
+		leptos_use           :: { use_css_var } ,
 		tracing              :: { *                                                                     } ,
 		web_sys              :: { Event                                                                 } ,
 		wasm_bindgen         :: { prelude::*, JsCast                                                    } ,
@@ -44,7 +42,8 @@ mod import
 		wasm_bindgen_futures :: { spawn_local                                                           } ,
 
 		chat_format         :: { * } ,
-		thespis             :: { Message, Actor, Handler, Return, ReturnNoSend, Address, async_fn, async_fn_local } ,
+		thespis             :: { Message, Actor, Handler, Return, ReturnNoSend, Address } ,
+		thespis_derive      :: { async_fn_local, async_fn_nosend, async_fn } ,
 		thespis_impl        :: { Addr, WeakAddr                                                                   } ,
 		thespis_remote      :: { CborWF, PeerEvent, Peer, ServiceMap, WireFormat                                  } ,
 		pharos              :: { Observable, ObserveConfig, Events                                                } ,
@@ -65,7 +64,6 @@ use
 	crate::
 	{
 		import::*,
-		e_handler::*,
 		color::*,
 		user_list::*,
 	}
@@ -116,12 +114,10 @@ pub async fn main() -> Result<(), JsValue>
 		// .with(perf_layer)
 		.init(); // Install these as subscribers to tracing events
 
-	leptos::mount_to_body( |cx| view!{ cx, <AppDom />} );
-
-	let (app_addr, app_mb) = Addr::builder( "App" ).build();
-	let app = App::new( app_addr);
-
-	app_mb.start_local( app ).await;
+	leptos::mount_to_body( |cx|
+	{
+		view!{ cx, <AppDom />}
+	});
 
 	info!( "main function ends" );
 

@@ -1,6 +1,17 @@
 use crate :: { import::*, color::*, document, user_list::Render };
 
 
+#[component]
+pub fn UserDom( cx: Scope, style: ReadSignal<String>, name: ReadSignal<String>  ) -> impl IntoView
+{
+	view! { cx,
+
+		<p style=style>{name}</p>
+	}
+}
+
+
+
 #[ derive( Actor ) ]
 //
 pub struct User

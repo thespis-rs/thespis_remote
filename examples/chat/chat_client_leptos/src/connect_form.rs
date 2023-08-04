@@ -2,14 +2,20 @@ use crate :: { import::*, * };
 
 
 #[component]
-pub fn ConnectFormDom( cx: Scope ) -> impl IntoView
+pub fn ConnectFormDom( cx: Scope, addr: Addr<ConnectForm> ) -> impl IntoView
 {
+	let addr1 = addr.clone();
+	let addr2 = addr.clone();
+
+	let on_submit = move |e| connect_submit(e, addr1.clone());
+	let on_reset  = move |e| connect_reset (e, addr2.clone());
+
 	view! { cx,
 
 		// <!-- if we don't put the javascript link, it will still submit when programatorically triggering
 		// click on the button... -->
 
-		<form id="connect_form" action="javascript:void(0);" >
+		<form id="connect_form" action="javascript:void(0);" on:submit = on_submit on:reset = on_reset >
 
 			<div id="connect_form_content">
 
@@ -36,6 +42,26 @@ pub fn ConnectFormDom( cx: Scope ) -> impl IntoView
 		</form>
 
 	}
+}
+
+
+fn connect_submit(e: web_sys::SubmitEvent, mut conn_form: Addr<ConnectForm> )
+{
+	Bindgen.spawn_local( async move
+	{
+		conn_form.send(ConnSubmitEvt{e}).await.expect_throw( "send ConnSubmitEvt" );
+
+	}).expect_throw( "spawn send ConnSubmitEvt" );
+}
+
+
+fn connect_reset(e: Event, mut conn_form: Addr<ConnectForm> )
+{
+	Bindgen.spawn_local( async move
+	{
+		conn_form.send(ConnResetEvt{e}).await.expect_throw( "send ConnResetEvt" );
+
+	}).expect_throw( "spawn send ConnResetEvt" );
 }
 
 
@@ -80,7 +106,7 @@ impl ConnectForm
 
 
 
-pub struct ConnSubmitEvt { pub e: Event }
+pub struct ConnSubmitEvt { pub e: SubmitEvent }
 
 impl Message for ConnSubmitEvt { type Return = (); }
 
