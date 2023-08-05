@@ -1,28 +1,40 @@
 use std::{ rc::Rc, cell::RefCell };
-use crate :: { import::*, color::*, document, Render, mount_to };
+use crate :: { import::*, color::*, document, user_list::Render };
 // use keke_dom::{ dom_manip::Manip, state::State };
-use leptos::{ create_signal, view, component, Scope, ReadSignal, IntoView, WriteSignal, SignalUpdate, ScopeDisposer };
+use leptos::{ create_signal, view, component, Scope, ReadSignal, IntoView, WriteSignal, SignalUpdate };
 
 #[ derive( Actor ) ]
 //
 pub struct UserCount
 {
-	parent : HtmlElement  ,
+	_parent : HtmlElement  ,
 	set_count: WriteSignal<usize>,
-	count: ReadSignal<usize>,
 }
 
 impl UserCount
 {
-	pub fn new( parent: HtmlElement, cx: Scope ) -> Self
+	pub fn new( parent: HtmlElement ) -> Self
 	{
-		let (count, set_count) = create_signal(cx, 0);
+		let set_count: Rc<RefCell<Option<WriteSignal<usize>>>> = Rc::new(None.into());
+		let set_count2 = set_count.clone();
+
+		leptos::mount_to( parent.clone(), move |cx|
+		{
+			let (count, set_count_inner) = create_signal(cx, 0);
+
+			set_count.replace(Some(set_count_inner));
+			warn!("inserted set_count");
+
+
+			view! { cx, <UserCountDom count=count /> }
+		});
+
+		let set_count = set_count2.borrow_mut().take().expect_throw("unwrap set_count");
 
 		Self
 		{
-			count,
 			set_count,
-			parent,
+			_parent: parent,
 		}
 	}
 }
@@ -52,14 +64,17 @@ impl Handler< Update > for UserCount
 
 impl Handler< Render > for UserCount
 {
-	#[async_fn_local] fn handle_local( &mut self, Render{ cx }: Render )
+	#[async_fn_local] fn handle_local( &mut self, _: Render )
 	{
-		let count = self.count;
+		// self.count.get_inner_text( self.parent.clone() );
 
-		mount_to( cx, self.parent.clone(), move |cx|
-		{
-			view! { cx, <UserCountDom count=count /> }
-		});
+
+		// rsx
+		// (r#"
+		// 	<div id="user_count">
+		// 		{ self.count }
+		// 	</div>
+		// "#)
 
 	}
 

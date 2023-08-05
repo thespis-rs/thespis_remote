@@ -32,7 +32,6 @@ mod import
 		futures              :: { channel::{ mpsc::{ unbounded, UnboundedReceiver, UnboundedSender } }  } ,
 		futures              :: { task::LocalSpawnExt                                                   } ,
 		leptos               :: { create_signal, view, component, Scope, ReadSignal, IntoView, WriteSignal, SignalUpdate } ,
-		leptos_dom           :: { Mountable                                                             } ,
 		tracing              :: { *                                                                     } ,
 		web_sys              :: { Event                                                                 } ,
 		wasm_bindgen         :: { prelude::*, JsCast                                                    } ,
@@ -119,6 +118,11 @@ pub async fn main() -> Result<(), JsValue>
 
 	leptos::mount_to_body( |cx| view!{ cx, <AppDom />} );
 
+	let (app_addr, app_mb) = Addr::builder( "App" ).build();
+	let app = App::new( app_addr);
+
+	app_mb.start_local( app ).await;
+
 	info!( "main function ends" );
 
 	Ok(())
@@ -145,28 +149,6 @@ pub(crate) fn get_id( id: &str ) -> Element
 
 
 
-/// Runs the provided closure and mounts the result to the provided element.
-pub(crate) fn mount_to<F, N>(cx: Scope, parent: HtmlElement, f: F)
-where
-    F: FnOnce(Scope) -> N + 'static,
-    N: IntoView,
-{
-	let node = f(cx).into_view(cx);
-
-	parent.append_child(&node.get_mountable_node()).unwrap();
-
-	std::mem::forget(node);
-}
-
-
-#[derive(Clone, Copy)]
-pub struct Render{ cx: Scope }
-
-impl Message for Render { type Return = (); }
-
-
-
-
 // Return a random name
 //
 pub(crate) fn random_name() -> &'static str
@@ -175,7 +157,7 @@ pub(crate) fn random_name() -> &'static str
 	// it uses the rand crate which doesn't support wasm for now, so we're just using
 	// a small sample.
 	//
-	let list =
+	let list = vec!
 	[
 		  "Aleeza"
 		, "Aoun"
