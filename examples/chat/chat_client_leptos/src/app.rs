@@ -6,7 +6,7 @@ pub fn AppDom( cx: Scope ) -> impl IntoView
 {
 	view! { cx,
 
-		<div id="title_div"><h1 id="title">Thespis Chat Client Example</h1></div>
+
 
 		<ChatWindowDom />
 		<UserListDom />

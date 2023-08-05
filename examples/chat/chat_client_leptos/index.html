@@ -38,6 +38,52 @@
 	</head>
 
 	<body>
+		<div id="title_div"><h1 id="title">Thespis Chat Client Example</h1></div>
+
+
+		<div id="chat"></div>
+		<div id="users">
+			<div id="user_count"></div>
+		</div>
+
+
+
+		<!-- if we don't put the javascript link, it will still submit when programatorically triggering
+		click on the button... -->
+
+		<form id="chat_form" action="javascript:void(0);" >
+			<textarea id="chat_input"></textarea>
+
+			<input id="chat_submit"     type = "submit" value = "Send"       />
+			<input id="chat_disconnect" type = "reset"  value = "Disconnect" />
+		</form>
+
+
+		<form id="connect_form" action="javascript:void(0);" >
+
+			<div id="connect_form_content">
+
+				<p id="connect_error"></p>
+
+				<label for="connect_nick">
+					<span>Nickname <span class="required">*</span></span>
+					<input type="text" id="connect_nick" name="connect_nick" value="" />
+				</label>
+
+				<label for="connect_url">
+					<span>Url <span class="required">*</span></span>
+					<input type="text" id="connect_url" name="connect_url" value="ws://127.0.0.1:3012" />
+				</label>
+
+				<label>
+					<span></span>
+					<input id="conn_submit" type = "submit" value = "Connect" />
+					<input id="conn_reset"  type = "reset"  value = "Reset"   />
+				</label>
+
+			</div>
+
+		</form>
 
 	</body>
 </html>

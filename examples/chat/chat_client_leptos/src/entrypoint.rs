@@ -32,11 +32,12 @@ mod import
 		futures              :: { channel::{ mpsc::{ unbounded, UnboundedReceiver, UnboundedSender } }  } ,
 		futures              :: { task::LocalSpawnExt                                                   } ,
 		leptos               :: { create_signal, view, component, Scope, ReadSignal, IntoView, WriteSignal, SignalUpdate } ,
+		leptos_dom           :: { Mountable                                                             } ,
 		tracing              :: { *                                                                     } ,
 		web_sys              :: { Event                                                                 } ,
 		wasm_bindgen         :: { prelude::*, JsCast                                                    } ,
 		gloo_events          :: { EventListener, EventListenerOptions                                   } ,
-		std                  :: { rc::Rc, convert::{TryInto, TryFrom}, cell::RefCell, io, sync::Arc     } ,
+		std                  :: { rc::Rc, convert::{TryInto, TryFrom}, cell::{OnceCell, RefCell}, io, sync::Arc     } ,
 		std                  :: { task::*, pin::Pin, collections::HashMap, panic                        } ,
 		regex                :: { Regex                                                                 } ,
 		js_sys               :: { Date, Math                                                            } ,
@@ -70,6 +71,13 @@ use
 		user_list::*,
 	}
 };
+
+
+thread_local! {
+    pub static CX: OnceCell<Scope> = OnceCell::new();
+}
+
+
 
 
 
@@ -116,12 +124,18 @@ pub async fn main() -> Result<(), JsValue>
 		// .with(perf_layer)
 		.init(); // Install these as subscribers to tracing events
 
-	leptos::mount_to_body( |cx| view!{ cx, <AppDom />} );
+	leptos::mount_to_body( |cx|
+	{
+		CX.with(|cell| cell.set(cx) ).expect_throw( "set CX" );
+		let (app_addr, app_mb) = Addr::builder( "App" ).build();
+		let app = App::new( app_addr );
 
-	let (app_addr, app_mb) = Addr::builder( "App" ).build();
-	let app = App::new( app_addr);
+		Bindgen.spawn_local( async{ app_mb.start_local( app ).await; } )
+			.expect_throw( "spawn app" )
+		;
 
-	app_mb.start_local( app ).await;
+		view!{ cx, <></> }
+	});
 
 	info!( "main function ends" );
 
@@ -149,6 +163,18 @@ pub(crate) fn get_id( id: &str ) -> Element
 
 
 
+/// Runs the provided closure and mounts the result to the provided element.
+pub(crate) fn mount_to<F, N>(cx: Scope, parent: HtmlElement, f: F)
+where
+    F: FnOnce(Scope) -> N + 'static,
+    N: IntoView,
+{
+	let node = f(cx).into_view(cx);
+
+	parent.append_child(&node.get_mountable_node()).unwrap();
+
+	std::mem::forget(node);
+}
 // Return a random name
 //
 pub(crate) fn random_name() -> &'static str
@@ -157,7 +183,7 @@ pub(crate) fn random_name() -> &'static str
 	// it uses the rand crate which doesn't support wasm for now, so we're just using
 	// a small sample.
 	//
-	let list = vec!
+	let list =
 	[
 		  "Aleeza"
 		, "Aoun"
