@@ -21,8 +21,14 @@ body
 	background: var( --main-bg-color );
 	color     : var( --main-fg-color );
 	display: grid;
-	grid-template-columns: 5fr 1fr;
-	grid-template-rows: 2fr 17fr 1fr;
+	grid:
+
+		"header header" 2fr
+		"main   user_list" 17fr
+		"footer user_list" 1fr
+		/5fr    1fr
+	;
+
 	height: 100%;
 	margin: 0;
 	max-height: 100%;
@@ -32,13 +38,11 @@ body
 
 #title_div
 {
-	grid-column-start: 1;
-	grid-column-end: 3;
-	grid-row-start: 1;
-	grid-row-end: 1;
+	grid-area: header;
 	text-align: center;
 	background: #363d59;
 	border-bottom: var( --border-color ) 1px solid;
+	z-index: 1;
 }
 
 #title
@@ -52,20 +56,14 @@ body
 	overflow-y: auto;
 	background: var( --dark-blue-bg );
 	color: white;
-	grid-column-start: 1;
-	grid-column-end: 2;
-	grid-row-start: 2;
-	grid-row-end: 3;
+	grid-area: main;
 }
 
-#users
+#user_list
 {
 	background: var( --darker-blue-bg );
 	padding: .5rem;
-	grid-column-start: 2;
-	grid-column-end: 2;
-	grid-row-start: 2;
-	grid-row-end: 4;
+	grid-area: user_list;
 	overflow-y: auto;
 	border-left: var( --border-color ) 1px solid;
 
@@ -73,10 +71,7 @@ body
 
 #chat_form
 {
-	grid-column-start: 1;
-	grid-column-end: 2;
-	grid-row-start: 3;
-	grid-row-end: 4;
+	grid-area: footer;
 	display: flex;
 	margin: 0;
 }
@@ -96,13 +91,11 @@ body
 {
 	margin: 0;
 	background: gray;
-	grid-column-start: 1;
-	grid-column-end: 3;
-	grid-row-start: 2;
-	grid-row-end: 4;
+	grid-area: main;
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	z-index: 1;
 }
 
 #connect_form_content

@@ -13,7 +13,7 @@ use
 {
 	connect_form :: { ConnectForm, ConnectFormDom, ConnSubmitEvt, ConnResetEvt                       } ,
 	chat_form    :: { ChatForm, ChatFormDom, ChatSubmitEvt, ChatResetEvt                             } ,
-	app          :: { App, AppDom, Connected, Disconnect                                             } ,
+	app          :: { App, Connected, Disconnect                                             } ,
 	chat_window  :: { ChatWindow, ChatWindowDom, NewUser, UserLeft, AnnounceNick, ChatMsg, PrintHelp } ,
 	user         :: { ChangeNick, UserInfo, User                                                     } ,
 	user_count   :: { UserCount                                                                      } ,
@@ -30,13 +30,14 @@ mod import
 		futures              :: { prelude::*, stream::SplitStream, select, future::ready, FutureExt     } ,
 		futures              :: { channel::{ mpsc::{ unbounded, UnboundedReceiver, UnboundedSender } }  } ,
 		futures              :: { task::LocalSpawnExt                                                   } ,
-		leptos               :: { create_effect, create_memo, create_signal, view, component, For, Memo, Scope, ReadSignal, IntoView, WriteSignal, SignalUpdate, SignalGet } ,
-		leptos_use           :: { use_css_var } ,
+		leptos               :: { create_effect, create_memo, create_signal, view, component, For, Memo, Scope, ScopeDisposer, ReadSignal, IntoView, WriteSignal, SignalUpdate, SignalGet } ,
+		leptos_use           :: {  } ,
+		leptos_dom           :: { Mountable                                                             } ,
 		tracing              :: { *                                                                     } ,
 		web_sys              :: { Event                                                                 } ,
 		wasm_bindgen         :: { prelude::*, JsCast                                                    } ,
 		gloo_events          :: { EventListener, EventListenerOptions                                   } ,
-		std                  :: { rc::Rc, convert::{TryInto, TryFrom}, cell::RefCell, io, sync::Arc     } ,
+		std                  :: { rc::Rc, convert::{TryInto, TryFrom}, cell::{OnceCell, RefCell}, io, sync::Arc     } ,
 		std                  :: { task::*, pin::Pin, collections::HashMap, panic                        } ,
 		regex                :: { Regex                                                                 } ,
 		js_sys               :: { Date, Math                                                            } ,
@@ -70,6 +71,14 @@ use
 		user_list::*,
 	}
 };
+
+
+thread_local!
+{
+	pub static CX: OnceCell<Scope> = OnceCell::new();
+}
+
+
 
 
 
@@ -118,8 +127,16 @@ pub async fn main() -> Result<(), JsValue>
 
 	leptos::mount_to_body( |cx|
 	{
-		view!{ cx, <AppDom />}
+		CX.with(|cell| cell.set(cx) ).expect_throw( "set CX" );
+		view!{ cx, <></> }
 	});
+
+	let (app_addr, app_mb) = Addr::builder( "App" ).build();
+	let app = App::new(app_addr);
+
+	Bindgen.spawn_local( async{ app_mb.start_local( app ).await; } )
+		.expect_throw( "spawn app" )
+	;
 
 	info!( "main function ends" );
 
@@ -146,6 +163,41 @@ pub(crate) fn get_id( id: &str ) -> Element
 
 
 
+/// Runs the provided closure and mounts the result to the provided element.
+pub(crate) fn child_mount_to<F, N>(parent: HtmlElement, f: F) -> ScopeDisposer
+where
+    F: FnOnce(Scope) -> N + 'static,
+    N: IntoView,
+{
+	let global_cx = CX.with( |cx| *cx.get().expect_throw( "cx to be created" ) );
+
+	global_cx.child_scope( |cx|
+	{
+		let node = f(cx).into_view(cx);
+
+		parent.append_child(&node.get_mountable_node()).unwrap();
+
+		std::mem::forget(node);
+	})
+}
+
+
+
+/// Runs the provided closure and mounts the result to the provided element.
+pub(crate) fn mount_to_global<F, N>(parent: HtmlElement, f: F)
+where
+    F: FnOnce(Scope) -> N + 'static,
+    N: IntoView,
+{
+	let cx   = CX.with( |cx| *cx.get().expect_throw( "cx to be created" ) );
+	let node = f(cx).into_view(cx);
+
+	parent.append_child(&node.get_mountable_node()).unwrap();
+
+	std::mem::forget(node);
+}
+
+
 
 // Return a random name
 //
@@ -155,7 +207,7 @@ pub(crate) fn random_name() -> &'static str
 	// it uses the rand crate which doesn't support wasm for now, so we're just using
 	// a small sample.
 	//
-	let list = vec!
+	let list =
 	[
 		  "Aleeza"
 		, "Aoun"

@@ -79,8 +79,13 @@ pub struct ChatForm
 
 impl ChatForm
 {
-	pub fn new( app: Addr<App>, chat_window: Addr< ChatWindow > ) -> Self
+	pub fn new( app: Addr<App>, chat_window: Addr< ChatWindow >, self_addr: Addr< Self > ) -> Self
 	{
+		mount_to_global( document().body().unwrap(), move |cx|
+		{
+			view! { cx, <ChatFormDom addr=self_addr /> }
+		});
+
 		Self { app, chat_window }
 	}
 }
@@ -175,16 +180,11 @@ unsafe impl Send for ChatResetEvt {}
 
 impl Handler< ChatResetEvt > for ChatForm
 {
-	fn handle_local( &mut self, msg: ChatResetEvt ) -> ReturnNoSend<()> { Box::pin( async move
+	#[async_fn_nosend] fn handle_local( &mut self, msg: ChatResetEvt )
 	{
 		msg.e.prevent_default();
 
 		self.app.send( Disconnect {} ).await.expect_throw( "send disconnect" );
-	})}
-
-	fn handle( &mut self, _: ChatResetEvt ) -> Return<()>
-	{
-		unreachable!( "Cannot be spawned on a threadpool" );
 	}
 }
 

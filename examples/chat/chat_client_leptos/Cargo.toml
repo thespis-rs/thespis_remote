@@ -34,10 +34,14 @@ path = "../../../../../keke/keke_dom"
 
 [dependencies.leptos]
 features = ["csr"]
-version = "^0.4"
+version = "^0.4.8"
 
 [dependencies.leptos-use]
 version = "^0.6.2"
+
+[dependencies.leptos_dom]
+features = ["csr", "web"]
+version = "^0.4.8"
 
 [dependencies.thespis_derive]
 path = "../../../../thespis_derive"

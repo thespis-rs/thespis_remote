@@ -1,44 +1,19 @@
 use crate::{ *, import::* };
 
 
-#[component]
-pub fn AppDom( cx: Scope ) -> impl IntoView
-{
-	let chat_window = Addr::builder("chat_window")
-		.spawn_local( ChatWindow::new("chat"), &Bindgen )
-		.expect_throw( "spawn chat_window"  )
-	;
+// #[component]
+// pub fn AppDom( cx: Scope ) -> impl IntoView
+// {
+// 	view! { cx,
 
-	let user_list = Addr::builder("user_list")
-		.spawn_local( UserList::new( "user_list", chat_window.clone() ), &Bindgen )
-		.expect_throw( "spawn userlist"  )
-	;
 
-	let app = Addr::builder("app")
-		.spawn_local( App::new( chat_window.clone(), user_list, cx ), &Bindgen )
-		.expect_throw( "spawn app"  )
-	;
 
-	let chat_form = Addr::builder("chat_form")
-		.spawn_local( ChatForm::new( app.clone(), chat_window.clone() ), &Bindgen )
-		.expect_throw( "spawn chat_form" )
-	;
-
-	let conn_form = Addr::builder("conn_form")
-		.spawn_local( ConnectForm::new( app.clone() ), &Bindgen )
-		.expect_throw( "spawn conn_form" )
-	;
-
-	view! { cx,
-
-		<div id="title_div"><h1 id="title">Thespis Chat Client Example</h1></div>
-
-		<ChatWindowDom />
-		<UserListDom />
-		<ChatFormDom addr=chat_form />
-		<ConnectFormDom addr=conn_form />
-	}
-}
+// 		<ChatWindowDom />
+// 		<UserListDom />
+// 		<ChatFormDom addr=chat_form />
+// 		<ConnectFormDom addr=conn_form />
+// 	}
+// }
 
 
 // The central logic of our application. This will receive the incoming messages from the server and
@@ -56,8 +31,35 @@ pub struct App
 
 impl App
 {
-	pub fn new( chat_window: Addr<ChatWindow>, user_list: Addr<UserList>, _cx: Scope ) -> Self
+	pub fn new( app: Addr<Self> ) -> Self
 	{
+
+
+		let chat_window = Addr::builder("chat_window")
+			.spawn_local( ChatWindow::new("chat"), &Bindgen )
+			.expect_throw( "spawn chat_window"  )
+		;
+
+		let user_list = Addr::builder("user_list")
+			.spawn_local( UserList::new( "user_list", chat_window.clone() ), &Bindgen )
+			.expect_throw( "spawn userlist"  )
+		;
+
+		let (conn_form_addr, conn_form_mb) = Addr::builder( "conn_form" ).build();
+		let conn_form = ConnectForm::new( app.clone(), conn_form_addr );
+
+		Bindgen.spawn_local( async{ conn_form_mb.start_local( conn_form ).await; } )
+			.expect_throw( "spawn conn_form" )
+		;
+
+		let (chat_form_addr, chat_form_mb) = Addr::builder( "chat_form" ).build();
+		let chat_form = ChatForm::new( app, chat_window.clone(), chat_form_addr );
+
+		Bindgen.spawn_local( async{ chat_form_mb.start_local( chat_form ).await; } )
+			.expect_throw( "spawn chat_form" )
+		;
+
+
 		Self
 		{
 			chat_window      ,

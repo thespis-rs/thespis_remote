@@ -77,8 +77,14 @@ pub struct ConnectForm
 
 impl ConnectForm
 {
-	pub fn new( server: Addr< App > ) -> Self
+	pub fn new( server: Addr<App>, self_addr: Addr<Self> ) -> Self
 	{
+		mount_to_global( document().body().unwrap(), move |cx|
+		{
+			view! { cx, <ConnectFormDom addr=self_addr /> }
+		});
+
+
 		let cnick: HtmlInputElement = get_id( "connect_nick" ).unchecked_into();
 		cnick.set_value( random_name() );
 

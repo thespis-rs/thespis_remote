@@ -1,5 +1,5 @@
 use std::{ rc::Rc, cell::RefCell };
-use crate :: { import::*, color::*, document, user_list::Render };
+use crate :: { import::*, color::*, document, user_list::Render, mount_to_global, CX };
 // use keke_dom::{ dom_manip::Manip, state::State };
 use leptos::{ create_signal, view, component, Scope, ReadSignal, IntoView, WriteSignal, SignalUpdate };
 
@@ -15,21 +15,13 @@ impl UserCount
 {
 	pub fn new( parent: HtmlElement ) -> Self
 	{
-		let set_count: Rc<RefCell<Option<WriteSignal<usize>>>> = Rc::new(None.into());
-		let set_count2 = set_count.clone();
+		let cx = CX.with( |cx| *cx.get().expect_throw( "cx to be created" ) );
+		let (count, set_count) = create_signal(cx, 0);
 
-		leptos::mount_to( parent.clone(), move |cx|
+		mount_to_global( parent.clone(), move |cx|
 		{
-			let (count, set_count_inner) = create_signal(cx, 0);
-
-			set_count.replace(Some(set_count_inner));
-			warn!("inserted set_count");
-
-
 			view! { cx, <UserCountDom count=count /> }
 		});
-
-		let set_count = set_count2.borrow_mut().take().expect_throw("unwrap set_count");
 
 		Self
 		{
