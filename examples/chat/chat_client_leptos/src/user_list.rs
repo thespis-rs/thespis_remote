@@ -25,14 +25,15 @@ pub struct UserList
 	parent      : HtmlElement               ,
 	chat_window : Addr< ChatWindow >        ,
 	user_count  : Addr< UserCount  >        ,
+	cx          : Scope                     ,
 }
 
 impl UserList
 {
-	pub fn new( parent: &str, chat_window: Addr< ChatWindow > ) -> Self
+	pub fn new( parent: &str, chat_window: Addr< ChatWindow >, cx: Scope ) -> Self
 	{
 		let count_div = get_id( "user_count" ).unchecked_into();
-		let user_count = UserCount::new( count_div );
+		let user_count = UserCount::new( count_div, cx );
 		let user_count = Addr::builder("user_count").spawn_local( user_count, &Bindgen ).expect_throw( "spawn userlist"  );
 
 		Self
@@ -43,6 +44,7 @@ impl UserList
 			div  : document().create_element( "div" ).expect_throw( "create userlist div" ).unchecked_into() ,
 			indom: false,
 			parent: get_id( parent ).unchecked_into(),
+			cx,
 		}
 	}
 }
@@ -95,7 +97,7 @@ impl Handler< Insert > for UserList
 			let user = User::new( msg.sid, msg.nick.clone(), self.div.clone().unchecked_into(), msg.is_self );
 			let mut addr = Addr::builder("user").spawn_local( user, &Bindgen ).expect_throw( "spawn user" );
 
-			addr.send( Render{} ).await.expect_throw( "send" );
+			addr.send( Render{ cx: self.cx } ).await.expect_throw( "send" );
 
 			self.users.insert( msg.sid, addr.clone() );
 
@@ -156,11 +158,6 @@ impl Handler< Clear > for UserList
 	#[async_fn] fn handle(&mut self, _: Clear) { unreachable!("cannot be called multithreaded")}
 }
 
-
-#[derive(Clone, Copy)]
-pub struct Render;
-
-impl Message for Render { type Return = (); }
 
 
 impl Handler< Render > for UserList
