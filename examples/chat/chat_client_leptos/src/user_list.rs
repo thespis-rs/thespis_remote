@@ -4,9 +4,9 @@ use crate :: { import::*, * };
 
 
 #[component]
-pub fn UserListDom( cx: Scope, users: ReadSignal<HashMap::<usize, UserData>> ) -> impl IntoView
+pub fn UserListDom( cx: Scope, users: ReadSignal<HashMap<usize, String>> ) -> impl IntoView
 {
-	let count = create_memo( cx, move |_| users.get().len() );
+	// let count = create_memo( cx, move |_| users.len() );
 
 	// let add_user = move |_| {
 	// 	// let (name, set_name) = create_signal( cx, "" );
@@ -16,7 +16,7 @@ pub fn UserListDom( cx: Scope, users: ReadSignal<HashMap::<usize, UserData>> ) -
 	//     // create a signal for the new counter
 	//     let user = create_signal(cx, next_counter_id + 1);
 
-	//     set_users.update(move |users| {
+	//     set_users.update(move |usersers| {
 	//         users.insert((next_counter_id, user));
 	//     });
 	// };
@@ -24,16 +24,14 @@ pub fn UserListDom( cx: Scope, users: ReadSignal<HashMap::<usize, UserData>> ) -
 	view! { cx,
 
 		<div id="users">
-			<p>Total users: {count}</p>
+			<p>Total users: count</p>
 			<For
 				each = move || users.get()
-				key  = |user| user.0
+				key  = |(id, _name)| *id
 				view = |cx, (_id, name)|
 				{
-					let (style, _set_style) = create_signal( cx, "color: red".to_string() );
-
 					view!{ cx,
-						<UserDom style=style name=name/>
+						<p style="color: red">{name}</p>
 					}
 				}
 			/>
@@ -53,14 +51,15 @@ struct UserData
 //
 pub struct UserList
 {
-	users       : HashMap::<usize, Addr<User>>,
+	// users       : HashMap::<usize, Addr<User>>,
+	set_users   : WriteSignal<HashMap::<usize, String>>,
 	indom       : bool                        ,
 	chat_window : Addr< ChatWindow >          ,
 }
 
 impl UserList
 {
-	pub fn new( chat_window: Addr< ChatWindow >, set_users: WriteSignal<HashMap::<usize, ReadSignal<String>>>, cx: Scope ) -> Self
+	pub fn new( chat_window: Addr< ChatWindow >, set_users: WriteSignal<HashMap::<usize, String>>, cx: Scope ) -> Self
 	{
 		Self
 		{
@@ -176,6 +175,17 @@ impl Handler< Render > for UserList
 {
 	#[async_fn_local] fn handle_local( &mut self, msg: Render )
 	{
+		let _ = create_signal( self.cx, []);
+
+		leptos::mount_to( document().body().unwrap(), |_|
+		{
+			let (view, disposer) = self.cx.run_child_scope(
+				|cx| view!{ cx, <p>bla</p> }
+			);
+
+			view
+		});
+
 		for user in self.users.values_mut()
 		{
 			user.send( msg ).await.expect_throw( "send" );

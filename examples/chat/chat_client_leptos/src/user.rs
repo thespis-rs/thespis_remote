@@ -2,7 +2,7 @@ use crate :: { import::*, color::*, document, user_list::Render };
 
 
 #[component]
-pub fn UserDom( cx: Scope, style: ReadSignal<String>, name: ReadSignal<String>  ) -> impl IntoView
+pub fn UserDom( cx: Scope, style: &'static str, name: ReadSignal<String>  ) -> impl IntoView
 {
 	view! { cx,
 

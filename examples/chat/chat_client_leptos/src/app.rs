@@ -4,7 +4,7 @@ use crate::{ *, import::* };
 #[component]
 pub fn AppDom( cx: Scope ) -> impl IntoView
 {
-	let (users, set_users) = create_signal( cx, HashMap::<usize, ReadSignal<String>>::new() );
+	let (users, set_users) = create_signal( cx, HashMap::<usize, String>::new() );
 
 	let chat_window = Addr::builder("chat_window")
 		.spawn_local( ChatWindow::new("chat"), &Bindgen )
