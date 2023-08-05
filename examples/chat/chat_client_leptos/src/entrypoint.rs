@@ -5,6 +5,7 @@ pub(crate) mod chat_window  ;
 pub(crate) mod connect_form ;
 pub(crate) mod color        ;
 pub(crate) mod user         ;
+pub(crate) mod user_count   ;
 pub(crate) mod user_list    ;
 pub(crate) mod app          ;
 
@@ -14,7 +15,8 @@ use
 	chat_form    :: { ChatForm, ChatFormDom, ChatSubmitEvt, ChatResetEvt                             } ,
 	app          :: { App, AppDom, Connected, Disconnect                                             } ,
 	chat_window  :: { ChatWindow, ChatWindowDom, NewUser, UserLeft, AnnounceNick, ChatMsg, PrintHelp } ,
-	user         :: { ChangeNick, UserInfo, User, UserDom                                            } ,
+	user         :: { ChangeNick, UserInfo, User                                                     } ,
+	user_count   :: { UserCount                                                                      } ,
 	user_list    :: { UserListDom                                                                    } ,
 };
 

@@ -4,46 +4,14 @@ use crate :: { import::*, * };
 
 
 #[component]
-pub fn UserListDom( cx: Scope, users: ReadSignal<HashMap<usize, String>> ) -> impl IntoView
+pub fn UserListDom( cx: Scope ) -> impl IntoView
 {
-	// let count = create_memo( cx, move |_| users.len() );
-
-	// let add_user = move |_| {
-	// 	// let (name, set_name) = create_signal( cx, "" );
-	// 	// let color = format!( "--user-color-{}", id );
-	// 	// let (color, _set_color) = use_css_var(cx, varname.clone() );
-
-	//     // create a signal for the new counter
-	//     let user = create_signal(cx, next_counter_id + 1);
-
-	//     set_users.update(move |usersers| {
-	//         users.insert((next_counter_id, user));
-	//     });
-	// };
-
 	view! { cx,
 
 		<div id="users">
-			<p>Total users: count</p>
-			<For
-				each = move || users.get()
-				key  = |(id, _name)| *id
-				view = |cx, (_id, name)|
-				{
-					view!{ cx,
-						<p style="color: red">{name}</p>
-					}
-				}
-			/>
+			<div id="user_count"></div>
 		</div>
 	}
-}
-
-
-struct UserData
-{
-	name_read: ReadSignal<String>,
-	name_write: WriteSignal<String>,
 }
 
 
@@ -51,22 +19,46 @@ struct UserData
 //
 pub struct UserList
 {
-	// users       : HashMap::<usize, Addr<User>>,
-	set_users   : WriteSignal<HashMap::<usize, String>>,
-	indom       : bool                        ,
-	chat_window : Addr< ChatWindow >          ,
+	users       : HashMap<usize, Addr<User>>,
+	div         : HtmlDivElement            ,
+	indom       : bool                      ,
+	parent      : HtmlElement               ,
+	chat_window : Addr< ChatWindow >        ,
+	user_count  : Addr< UserCount  >        ,
 }
 
 impl UserList
 {
-	pub fn new( chat_window: Addr< ChatWindow >, set_users: WriteSignal<HashMap::<usize, String>>, cx: Scope ) -> Self
+	pub fn new( parent: &str, chat_window: Addr< ChatWindow > ) -> Self
 	{
+		let count_div = get_id( "user_count" ).unchecked_into();
+		let user_count = UserCount::new( count_div );
+		let user_count = Addr::builder("user_count").spawn_local( user_count, &Bindgen ).expect_throw( "spawn userlist"  );
+
 		Self
 		{
 			chat_window,
-			set_users,
+			user_count,
+			users: HashMap::new() ,
+			div  : document().create_element( "div" ).expect_throw( "create userlist div" ).unchecked_into() ,
 			indom: false,
+			parent: get_id( parent ).unchecked_into(),
 		}
+	}
+}
+
+
+impl Drop for UserList
+{
+	fn drop( &mut self )
+	{
+		// remove self from Dom
+		//
+		self.div.remove();
+		//
+		// Delete children
+		//
+
 	}
 }
 
@@ -175,17 +167,6 @@ impl Handler< Render > for UserList
 {
 	#[async_fn_local] fn handle_local( &mut self, msg: Render )
 	{
-		let _ = create_signal( self.cx, []);
-
-		leptos::mount_to( document().body().unwrap(), |_|
-		{
-			let (view, disposer) = self.cx.run_child_scope(
-				|cx| view!{ cx, <p>bla</p> }
-			);
-
-			view
-		});
-
 		for user in self.users.values_mut()
 		{
 			user.send( msg ).await.expect_throw( "send" );

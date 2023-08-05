@@ -4,15 +4,13 @@ use crate::{ *, import::* };
 #[component]
 pub fn AppDom( cx: Scope ) -> impl IntoView
 {
-	let (users, set_users) = create_signal( cx, HashMap::<usize, String>::new() );
-
 	let chat_window = Addr::builder("chat_window")
 		.spawn_local( ChatWindow::new("chat"), &Bindgen )
 		.expect_throw( "spawn chat_window"  )
 	;
 
 	let user_list = Addr::builder("user_list")
-		.spawn_local( UserList::new( chat_window.clone(), set_users, cx ), &Bindgen )
+		.spawn_local( UserList::new( "user_list", chat_window.clone() ), &Bindgen )
 		.expect_throw( "spawn userlist"  )
 	;
 
@@ -36,7 +34,7 @@ pub fn AppDom( cx: Scope ) -> impl IntoView
 		<div id="title_div"><h1 id="title">Thespis Chat Client Example</h1></div>
 
 		<ChatWindowDom />
-		<UserListDom users=users/>
+		<UserListDom />
 		<ChatFormDom addr=chat_form />
 		<ConnectFormDom addr=conn_form />
 	}
@@ -58,7 +56,7 @@ pub struct App
 
 impl App
 {
-	pub fn new( chat_window: Addr<ChatWindow>, user_list: Addr<UserList>, cx: Scope ) -> Self
+	pub fn new( chat_window: Addr<ChatWindow>, user_list: Addr<UserList>, _cx: Scope ) -> Self
 	{
 		Self
 		{
