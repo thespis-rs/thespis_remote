@@ -13,6 +13,7 @@ pub struct ChatWindow
 	users    : HashMap< usize, Addr<User> > ,
 	srv_color: Color                        ,
 	_clt_color: Color                        ,
+	line_template: HtmlParagraphElement     ,
 }
 
 
@@ -22,10 +23,11 @@ impl ChatWindow
 	{
 		Self
 		{
-			div       : get_id( dom_id ).unchecked_into(),
-			users     : HashMap::new()                   ,
-			srv_color : Color::random().light()          ,
-			_clt_color : Color::random().light()          ,
+			div          : get_id( dom_id               ).unchecked_into() ,
+			line_template: get_id( "chat_line_template" ).unchecked_into() ,
+			users        : HashMap::new()                                  ,
+			srv_color    : Color::random().light()                         ,
+			_clt_color   : Color::random().light()                         ,
 		}
 	}
 
@@ -33,16 +35,16 @@ impl ChatWindow
 
 	fn append_line( &mut self, time: f64, nick: &str, line: &str, color: &Color, color_all: bool )
 	{
-		let p: HtmlElement = document().create_element( "p"    ).expect_throw( "create p"    ).unchecked_into();
-		let n: HtmlElement = document().create_element( "span" ).expect_throw( "create span" ).unchecked_into();
-		let m: HtmlElement = document().create_element( "span" ).expect_throw( "create span" ).unchecked_into();
-		let t: HtmlElement = document().create_element( "span" ).expect_throw( "create span" ).unchecked_into();
+		let p = clone_template( &self.line_template );
+		let t = query_select( &p, ".time" );
+		let n = query_select( &p, ".nick" );
+		let m = query_select( &p, ".mesg" );
 
-		n.style().set_property( "color", &color.to_css() ).expect_throw( "set color" );
+		set_style( &n, "color", color.to_css() );
 
 		if color_all
 		{
-			m.style().set_property( "color", &color.to_css() ).expect_throw( "set color" );
+			set_style( &m, "color", color.to_css() );
 		}
 
 		// Js needs milliseconds, where the server sends seconds
@@ -53,21 +55,14 @@ impl ChatWindow
 		m.set_inner_text( line                                                                                         );
 		t.set_inner_text( &format!( "{:02}:{:02}:{:02} - ", time.get_hours(), time.get_minutes(), time.get_seconds() ) );
 
-		n.set_class_name( "nick"         );
-		m.set_class_name( "message_text" );
-		t.set_class_name( "time"         );
-
-		p.append_child( &t ).expect_throw( "Couldn't append child" );
-		p.append_child( &n ).expect_throw( "Couldn't append child" );
-		p.append_child( &m ).expect_throw( "Couldn't append child" );
-
 		// order is important here, we need to measure the scroll before adding the item
 		//
 		let max_scroll = self.div.scroll_height() - self.div.client_height();
 		self.div.append_child( &p ).expect_throw( "Coundn't append child" );
+		p.class_list().remove_1( "template" ).expect_throw( "remove template class" );
 
 		// Check whether we are scolled to the bottom. If so, we autoscroll new messages
-		// into vies. If the user has scrolled up, we don't.
+		// into view. If the user has scrolled up, we don't.
 		//
 		// We keep a margin of up to 2 pixels, because sometimes the two numbers don't align exactly.
 		//

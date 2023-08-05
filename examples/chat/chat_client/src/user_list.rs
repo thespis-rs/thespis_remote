@@ -119,15 +119,13 @@ impl Message for Remove { type Return = (); }
 
 impl Handler< Remove > for UserList
 {
-	#[async_fn_local] fn handle_local( &mut self, msg: Remove )
+	#[async_fn_nosend] fn handle_local( &mut self, msg: Remove )
 	{
 		self.users.remove( &msg.sid );
 
 		let update = user_count::Update{ count: self.users.len() };
 		self.user_count.send( update ).await.expect_throw( "send user count update" );
 	}
-
-	#[async_fn] fn handle(&mut self, _: Remove) { unreachable!("cannot be called multithreaded")}
 }
 
 

@@ -40,12 +40,12 @@ mod import
 		js_sys               :: { Date, Math                                                            } ,
 		pin_utils            :: { pin_mut                                                               } ,
 		wasm_bindgen_futures :: { spawn_local                                                           } ,
-
-		chat_format         :: { * } ,
-		thespis             :: { Message, Actor, Handler, Return, ReturnNoSend, Address, async_fn, async_fn_local } ,
-		thespis_impl        :: { Addr, WeakAddr                                                                   } ,
-		thespis_remote      :: { CborWF, PeerEvent, Peer, ServiceMap, WireFormat                                  } ,
-		pharos              :: { Observable, ObserveConfig, Events                                                } ,
+		chat_format          :: { *                                                                     } ,
+		thespis              :: { Message, Actor, Handler, Return, ReturnNoSend, Address                } ,
+		thespis_derive       :: { async_fn, async_fn_local, async_fn_nosend                             } ,
+		thespis_impl         :: { Addr, WeakAddr                                                        } ,
+		thespis_remote       :: { CborWF, PeerEvent, Peer, ServiceMap, WireFormat                       } ,
+		pharos               :: { Observable, ObserveConfig, Events                                     } ,
 	};
 }
 
@@ -143,6 +143,26 @@ pub(crate) fn get_id( id: &str ) -> Element
 {
 	document().get_element_by_id( id ).expect_throw( &format!( "find {}", id ) )
 }
+
+pub(crate) fn clone_template( template: &(impl Into<Node> + Clone) ) -> HtmlElement
+{
+	template.clone().into().clone_node_with_deep(true).expect_throw( "clone template" ).unchecked_into()
+}
+
+pub(crate) fn query_select( parent: &(impl Into<Element> + Clone), selector: impl AsRef<str> ) -> HtmlElement
+{
+	parent.clone().into()
+		.query_selector( selector.as_ref() )
+		.expect_throw( "query_select" )
+		.expect_throw( "query_select exists" )
+		.unchecked_into()
+}
+
+pub(crate) fn set_style( elem: &(impl Into<HtmlElement> + Clone), prop: impl AsRef<str>, value: impl AsRef<str> )
+{
+	elem.clone().into().style().set_property( prop.as_ref(), value.as_ref() ).expect_throw( "set style" );
+}
+
 
 
 

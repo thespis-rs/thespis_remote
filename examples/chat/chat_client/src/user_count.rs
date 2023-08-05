@@ -49,7 +49,7 @@ impl Handler< Render > for UserCount
 {
 	#[async_fn_local] fn handle_local( &mut self, _: Render )
 	{
-		self.count.get_inner_text( self.parent.clone() );
+		self.count.get_text( self.parent.clone() );
 
 		// rsx
 		// (r#"

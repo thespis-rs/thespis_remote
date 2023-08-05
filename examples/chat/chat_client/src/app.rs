@@ -11,7 +11,7 @@ pub struct App
 	connection : Option< Connected >,
 	addr       : Addr<Self>         ,
 	chat_window: Addr< ChatWindow > ,
-	users      : Addr< UserList   > ,
+	user_list  : Addr< UserList   > ,
 }
 
 
@@ -20,13 +20,13 @@ impl App
 	pub fn new( addr: Addr<Self> ) -> Self
 	{
 		let chat_window = Addr::builder("chat_window").spawn_local( ChatWindow ::new("chat"), &Bindgen ).expect_throw( "spawn cwindow"  );
-		let users = Addr::builder("user_list").spawn_local( UserList::new( "users", chat_window.clone() ), &Bindgen ).expect_throw( "spawn userlist"  );
+		let user_list = Addr::builder("user_list").spawn_local( UserList::new( "users", chat_window.clone() ), &Bindgen ).expect_throw( "spawn userlist"  );
 
 		let app = Self
 		{
 			addr             ,
 			chat_window      ,
-			users            ,
+			user_list        ,
 			connection: None ,
 		};
 
@@ -171,7 +171,7 @@ impl Handler<Connected> for App
 {
 	fn handle_local( &mut self, mut msg: Connected ) -> ReturnNoSend<()> { Box::pin( async move
 	{
-		self.users.call( Clear{} ).await.expect_throw( "clear userlist" );
+		self.user_list.call( Clear{} ).await.expect_throw( "clear userlist" );
 
 		let new_users = std::mem::take(&mut msg.welcome.users);
 
@@ -181,9 +181,9 @@ impl Handler<Connected> for App
 
 		warn!( "{:?}", &inserts );
 
-		self.users.send_all( &mut futures::stream::iter(inserts) ).await.expect_throw( "new users" );
+		self.user_list.send_all( &mut futures::stream::iter(inserts) ).await.expect_throw( "new users" );
 
-		self.users.send( Render{} ).await.expect_throw( "render userlist" );
+		self.user_list.send( Render{} ).await.expect_throw( "render userlist" );
 
 		self.chat_window.call( msg.welcome.clone() ).await.expect_throw( "call" );
 
@@ -213,7 +213,7 @@ impl Handler<ServerMsg> for App
 			ServerMsg::UserJoined{ time, sid, nick } =>
 			{
 				debug!( "ServerMsg::UserJoined" );
-				self.users.send( Insert{ time: time as f64, sid, nick, is_self: false } ).await
+				self.user_list.send( Insert{ time: time as f64, sid, nick, is_self: false } ).await
 
 					.expect_throw( "add new user to user list" )
 				;
@@ -226,7 +226,7 @@ impl Handler<ServerMsg> for App
 			{
 				debug!( "ServerMsg::UserLeft" );
 
-				self.users.call( Remove{ sid } ).await.expect_throw( "remove user from user list" );
+				self.user_list.call( Remove{ sid } ).await.expect_throw( "remove user from user list" );
 
 				self.chat_window.send( UserLeft{ time: time as f64, sid } ).await.expect_throw( "announce new user" );
 			}
@@ -238,7 +238,7 @@ impl Handler<ServerMsg> for App
 			{
 				debug!( "ServerMsg::NickChanged" );
 
-				let mut user = self.users.call( GetUser{ sid } ).await.expect_throw( "get user info" );
+				let mut user = self.user_list.call( GetUser{ sid } ).await.expect_throw( "get user info" );
 
 				let (old, _) = user.call( UserInfo {} ).await.expect_throw( "get user info" );
 				user.call( ChangeNick( nick.clone() ) ).await.expect_throw( "change nick" );
@@ -330,8 +330,8 @@ impl Handler<Disconnect> for App
 
 		cform.style().set_property( "display", "flex" ).expect_throw( "set cform display none" );
 
-		self.users.send( Clear {} ).await.expect_throw( "clear  userlist" );
-		self.users.send( Render{} ).await.expect_throw( "render userlist" );
+		self.user_list.send( Clear {} ).await.expect_throw( "clear  userlist" );
+		self.user_list.send( Render{} ).await.expect_throw( "render userlist" );
 
 		self.chat_window.send( Disconnect{} ).await.expect_throw( "clear  userlist" );
 
