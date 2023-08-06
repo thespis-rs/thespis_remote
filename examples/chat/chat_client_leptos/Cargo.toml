@@ -7,8 +7,6 @@ log = "^0.4"
 pharos = "^0.5"
 pin-utils = "^0.1"
 regex = "^1"
-thespis = "^0.2"
-thespis_impl = "^0.3"
 tracing = "^0.1"
 tracing-subscriber-wasm = "^0.1"
 tracing-web = "^0.1"
@@ -43,8 +41,14 @@ version = "^0.6.2"
 features = ["csr", "web"]
 version = "^0.4.8"
 
+[dependencies.thespis]
+path = "../../../../thespis"
+
 [dependencies.thespis_derive]
 path = "../../../../thespis_derive"
+
+[dependencies.thespis_impl]
+path = "../../../../thespis_impl"
 
 [dependencies.thespis_remote]
 path = "../../../../thespis_remote"

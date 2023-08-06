@@ -156,9 +156,9 @@ pub(crate) fn document() -> Document
 	window.document().expect_throw( "should have a document on window" )
 }
 
-pub(crate) fn get_id( id: &str ) -> Element
+pub(crate) fn get_id( id: &str ) -> HtmlElement
 {
-	document().get_element_by_id( id ).expect_throw( &format!( "find {}", id ) )
+	document().get_element_by_id( id ).expect_throw( &format!( "find {}", id ) ).unchecked_into()
 }
 
 

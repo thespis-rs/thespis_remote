@@ -33,8 +33,6 @@ impl App
 {
 	pub fn new( app: Addr<Self> ) -> Self
 	{
-
-
 		let chat_window = Addr::builder("chat_window")
 			.spawn_local( ChatWindow::new("chat"), &Bindgen )
 			.expect_throw( "spawn chat_window"  )
@@ -247,9 +245,8 @@ impl Handler<Disconnect> for App
 
 		// show the connect form
 		//
-		let cform: HtmlElement = get_id( "connect_form" ).unchecked_into();
-
-		cform.style().set_property( "display", "flex" ).expect_throw( "set cform display none" );
+		get_id( "page_chat"  ).style().set_property( "display", "none" ).expect_throw( "set chat page display none"  );
+		get_id( "page_login" ).style().set_property( "display", "flex" ).expect_throw( "set login page display flex" );
 
 		self.user_list.send( Clear {} ).await.expect_throw( "clear  userlist" );
 		self.user_list.send( Render{} ).await.expect_throw( "render userlist" );

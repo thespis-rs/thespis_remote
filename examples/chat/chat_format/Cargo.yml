@@ -11,8 +11,9 @@ package:
 dependencies:
 
   serde          : { version: ^1, features: [ derive ]                                 }
-  thespis        : ^0.2
-  thespis_remote : { path: ../../../../thespis_remote                                  }
+  thespis               : { path: ../../../../thespis }
+  thespis_impl          : { path: ../../../../thespis_impl }
+  thespis_remote          : { path: ../../../../thespis_remote }
   bytes          : { version: ^1                                                       }
   futures        : { version: ^0.3, default-features: false, features: [ std, compat ] }
 

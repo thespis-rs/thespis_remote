@@ -1,7 +1,5 @@
 # Auto-generated from "Cargo.yml"
 [dependencies]
-thespis = "^0.2"
-
 [dependencies.bytes]
 version = "^1"
 
@@ -13,6 +11,12 @@ version = "^0.3"
 [dependencies.serde]
 features = ["derive"]
 version = "^1"
+
+[dependencies.thespis]
+path = "../../../../thespis"
+
+[dependencies.thespis_impl]
+path = "../../../../thespis_impl"
 
 [dependencies.thespis_remote]
 path = "../../../../thespis_remote"

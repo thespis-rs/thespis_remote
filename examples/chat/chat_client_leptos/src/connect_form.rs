@@ -31,11 +31,10 @@ pub fn ConnectFormDom( cx: Scope, addr: Addr<ConnectForm> ) -> impl IntoView
 					<input type="text" id="connect_url" name="connect_url" value="ws://127.0.0.1:3012" />
 				</label>
 
-				<label>
-					<span></span>
+				<div class="buttons">
 					<input id="conn_submit" type = "submit" value = "Connect" />
 					<input id="conn_reset"  type = "reset"  value = "Reset"   />
-				</label>
+				</div>
 
 			</div>
 
@@ -70,16 +69,15 @@ fn connect_reset(e: Event, mut conn_form: Addr<ConnectForm> )
 //
 pub struct ConnectForm
 {
-	server: Addr< App > ,
-	form  : HtmlElement ,
+	app: Addr< App > ,
 }
 
 
 impl ConnectForm
 {
-	pub fn new( server: Addr<App>, self_addr: Addr<Self> ) -> Self
+	pub fn new( app: Addr<App>, self_addr: Addr<Self> ) -> Self
 	{
-		mount_to_global( document().body().unwrap(), move |cx|
+		mount_to_global( get_id( "page_login" ), move |cx|
 		{
 			view! { cx, <ConnectFormDom addr=self_addr /> }
 		});
@@ -88,11 +86,7 @@ impl ConnectForm
 		let cnick: HtmlInputElement = get_id( "connect_nick" ).unchecked_into();
 		cnick.set_value( random_name() );
 
-		// hide the connect form
-		//
-		let form : HtmlElement = get_id( "connect_form" ).unchecked_into();
-
-		Self { server, form  }
+		Self { app }
 	}
 
 
@@ -184,7 +178,7 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 			// Register our handlers.
 			// We just let the App actor handle messages coming in from the server.
 			//
-			sm.register_handler::< ServerMsg >( self.server.clone_box() );
+			sm.register_handler::< ServerMsg >( self.app.clone_box() );
 
 			// register service map with peer
 			// This tells this peer to expose all these services over this connection.
@@ -204,7 +198,8 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 			{
 				Ok( welcome ) =>
 				{
-					self.form.style().set_property( "display", "none" ).expect_throw( "set cform display none" );
+					get_id( "page_login" ).style().set_property( "display", "none" ).expect_throw( "set login page display none" );
+					get_id( "page_chat" ).style().set_property( "display", "grid" ).expect_throw( "set chat page display grid" );
 
 					let connection = Connected
 					{
@@ -214,7 +209,7 @@ impl Handler< ConnSubmitEvt > for ConnectForm
 						ws          ,
 					};
 
-					self.server.call( connection ).await.expect_throw( "call" );
+					self.app.call( connection ).await.expect_throw( "call" );
 				}
 
 				Err(e) =>

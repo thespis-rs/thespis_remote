@@ -40,10 +40,10 @@ dependencies:
   # time: { version: ^0.3, features = [wasm-bindgen] }
 
   pharos               : ^0.5
-  thespis              : ^0.2
+  thespis              : { path: ../../../../thespis }
   thespis_remote       : { path: ../../../../thespis_remote }
   thespis_derive       : { path: ../../../../thespis_derive }
-  thespis_impl         : ^0.3
+  thespis_impl         : { path: ../../../../thespis_impl }
   keke_dom             : { path: ../../../../../keke/keke_dom }
   getrandom            : { version: ^0.2, features: [ wasm-bindgen, js ] }
 

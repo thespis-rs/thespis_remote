@@ -26,6 +26,6 @@ dependencies:
   warp                  : { version: ^0.3, default-features: false, features: [ websocket] }
   ws_stream_tungstenite : ^0.10
 
-  thespis               : ^0.2
+  thespis               : { path: ../../../../thespis }
   thespis_remote        : { path: ../../../../thespis_remote }
-  thespis_impl          : ^0.3
+  thespis_impl          : { path: ../../../../thespis_impl }

@@ -81,7 +81,7 @@ impl ChatForm
 {
 	pub fn new( app: Addr<App>, chat_window: Addr< ChatWindow >, self_addr: Addr< Self > ) -> Self
 	{
-		mount_to_global( document().body().unwrap(), move |cx|
+		mount_to_global( get_id( "page_chat" ), move |cx|
 		{
 			view! { cx, <ChatFormDom addr=self_addr /> }
 		});

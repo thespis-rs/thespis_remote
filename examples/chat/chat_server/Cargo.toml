@@ -5,8 +5,6 @@ flexi_logger = "^0.25"
 log = "^0.4"
 pin-utils = "^0.1"
 regex = "^1"
-thespis = "^0.2"
-thespis_impl = "^0.3"
 ws_stream_tungstenite = "^0.10"
 
 [dependencies.async-tungstenite]
@@ -28,6 +26,12 @@ version = "^0.3"
 
 [dependencies.pharos]
 version = "^0.5"
+
+[dependencies.thespis]
+path = "../../../../thespis"
+
+[dependencies.thespis_impl]
+path = "../../../../thespis_impl"
 
 [dependencies.thespis_remote]
 path = "../../../../thespis_remote"
