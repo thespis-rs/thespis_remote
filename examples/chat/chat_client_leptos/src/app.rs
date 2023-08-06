@@ -1,21 +1,5 @@
 use crate::{ *, import::* };
 
-
-// #[component]
-// pub fn AppDom( cx: Scope ) -> impl IntoView
-// {
-// 	view! { cx,
-
-
-
-// 		<ChatWindowDom />
-// 		<UserListDom />
-// 		<ChatFormDom addr=chat_form />
-// 		<ConnectFormDom addr=conn_form />
-// 	}
-// }
-
-
 // The central logic of our application. This will receive the incoming messages from the server and
 // dispatch the information to all components that need it.
 //
@@ -88,7 +72,9 @@ impl Message for Connected { type Return = (); }
 
 impl Handler<Connected> for App
 {
-	fn handle_local( &mut self, mut msg: Connected ) -> ReturnNoSend<()> { Box::pin( async move
+	// The compiler complains whether the mut is there or not, so we need to silence on.
+	//
+	#[async_fn_nosend] fn handle_local( &mut self, #[allow(unused_mut)] mut msg: Connected )
 	{
 		self.user_list.call( Clear{} ).await.expect_throw( "clear userlist" );
 
@@ -98,23 +84,11 @@ impl Handler<Connected> for App
 		//
 		let inserts = new_users.into_iter().map( |(sid, nick)| Ok(Insert{ time: 0.0, sid, nick, is_self: sid == msg.welcome.sid }) );
 
-		warn!( "{:?}", &inserts );
-
 		self.user_list.send_all( &mut futures::stream::iter(inserts) ).await.expect_throw( "new users" );
-
 		self.user_list.send( Render{} ).await.expect_throw( "render userlist" );
-
 		self.chat_window.call( msg.welcome.clone() ).await.expect_throw( "call" );
 
 		self.connection = Some( msg );
-
-	})}
-
-
-
-	fn handle( &mut self, _: Connected ) -> Return<()>
-	{
-		unreachable!( "Cannot be spawned on a threadpool" );
 	}
 }
 
@@ -122,7 +96,7 @@ impl Handler<Connected> for App
 
 impl Handler<ServerMsg> for App
 {
-	#[async_fn_local] fn handle_local( &mut self, msg: ServerMsg )
+	#[async_fn_nosend] fn handle_local( &mut self, msg: ServerMsg )
 	{
 		match msg
 		{
@@ -175,13 +149,6 @@ impl Handler<ServerMsg> for App
 			}
 		}
 	}
-
-
-
-	fn handle( &mut self, _: ServerMsg ) -> Return<()>
-	{
-		unreachable!( "Cannot be spawned on a threadpool" );
-	}
 }
 
 
@@ -190,18 +157,12 @@ impl Handler<ServerMsg> for App
 //
 impl Handler<NewChatMsg> for App
 {
-	fn handle_local( &mut self, msg: NewChatMsg ) -> ReturnNoSend<()> { Box::pin( async move
+	#[async_fn_nosend] fn handle_local( &mut self, msg: NewChatMsg )
 	{
 		let conn = self.connection.as_mut().expect_throw( "be connected" );
 
 		conn.server_addr.send( msg ).await.expect_throw( "send new chat message" );
 
-	})}
-
-
-	fn handle( &mut self, _: NewChatMsg ) -> Return<()>
-	{
-		unreachable!( "Cannot be spawned on a threadpool" );
 	}
 }
 
@@ -211,19 +172,14 @@ impl Handler<NewChatMsg> for App
 //
 impl Handler<SetNick> for App
 {
-	#[async_fn_local] fn handle_local( &mut self, msg: SetNick ) -> Result<(), ChatErr>
+	#[async_fn_nosend] fn handle_local( &mut self, msg: SetNick ) -> Result<(), ChatErr>
 	{
 		let conn = self.connection.as_mut().expect_throw( "be connected" );
 
 		conn.server_addr.call( msg ).await.expect_throw( "forward SetNick" )
 	}
-
-
-	#[async_fn] fn handle( &mut self, _: SetNick ) -> Result<(), ChatErr>
-	{
-		unreachable!( "Cannot be spawned on a threadpool" );
-	}
 }
+
 
 
 pub struct Disconnect {}

@@ -44,7 +44,6 @@ dependencies:
   thespis_remote       : { path: ../../../../thespis_remote }
   thespis_derive       : { path: ../../../../thespis_derive }
   thespis_impl         : { path: ../../../../thespis_impl }
-  keke_dom             : { path: ../../../../../keke/keke_dom }
   getrandom            : { version: ^0.2, features: [ wasm-bindgen, js ] }
 
   web-sys:

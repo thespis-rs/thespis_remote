@@ -27,9 +27,6 @@ version = "^0.3"
 features = ["wasm-bindgen", "js"]
 version = "^0.2"
 
-[dependencies.keke_dom]
-path = "../../../../../keke/keke_dom"
-
 [dependencies.leptos]
 features = ["csr"]
 version = "^0.4.8"

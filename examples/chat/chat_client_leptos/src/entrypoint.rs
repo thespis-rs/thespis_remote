@@ -5,7 +5,6 @@ pub(crate) mod chat_window  ;
 pub(crate) mod connect_form ;
 pub(crate) mod color        ;
 pub(crate) mod user         ;
-pub(crate) mod user_count   ;
 pub(crate) mod user_list    ;
 pub(crate) mod app          ;
 
@@ -13,10 +12,9 @@ use
 {
 	connect_form :: { ConnectForm, ConnectFormDom, ConnSubmitEvt, ConnResetEvt                       } ,
 	chat_form    :: { ChatForm, ChatFormDom, ChatSubmitEvt, ChatResetEvt                             } ,
-	app          :: { App, Connected, Disconnect                                             } ,
+	app          :: { App, Connected, Disconnect                                                     } ,
 	chat_window  :: { ChatWindow, ChatWindowDom, NewUser, UserLeft, AnnounceNick, ChatMsg, PrintHelp } ,
 	user         :: { ChangeNick, UserInfo, User                                                     } ,
-	user_count   :: { UserCount                                                                      } ,
 	user_list    :: { UserListDom                                                                    } ,
 };
 
@@ -142,11 +140,6 @@ pub async fn main() -> Result<(), JsValue>
 
 	Ok(())
 }
-
-
-
-
-
 
 
 pub(crate) fn document() -> Document

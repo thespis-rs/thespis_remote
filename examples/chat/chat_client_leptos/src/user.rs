@@ -45,26 +45,6 @@ impl User
 			is_self,
 		}
 	}
-
-
-	pub fn render( &mut self )
-	{
-		self.p.set_inner_text( &self.nick );
-
-		self.p.style().set_property( "color", &self.color.to_css() ).expect_throw( "set color" );
-		self.p.set_id( &format!( "user_{}", &self.sid ) );
-
-		if self.is_self
-		{
-			self.p.style().set_property( "font-weight", "bold" ).expect_throw( "set color" );
-		}
-
-		if !self.indom
-		{
-			self.parent.append_child( &self.p ).expect_throw( "append user to div" );
-			self.indom = true;
-		}
-	}
 }
 
 
@@ -115,9 +95,23 @@ impl Handler< ChangeNick > for User
 
 impl Handler< Render > for User
 {
-	#[async_fn] fn handle( &mut self, _: Render )
+	#[async_fn_nosend] fn handle_local( &mut self, _: Render )
 	{
-		self.render();
+		self.p.set_inner_text( &self.nick );
+
+		self.p.style().set_property( "color", &self.color.to_css() ).expect_throw( "set color" );
+		self.p.set_id( &format!( "user_{}", &self.sid ) );
+
+		if self.is_self
+		{
+			self.p.style().set_property( "font-weight", "bold" ).expect_throw( "set color" );
+		}
+
+		if !self.indom
+		{
+			self.parent.append_child( &self.p ).expect_throw( "append user to div" );
+			self.indom = true;
+		}
 	}
 }
 

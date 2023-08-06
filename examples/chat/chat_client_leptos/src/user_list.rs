@@ -4,12 +4,12 @@ use crate :: { import::*, * };
 
 
 #[component]
-pub fn UserListDom( cx: Scope ) -> impl IntoView
+pub fn UserListDom( cx: Scope, count: ReadSignal<usize> ) -> impl IntoView
 {
 	view! { cx,
 
 		<div id="users">
-			<div id="user_count"></div>
+			<div id="user_count">Total users: {count}</div>
 		</div>
 	}
 }
@@ -19,31 +19,42 @@ pub fn UserListDom( cx: Scope ) -> impl IntoView
 //
 pub struct UserList
 {
-	users       : HashMap<usize, Addr<User>>,
-	div         : HtmlDivElement            ,
-	indom       : bool                      ,
-	parent      : HtmlElement               ,
-	chat_window : Addr< ChatWindow >        ,
-	user_count  : Addr< UserCount  >        ,
+	users       : HashMap< usize, Addr<User> >,
+	div         : HtmlDivElement              ,
+	indom       : bool                        ,
+	parent      : HtmlElement                 ,
+	chat_window : Addr< ChatWindow >          ,
+	set_count   : WriteSignal< usize >        ,
 }
 
 impl UserList
 {
 	pub fn new( parent: &str, chat_window: Addr< ChatWindow > ) -> Self
 	{
-		let count_div = get_id( "user_count" ).unchecked_into();
-		let user_count = UserCount::new( count_div );
-		let user_count = Addr::builder("user_count").spawn_local( user_count, &Bindgen ).expect_throw( "spawn userlist"  );
+		let parent = get_id( parent );
+
+		let cx = CX.with( |cx| *cx.get().expect_throw( "cx to be created" ) );
+		let (count, set_count) = create_signal(cx, 0);
+
+		mount_to_global( parent.clone(), move |cx|
+		{
+			view! { cx, <UserListDom count=count /> }
+		});
 
 		Self
 		{
 			chat_window,
-			user_count,
 			users: HashMap::new() ,
 			div  : document().create_element( "div" ).expect_throw( "create userlist div" ).unchecked_into() ,
 			indom: false,
-			parent: get_id( parent ).unchecked_into(),
+			parent,
+			set_count,
 		}
+	}
+
+	fn update_count( &self )
+	{
+		self.set_count.update( |old| *old = self.users.len() );
 	}
 }
 
@@ -93,9 +104,7 @@ impl Handler< Insert > for UserList
 		else
 		{
 			let user = User::new( msg.sid, msg.nick.clone(), self.div.clone().unchecked_into(), msg.is_self );
-			let mut addr = Addr::builder("user").spawn_local( user, &Bindgen ).expect_throw( "spawn user" );
-
-			addr.send( Render{} ).await.expect_throw( "send" );
+			let addr = Addr::builder("user").spawn_local( user, &Bindgen ).expect_throw( "spawn user" );
 
 			self.users.insert( msg.sid, addr.clone() );
 
@@ -108,9 +117,7 @@ impl Handler< Insert > for UserList
 			};
 
 			self.chat_window.send( new_user ).await.expect_throw( "send" );
-
-			let update = user_count::Update{ count: self.users.len() };
-			self.user_count.send( update ).await.expect_throw( "send user count update" );
+			self.update_count();
 
 			addr
 		}
@@ -128,15 +135,11 @@ impl Message for Remove { type Return = (); }
 
 impl Handler< Remove > for UserList
 {
-	#[async_fn_local] fn handle_local( &mut self, msg: Remove )
+	#[async_fn_nosend] fn handle_local( &mut self, msg: Remove )
 	{
 		self.users.remove( &msg.sid );
-
-		let update = user_count::Update{ count: self.users.len() };
-		self.user_count.send( update ).await.expect_throw( "send user count update" );
+		self.update_count();
 	}
-
-	#[async_fn] fn handle(&mut self, _: Remove) { unreachable!("cannot be called multithreaded")}
 }
 
 
@@ -165,15 +168,12 @@ impl Message for Render { type Return = (); }
 
 impl Handler< Render > for UserList
 {
-	#[async_fn_local] fn handle_local( &mut self, msg: Render )
+	#[async_fn_nosend] fn handle_local( &mut self, msg: Render )
 	{
 		for user in self.users.values_mut()
 		{
 			user.send( msg ).await.expect_throw( "send" );
 		}
-
-		self.user_count.send( msg ).await.expect_throw( "render user_count" );
-
 
 		if !self.indom
 		{
@@ -182,9 +182,6 @@ impl Handler< Render > for UserList
 			self.indom = true;
 		}
 	}
-
-
-	#[async_fn] fn handle(&mut self, _: Render) { unreachable!("cannot be called multithreaded")}
 }
 
 
@@ -197,14 +194,12 @@ impl Message for GetUser { type Return = Addr<User>; }
 
 impl Handler< GetUser > for UserList
 {
-	#[async_fn_local] fn handle_local( &mut self, msg: GetUser ) -> Addr<User>
+	#[async_fn_nosend] fn handle_local( &mut self, msg: GetUser ) -> Addr<User>
 	{
 		// TODO: get rid of expect
 		//
 		self.users.get( &msg.sid ).expect_throw( "user" ).clone()
 	}
-
-	#[async_fn] fn handle(&mut self, _: GetUser) -> Addr<User> { unreachable!("cannot be called multithreaded")}
 }
 
 
