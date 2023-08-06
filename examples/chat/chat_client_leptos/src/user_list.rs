@@ -8,8 +8,9 @@ pub fn UserListDom( cx: Scope, count: ReadSignal<usize> ) -> impl IntoView
 {
 	view! { cx,
 
-		<div id="users">
-			<div id="user_count">Total users: {count}</div>
+		<div id="user_list">
+			<div id="user_count">{"Total users: "}{count}</div>
+			<ul id="user_list_ul"></ul>
 		</div>
 	}
 }
@@ -20,11 +21,9 @@ pub fn UserListDom( cx: Scope, count: ReadSignal<usize> ) -> impl IntoView
 pub struct UserList
 {
 	users       : HashMap< usize, Addr<User> >,
-	div         : HtmlDivElement              ,
-	indom       : bool                        ,
-	parent      : HtmlElement                 ,
 	chat_window : Addr< ChatWindow >          ,
 	set_count   : WriteSignal< usize >        ,
+	ul          : HtmlElement                 ,
 }
 
 impl UserList
@@ -36,19 +35,19 @@ impl UserList
 		let cx = CX.with( |cx| *cx.get().expect_throw( "cx to be created" ) );
 		let (count, set_count) = create_signal(cx, 0);
 
-		mount_to_global( parent.clone(), move |cx|
+		mount_to_global( parent.clone(), Operation::Append, move |cx|
 		{
 			view! { cx, <UserListDom count=count /> }
 		});
+
+		let ul = get_id( "user_list_ul" );
 
 		Self
 		{
 			chat_window,
 			users: HashMap::new() ,
-			div  : document().create_element( "div" ).expect_throw( "create userlist div" ).unchecked_into() ,
-			indom: false,
-			parent,
 			set_count,
+			ul
 		}
 	}
 
@@ -57,22 +56,6 @@ impl UserList
 		self.set_count.update( |old| *old = self.users.len() );
 	}
 }
-
-
-impl Drop for UserList
-{
-	fn drop( &mut self )
-	{
-		// remove self from Dom
-		//
-		self.div.remove();
-		//
-		// Delete children
-		//
-
-	}
-}
-
 
 pub struct Insert
 {
@@ -88,10 +71,8 @@ impl Message for Insert { type Return = Addr<User>; }
 
 impl Handler< Insert > for UserList
 {
-	#[async_fn_local] fn handle_local( &mut self, msg: Insert ) -> Addr<User>
+	#[async_fn_nosend] fn handle_local( &mut self, msg: Insert ) -> Addr<User>
 	{
-		let _render = false;
-
 		let users = &mut self.users;
 
 		if let Some( user ) = users.get_mut( &msg.sid )
@@ -103,7 +84,7 @@ impl Handler< Insert > for UserList
 
 		else
 		{
-			let user = User::new( msg.sid, msg.nick.clone(), self.div.clone().unchecked_into(), msg.is_self );
+			let user = User::new( msg.sid, msg.nick.clone(), self.ul.clone(), msg.is_self );
 			let addr = Addr::builder("user").spawn_local( user, &Bindgen ).expect_throw( "spawn user" );
 
 			self.users.insert( msg.sid, addr.clone() );
@@ -122,8 +103,6 @@ impl Handler< Insert > for UserList
 			addr
 		}
 	}
-
-	#[async_fn] fn handle(&mut self, _: Insert) -> Addr<User> { unreachable!("cannot be called multithreaded")}
 }
 
 
@@ -158,33 +137,6 @@ impl Handler< Clear > for UserList
 
 	#[async_fn] fn handle(&mut self, _: Clear) { unreachable!("cannot be called multithreaded")}
 }
-
-
-#[derive(Clone, Copy)]
-pub struct Render;
-
-impl Message for Render { type Return = (); }
-
-
-impl Handler< Render > for UserList
-{
-	#[async_fn_nosend] fn handle_local( &mut self, msg: Render )
-	{
-		for user in self.users.values_mut()
-		{
-			user.send( msg ).await.expect_throw( "send" );
-		}
-
-		if !self.indom
-		{
-			self.parent.append_child( &self.div ).expect_throw( "add udiv to dom" );
-
-			self.indom = true;
-		}
-	}
-}
-
-
 
 
 pub struct GetUser { pub sid: usize }

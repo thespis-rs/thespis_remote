@@ -23,7 +23,7 @@ impl App
 		;
 
 		let user_list = Addr::builder("user_list")
-			.spawn_local( UserList::new( "user_list", chat_window.clone() ), &Bindgen )
+			.spawn_local( UserList::new( "page_chat", chat_window.clone() ), &Bindgen )
 			.expect_throw( "spawn userlist"  )
 		;
 
@@ -85,7 +85,6 @@ impl Handler<Connected> for App
 		let inserts = new_users.into_iter().map( |(sid, nick)| Ok(Insert{ time: 0.0, sid, nick, is_self: sid == msg.welcome.sid }) );
 
 		self.user_list.send_all( &mut futures::stream::iter(inserts) ).await.expect_throw( "new users" );
-		self.user_list.send( Render{} ).await.expect_throw( "render userlist" );
 		self.chat_window.call( msg.welcome.clone() ).await.expect_throw( "call" );
 
 		self.connection = Some( msg );
@@ -133,7 +132,7 @@ impl Handler<ServerMsg> for App
 
 				let mut user = self.user_list.call( GetUser{ sid } ).await.expect_throw( "get user info" );
 
-				let (old, _) = user.call( UserInfo {} ).await.expect_throw( "get user info" );
+				let (_sid, old, _color) = user.call( UserInfo {} ).await.expect_throw( "get user info" );
 				user.call( ChangeNick( nick.clone() ) ).await.expect_throw( "change nick" );
 
 				self.chat_window.send( AnnounceNick{ time: time as f64, old, new: nick } ).await.expect_throw( "announce nick" );
@@ -204,10 +203,8 @@ impl Handler<Disconnect> for App
 		get_id( "page_chat"  ).style().set_property( "display", "none" ).expect_throw( "set chat page display none"  );
 		get_id( "page_login" ).style().set_property( "display", "flex" ).expect_throw( "set login page display flex" );
 
-		self.user_list.send( Clear {} ).await.expect_throw( "clear  userlist" );
-		self.user_list.send( Render{} ).await.expect_throw( "render userlist" );
-
-		self.chat_window.send( Disconnect{} ).await.expect_throw( "clear  userlist" );
+		self.user_list  .send( Clear {}     ).await.expect_throw( "clear  userlist"    );
+		self.chat_window.send( Disconnect{} ).await.expect_throw( "clear  chat_window" );
 
 	}
 }

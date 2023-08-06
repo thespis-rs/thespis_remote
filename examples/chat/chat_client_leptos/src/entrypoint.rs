@@ -28,7 +28,7 @@ mod import
 		futures              :: { prelude::*, stream::SplitStream, select, future::ready, FutureExt     } ,
 		futures              :: { channel::{ mpsc::{ unbounded, UnboundedReceiver, UnboundedSender } }  } ,
 		futures              :: { task::LocalSpawnExt                                                   } ,
-		leptos               :: { create_effect, create_memo, create_signal, view, component, For, Memo, Scope, ScopeDisposer, ReadSignal, IntoView, WriteSignal, SignalUpdate, SignalGet } ,
+		leptos               :: { create_effect, create_memo, create_signal, view, component, For, Memo, Scope, ScopeDisposer, ReadSignal, IntoView, WriteSignal, SignalUpdate, SignalGet, SignalGetUntracked } ,
 		leptos_use           :: {  } ,
 		leptos_dom           :: { Mountable                                                             } ,
 		tracing              :: { *                                                                     } ,
@@ -155,39 +155,54 @@ pub(crate) fn get_id( id: &str ) -> HtmlElement
 }
 
 
+/// Which operation to use to mount a leptos view.
+//
+pub enum Operation
+{
+	Append,
+	Prepend,
+	InsertBefore,
+	InsertAfter,
+}
 
-/// Runs the provided closure and mounts the result to the provided element.
-pub(crate) fn child_mount_to<F, N>(parent: HtmlElement, f: F) -> ScopeDisposer
+/// Runs the provided closure and mounts the result to the provided element,
+/// creating a child context.
+//
+pub fn mount_to<F, N>( cx: Scope, ref_node: HtmlElement, op: Operation, f: F ) -> HtmlElement
 where
     F: FnOnce(Scope) -> N + 'static,
     N: IntoView,
 {
-	let global_cx = CX.with( |cx| *cx.get().expect_throw( "cx to be created" ) );
+	let node = f(cx).into_view(cx);
+	let elem = node.get_mountable_node();
 
-	global_cx.child_scope( |cx|
+	match op
 	{
-		let node = f(cx).into_view(cx);
+		Operation::Append       => { ref_node.append_child(&elem).unwrap(); }
+		Operation::Prepend      => { ref_node.prepend_with_node(&elem.clone().unchecked_into()).unwrap(); }
+		Operation::InsertBefore => { ref_node.parent_node().unwrap().insert_before(&elem, Some(&ref_node)).unwrap(); }
+		Operation::InsertAfter  => { ref_node.after_with_node_1(&elem).unwrap(); }
+	}
 
-		parent.append_child(&node.get_mountable_node()).unwrap();
+	// leptos first inserts a comment node with the name of the component.
+	//
+	let elem = node.get_opening_node().next_sibling().expect_throw("find node we inserted");
 
-		std::mem::forget(node);
-	})
+	elem.unchecked_into()
 }
 
 
 
 /// Runs the provided closure and mounts the result to the provided element.
-pub(crate) fn mount_to_global<F, N>(parent: HtmlElement, f: F)
+//
+pub fn mount_to_global<F, N>(ref_node: HtmlElement, op: Operation, f: F) -> HtmlElement
 where
     F: FnOnce(Scope) -> N + 'static,
     N: IntoView,
 {
-	let cx   = CX.with( |cx| *cx.get().expect_throw( "cx to be created" ) );
-	let node = f(cx).into_view(cx);
+	let cx = CX.with( |cx| *cx.get().expect_throw( "cx to be created" ) );
 
-	parent.append_child(&node.get_mountable_node()).unwrap();
-
-	std::mem::forget(node);
+	mount_to( cx, ref_node, op, f )
 }
 
 

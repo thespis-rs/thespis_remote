@@ -77,7 +77,7 @@ impl ConnectForm
 {
 	pub fn new( app: Addr<App>, self_addr: Addr<Self> ) -> Self
 	{
-		mount_to_global( get_id( "page_login" ), move |cx|
+		mount_to_global( get_id( "page_login" ), Operation::Append, move |cx|
 		{
 			view! { cx, <ConnectFormDom addr=self_addr /> }
 		});

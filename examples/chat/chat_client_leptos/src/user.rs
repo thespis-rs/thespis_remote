@@ -1,12 +1,14 @@
-use crate :: { import::*, color::*, document, user_list::Render };
+use crate::{ import::*, color::*, document, mount_to, CX, Operation };
 
 
 #[component]
-pub fn UserDom( cx: Scope, style: ReadSignal<String>, name: ReadSignal<String>  ) -> impl IntoView
+pub fn UserDom( cx: Scope, style: String, nick: ReadSignal<String>, sid: usize  ) -> impl IntoView
 {
+	let id = format!( "user_{}", sid );
+
 	view! { cx,
 
-		<p style={move || style.get()}>{move ||name.get()}</p>
+		<li id={id} style={style}>{nick}</li>
 	}
 }
 
@@ -16,33 +18,42 @@ pub fn UserDom( cx: Scope, style: ReadSignal<String>, name: ReadSignal<String>  
 //
 pub struct User
 {
-	sid    : usize                ,
-	nick   : String               ,
-	color  : Color                ,
-	p      : HtmlParagraphElement ,
-	indom  : bool                 ,
-	parent : HtmlElement          ,
-	is_self: bool                 ,
+	color         : Color                ,
+	sid           : usize                ,
+	li            : HtmlElement          ,
+	set_nick      : WriteSignal<String>  ,
+	nick          : ReadSignal<String>   ,
+	scope_disposer: Option<ScopeDisposer>,
 }
 
-// Unfortunately thespis requires Send right now, and HtmlElement isn't Send.
-// When WASM gains threads we need to fix this.
-//
-unsafe impl Send for User {}
 
 impl User
 {
 	pub fn new( sid: usize, nick: String, parent: HtmlElement, is_self: bool ) -> Self
 	{
+		let color = Color::random().light();
+		let mut style = format!( "color: {};", color.to_css() );
+
+		if is_self { style.push_str( " font-weight: bold;"); }
+
+		let global_cx = CX.with( |cx| *cx.get().expect_throw( "cx to be created" ) );
+		let (child_cx, scope_disposer) = global_cx.run_child_scope( |cx| cx );
+
+		let (nick, set_nick) = create_signal( child_cx, nick );
+
+		let li = mount_to( child_cx, parent.clone(), Operation::Append, move |cx|
+		{
+			view! { cx, <UserDom style=style nick=nick sid=sid /> }
+		});
+
 		Self
 		{
-			nick  ,
+			color,
+			li,
+			nick,
+			set_nick,
+			scope_disposer: Some(scope_disposer),
 			sid   ,
-			parent,
-			color: Color::random().light(),
-			p    : document().create_element( "p" ).expect_throw( "create user p" ).unchecked_into(),
-			indom: false,
-			is_self,
 		}
 	}
 }
@@ -53,8 +64,9 @@ impl Drop for User
 {
 	fn drop( &mut self )
 	{
-		warn!( "removing user {:?} from dom", self.nick );
-		self.p.remove();
+		self.li.remove();
+
+		if let Some(sd) = self.scope_disposer.take() { sd.dispose(); }
 	}
 }
 
@@ -64,14 +76,14 @@ impl Drop for User
 pub struct UserInfo {}
 
 
-impl Message for UserInfo { type Return = (String, Color); }
+impl Message for UserInfo { type Return = (usize, String, Color); }
 
 
 impl Handler< UserInfo > for User
 {
-	#[async_fn] fn handle( &mut self, _: UserInfo ) -> (String, Color)
+	#[async_fn_nosend] fn handle_local( &mut self, _: UserInfo ) -> (usize, String, Color)
 	{
-		(self.nick.clone(), self.color)
+		(self.sid, self.nick.get_untracked(), self.color)
 	}
 }
 
@@ -85,33 +97,9 @@ impl Message for ChangeNick { type Return = (); }
 
 impl Handler< ChangeNick > for User
 {
-	#[async_fn] fn handle( &mut self, new_nick: ChangeNick )
+	#[async_fn_nosend] fn handle_local( &mut self, new_nick: ChangeNick )
 	{
-		self.nick = new_nick.0;
-		self.p.set_inner_text( &self.nick );
-	}
-}
-
-
-impl Handler< Render > for User
-{
-	#[async_fn_nosend] fn handle_local( &mut self, _: Render )
-	{
-		self.p.set_inner_text( &self.nick );
-
-		self.p.style().set_property( "color", &self.color.to_css() ).expect_throw( "set color" );
-		self.p.set_id( &format!( "user_{}", &self.sid ) );
-
-		if self.is_self
-		{
-			self.p.style().set_property( "font-weight", "bold" ).expect_throw( "set color" );
-		}
-
-		if !self.indom
-		{
-			self.parent.append_child( &self.p ).expect_throw( "append user to div" );
-			self.indom = true;
-		}
+		self.set_nick.update( |old| *old = new_nick.0 );
 	}
 }
 

@@ -25,7 +25,7 @@ pub struct ChatWindow
 	div      : HtmlDivElement               ,
 	users    : HashMap< usize, Addr<User> > ,
 	srv_color: Color                        ,
-	_clt_color: Color                        ,
+	_clt_color: Color                       ,
 }
 
 
@@ -133,22 +133,16 @@ impl Message for ChatMsg { type Return = (); }
 
 impl Handler<ChatMsg> for ChatWindow
 {
-	fn handle_local( &mut self, msg: ChatMsg ) -> ReturnNoSend<()> { Box::pin( async move
+	#[async_fn_nosend] fn handle_local( &mut self, msg: ChatMsg )
 	{
 		// TODO: get rid of expect
 		//
 		let user = self.users.get_mut( &msg.sid ).expect_throw( "Couldn't find user" );
 
-		let (nick, color) = user.call( UserInfo{} ).await.expect_throw( "call user" );
+		let (_sid, nick, color) = user.call( UserInfo{} ).await.expect_throw( "call user" );
 
 		self.append_line( msg.time, &nick, &msg.txt, &color, false );
 
-	})}
-
-
-	fn handle( &mut self, _: ChatMsg ) -> Return<()>
-	{
-		unreachable!( "Cannot be spawned on a threadpool" );
 	}
 }
 
@@ -169,7 +163,7 @@ impl Message for NewUser { type Return = (); }
 
 impl Handler<NewUser> for ChatWindow
 {
-	fn handle( &mut self, msg: NewUser ) -> Return<()>
+	#[async_fn_nosend] fn handle_local( &mut self, msg: NewUser )
 	{
 		self.users.insert( msg.sid, msg.addr );
 
@@ -179,8 +173,6 @@ impl Handler<NewUser> for ChatWindow
 
 			self.append_line( msg.time, "Server", &format!( "We welcome a new user, {}!", &msg.nick ), &color, true );
 		}
-
-		ready(()).boxed()
 	}
 }
 
@@ -192,13 +184,13 @@ impl Message for UserLeft { type Return = (); }
 
 impl Handler<UserLeft> for ChatWindow
 {
-	fn handle_local( &mut self, msg: UserLeft ) -> ReturnNoSend<()> { Box::pin( async move
+	#[async_fn_nosend] fn handle_local( &mut self, msg: UserLeft )
 	{
 		// TODO: get rid of expect
 		//
-		let user = self.users.get_mut( &msg.sid ).expect_throw( "Couldn't find user" );
+		let user = self.users.get_mut( &msg.sid ).expect_throw( "ChatWindow - UserLeft: Couldn't find user" );
 
-		let (nick, _) = user.call( UserInfo{} ).await.expect_throw( "call user" );
+		let (_sid, nick, _color) = user.call( UserInfo{} ).await.expect_throw( "call user" );
 
 		self.users.remove( &msg.sid );
 
@@ -206,12 +198,6 @@ impl Handler<UserLeft> for ChatWindow
 
 		self.append_line( msg.time, "Server", &format!( "Sadly, {} left us.", &nick ), &color, true );
 
-	})}
-
-
-	fn handle( &mut self, _: UserLeft ) -> Return<()>
-	{
-		unreachable!( "Cannot be spawned on a threadpool" );
 	}
 }
 
@@ -229,7 +215,7 @@ impl Message for AnnounceNick { type Return = (); }
 
 impl Handler<AnnounceNick> for ChatWindow
 {
-	fn handle( &mut self, msg: AnnounceNick ) -> Return<()>
+	#[async_fn_nosend] fn handle_local( &mut self, msg: AnnounceNick )
 	{
 		// TODO: srv_color get's copied here, which is a bit silly!
 		//
@@ -238,8 +224,6 @@ impl Handler<AnnounceNick> for ChatWindow
 		let txt = format!( "{} has changed names => {}.", &msg.old, &msg.new );
 
 		self.append_line( msg.time, "Server", &txt, &color, true );
-
-		ready(()).boxed()
 	}
 }
 
@@ -252,12 +236,10 @@ impl Message for PrintHelp { type Return = (); }
 
 impl Handler<PrintHelp> for ChatWindow
 {
-	fn handle( &mut self, _: PrintHelp ) -> Return<()>
+	#[async_fn_nosend] fn handle_local( &mut self, _: PrintHelp )
 	{
 		let color = self.srv_color;
 
 		self.append_line( Date::now(), "Client", HELP, &color, true );
-
-		ready(()).boxed()
 	}
 }
