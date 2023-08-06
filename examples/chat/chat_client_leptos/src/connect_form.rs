@@ -1,14 +1,28 @@
 use crate :: { import::*, * };
 
+const WS_URL         : &str = "ws://127.0.0.1:3012";
+const ERR_NICK_LENGTH: &str = "The nick name is invalid. It must be between 1 and 15 word characters.";
+const ERR_NICK_IN_USE: &str = "The nick name is already in use. Please choose another.";
+
 
 #[component]
-pub fn ConnectFormDom( cx: Scope, addr: Addr<ConnectForm> ) -> impl IntoView
+pub fn ConnectFormDom
+(
+	cx   : Scope                    ,
+	addr : Addr<ConnectForm>        ,
+	nick : ReadSignal<&'static str> ,
+	url  : ReadSignal<&'static str> ,
+	error: ReadSignal<&'static str> ,
+
+) -> impl IntoView
 {
 	let addr1 = addr.clone();
 	let addr2 = addr.clone();
 
 	let on_submit = move |e| connect_submit(e, addr1.clone());
 	let on_reset  = move |e| connect_reset (e, addr2.clone());
+
+	let error_display = move || if error.get() == "" { "none" } else { "block" };
 
 	view! { cx,
 
@@ -19,16 +33,21 @@ pub fn ConnectFormDom( cx: Scope, addr: Addr<ConnectForm> ) -> impl IntoView
 
 			<div id="connect_form_content">
 
-				<p id="connect_error"></p>
+				<p
+					style:display = error_display
+					id            = "connect_error"
+				>
+					{ error }
+				</p>
 
 				<label for="connect_nick">
 					<span>Nickname <span class="required">*</span></span>
-					<input type="text" id="connect_nick" name="connect_nick" value="" />
+					<input type="text" id="connect_nick" name="connect_nick" value= move|| nick.get() />
 				</label>
 
 				<label for="connect_url">
 					<span>Url <span class="required">*</span></span>
-					<input type="text" id="connect_url" name="connect_url" value="ws://127.0.0.1:3012" />
+					<input type="text" id="connect_url" name="connect_url" value= move || url.get() />
 				</label>
 
 				<div class="buttons">
@@ -48,7 +67,9 @@ fn connect_submit(e: web_sys::SubmitEvent, mut conn_form: Addr<ConnectForm> )
 {
 	Bindgen.spawn_local( async move
 	{
-		conn_form.send(ConnSubmitEvt{e}).await.expect_throw( "send ConnSubmitEvt" );
+		e.prevent_default();
+
+		conn_form.send(ConnSubmitEvt).await.expect_throw( "send ConnSubmitEvt" );
 
 	}).expect_throw( "spawn send ConnSubmitEvt" );
 }
@@ -58,7 +79,9 @@ fn connect_reset(e: Event, mut conn_form: Addr<ConnectForm> )
 {
 	Bindgen.spawn_local( async move
 	{
-		conn_form.send(ConnResetEvt{e}).await.expect_throw( "send ConnResetEvt" );
+		e.prevent_default();
+
+		conn_form.send(ConnResetEvt).await.expect_throw( "send ConnResetEvt" );
 
 	}).expect_throw( "spawn send ConnResetEvt" );
 }
@@ -69,7 +92,10 @@ fn connect_reset(e: Event, mut conn_form: Addr<ConnectForm> )
 //
 pub struct ConnectForm
 {
-	app: Addr< App > ,
+	app      : Addr< App >               ,
+	set_nick : WriteSignal<&'static str> ,
+	set_url  : WriteSignal<&'static str> ,
+	set_error: WriteSignal<&'static str> ,
 }
 
 
@@ -77,16 +103,24 @@ impl ConnectForm
 {
 	pub fn new( app: Addr<App>, self_addr: Addr<Self> ) -> Self
 	{
+		let cx = CX.with( |cx| *cx.get().expect_throw( "cx to be created" ) );
+
+		let (nick, set_nick) = create_signal( cx, random_name() );
+		let (url, set_url) = create_signal( cx, "ws://127.0.0.1:3012" );
+		let (error, set_error) = create_signal( cx, "" );
+
 		mount_to_global( get_id( "page_login" ), Operation::Append, move |cx|
 		{
-			view! { cx, <ConnectFormDom addr=self_addr /> }
+			view! { cx, <ConnectFormDom addr=self_addr nick=nick url=url error=error /> }
 		});
 
-
-		let cnick: HtmlInputElement = get_id( "connect_nick" ).unchecked_into();
-		cnick.set_value( random_name() );
-
-		Self { app }
+		Self
+		{
+			app      ,
+			set_nick ,
+			set_url  ,
+			set_error,
+		}
 	}
 
 
@@ -106,179 +140,126 @@ impl ConnectForm
 
 
 
-pub struct ConnSubmitEvt { pub e: SubmitEvent }
-
-impl Message for ConnSubmitEvt { type Return = (); }
-
-// Unfortunately thespis requires Send right now, and HtmlElement isn't Send.
-// When WASM gains threads we need to fix this.
-//
-unsafe impl Send for ConnSubmitEvt {}
-
+#[ derive(Message) ] pub struct ConnSubmitEvt;
 
 impl Handler< ConnSubmitEvt > for ConnectForm
 {
-	fn handle_local( &mut self, msg: ConnSubmitEvt ) -> ReturnNoSend<()>
+	#[async_fn_nosend] fn handle_local( &mut self, _msg: ConnSubmitEvt )
 	{
 		info!( "Connect button clicked" );
 
-		Box::pin( async move
+		// validate form
+		//
+		let (nick, url) = match Self::validate_connect_form()
 		{
-			msg.e.prevent_default();
+			Ok(ok) => ok,
 
-			// validate form
-			//
-			let (nick, url) = match Self::validate_connect_form()
+			Err(_) =>
 			{
-				Ok(ok) => ok,
-
-				Err(_) =>
-				{
-					// report error to the user
-					// continue loop
-					//
-					unreachable!()
-				}
-			};
+				// report error to the user
+				// continue loop
+				//
+				unreachable!()
+			}
+		};
 
 
-			let (ws, wsio) = match WsMeta::connect( url, None ).await
+		let (ws, wsio) = match WsMeta::connect( url, None ).await
+		{
+			Ok(conn) => conn,
+
+			Err(e)   =>
 			{
-				Ok(conn) => conn,
+				// report error to the user
+				//
+				error!( "{}", e );
+				panic!( "{}", e );
+			}
+		};
 
-				Err(e)   =>
-				{
-					// report error to the user
-					//
-					error!( "{}", e );
-					panic!( "{}", e );
-				}
-			};
+		let (mut peer, peer_mb, peer_addr) = CborWF::create_peer
+		(
+			"server",
+			wsio.into_io(),
+			10_000_000, // 10 MB
+			10_000_000, // 10 MB
+			Bindgen,
+			None,
+			None,
+		).expect_throw( "create server peer" );
 
-			let (mut peer, peer_mb, peer_addr) = CborWF::create_peer
-			(
-				"server",
-				wsio.into_io(),
-				10_000_000, // 10 MB
-				10_000_000, // 10 MB
-				Bindgen,
-				None,
-				None,
-			).expect_throw( "create server peer" );
+		let mut server_addr = server_map::RemoteAddr::new( peer_addr.clone() );
 
-			let mut server_addr = server_map::RemoteAddr::new( peer_addr.clone() );
-
-			// Create a service map.
-			// A service map is a helper object created by a beefy macro included with thespis_remote_impl. It is responsible
-			// for deserializing and delivering the message to the correct handler.
-			//
-			let mut sm = client_map::Services::new();
+		// Create a service map.
+		// A service map is a helper object created by a beefy macro included with thespis_remote_impl. It is responsible
+		// for deserializing and delivering the message to the correct handler.
+		//
+		let mut sm = client_map::Services::new();
 
 
-			// Register our handlers.
-			// We just let the App actor handle messages coming in from the server.
-			//
-			sm.register_handler::< ServerMsg >( self.app.clone_box() );
+		// Register our handlers.
+		// We just let the App actor handle messages coming in from the server.
+		//
+		sm.register_handler::< ServerMsg >( self.app.clone_box() );
 
-			// register service map with peer
-			// This tells this peer to expose all these services over this connection.
-			//
-			peer.register_services( Arc::new( sm ) );
+		// register service map with peer
+		// This tells this peer to expose all these services over this connection.
+		//
+		peer.register_services( Arc::new( sm ) );
 
 
 
-			Bindgen.spawn_local( peer_mb.start_local( peer ).map(|_|()) ).expect_throw("spawn server peer");
+		Bindgen.spawn_local( peer_mb.start_local( peer ).map(|_|()) ).expect_throw("spawn server peer");
 
-			debug!( "Trying to join" );
+		debug!( "Trying to join" );
 
-			// Ask the server to join
-			// TODO: fix the expect
-			//
-			match server_addr.call( Join{ nick } ).await.expect_throw( "contact server" )
+		// Ask the server to join
+		// TODO: fix the expect
+		//
+		match server_addr.call( Join{ nick } ).await.expect_throw( "contact server" )
+		{
+			Ok( welcome ) =>
 			{
-				Ok( welcome ) =>
+				get_id( "page_login" ).style().set_property( "display", "none" ).expect_throw( "set login page display none" );
+				get_id( "page_chat" ).style().set_property( "display", "grid" ).expect_throw( "set chat page display grid" );
+
+				let connection = Connected
 				{
-					get_id( "page_login" ).style().set_property( "display", "none" ).expect_throw( "set login page display none" );
-					get_id( "page_chat" ).style().set_property( "display", "grid" ).expect_throw( "set chat page display grid" );
+					peer_addr   ,
+					server_addr ,
+					welcome     ,
+					ws          ,
+				};
 
-					let connection = Connected
-					{
-						peer_addr   ,
-						server_addr ,
-						welcome     ,
-						ws          ,
-					};
+				self.app.call( connection ).await.expect_throw( "call" );
+			}
 
-					self.app.call( connection ).await.expect_throw( "call" );
-				}
+			Err(e) =>
+			{
+				error!( "{}", e );
 
-				Err(e) =>
+				match e.kind()
 				{
-					error!( "{}", e );
+					ChatErrKind::NickInvalid => self.set_error.set( ERR_NICK_LENGTH ),
+					ChatErrKind::NickInuse   => self.set_error.set( ERR_NICK_IN_USE ),
 
-					let cerror: HtmlElement = get_id( "connect_error" ).unchecked_into();
-
-					match e.kind()
-					{
-						ChatErrKind::NickInvalid   =>
-						{
-							cerror.set_inner_text( "The nick name is invalid. It must be between 1 and 15 word characters." );
-							cerror.style().set_property( "display", "block" ).expect_throw( "set display block on cerror" );
-						}
-
-						ChatErrKind::NickInuse     =>
-						{
-							cerror.set_inner_text( "The nick name is already in use. Please choose another." );
-							cerror.style().set_property( "display", "block" ).expect_throw( "set display block on cerror" );
-						}
-
-						ChatErrKind::AlreadyJoined => {}
-
-						_ => unreachable!( "Unknown ChatErrKind" ),
-					}
+					_ => unreachable!( "Unknown ChatErrKind" ),
 				}
-			};
-		})
-	}
-
-	fn handle( &mut self, _: ConnSubmitEvt ) -> Return<()>
-	{
-		unreachable!( "Cannot be spawned on a threadpool" );
+			}
+		};
 	}
 }
 
 
 
-pub struct ConnResetEvt { pub e: Event }
-
-impl Message for ConnResetEvt { type Return = (); }
-
-// Unfortunately thespis requires Send right now, and HtmlElement isn't Send.
-// When WASM gains threads we need to fix this.
-//
-unsafe impl Send for ConnResetEvt {}
-
+#[ derive(Message) ] pub struct ConnResetEvt;
 
 impl Handler< ConnResetEvt > for ConnectForm
 {
-	fn handle_local( &mut self, msg: ConnResetEvt ) -> ReturnNoSend<()> { Box::pin( async move
+	#[async_fn_nosend] fn handle_local( &mut self, _msg: ConnResetEvt )
 	{
-		let _ = &msg; // need to capture the entire struct.
-		msg.e.prevent_default();
-
-		let cnick : HtmlInputElement = get_id( "connect_nick" ).unchecked_into();
-		let curl  : HtmlInputElement = get_id( "connect_url"  ).unchecked_into();
-		let cerror: HtmlElement      = get_id( "connect_error" ).unchecked_into();
-
-		cnick.set_value( random_name()         );
-		curl .set_value( "ws://127.0.0.1:3012" );
-
-		cerror.style().set_property( "display", "none" ).expect_throw( "set display none on cerror" );
-		cerror.set_inner_text( "" );
-	})}
-
-	fn handle( &mut self, _msg: ConnResetEvt ) -> Return<()>
-	{
-		unreachable!( "Cannot be spawned on threadpool")
+		self.set_nick .set( random_name() );
+		self.set_url  .set( WS_URL        );
+		self.set_error.set( ""            );
 	}
 }

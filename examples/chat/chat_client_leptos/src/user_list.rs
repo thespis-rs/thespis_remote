@@ -53,7 +53,7 @@ impl UserList
 
 	fn update_count( &self )
 	{
-		self.set_count.update( |old| *old = self.users.len() );
+		self.set_count.set( self.users.len() );
 	}
 }
 

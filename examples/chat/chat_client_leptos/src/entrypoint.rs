@@ -28,7 +28,7 @@ mod import
 		futures              :: { prelude::*, stream::SplitStream, select, future::ready, FutureExt     } ,
 		futures              :: { channel::{ mpsc::{ unbounded, UnboundedReceiver, UnboundedSender } }  } ,
 		futures              :: { task::LocalSpawnExt                                                   } ,
-		leptos               :: { create_effect, create_memo, create_signal, view, component, For, Memo, Scope, ScopeDisposer, ReadSignal, IntoView, WriteSignal, SignalUpdate, SignalGet, SignalGetUntracked } ,
+		leptos               :: { create_effect, create_memo, create_signal, view, component, For, Memo, Scope, ScopeDisposer, ReadSignal, IntoView, WriteSignal, SignalSet, SignalGet, SignalGetUntracked } ,
 		leptos_use           :: {  } ,
 		leptos_dom           :: { Mountable                                                             } ,
 		tracing              :: { *                                                                     } ,
@@ -44,7 +44,7 @@ mod import
 
 		chat_format         :: { * } ,
 		thespis             :: { Message, Actor, Handler, Return, ReturnNoSend, Address } ,
-		thespis_derive      :: { async_fn_local, async_fn_nosend, async_fn } ,
+		thespis_derive      :: { async_fn_local, async_fn_nosend, async_fn, Message } ,
 		thespis_impl        :: { Addr, WeakAddr                                                                   } ,
 		thespis_remote      :: { CborWF, PeerEvent, Peer, ServiceMap, WireFormat                                  } ,
 		pharos              :: { Observable, ObserveConfig, Events                                                } ,

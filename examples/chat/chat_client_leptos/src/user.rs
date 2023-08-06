@@ -99,7 +99,7 @@ impl Handler< ChangeNick > for User
 {
 	#[async_fn_nosend] fn handle_local( &mut self, new_nick: ChangeNick )
 	{
-		self.set_nick.update( |old| *old = new_nick.0 );
+		self.set_nick.set( new_nick.0 );
 	}
 }
 
